@@ -1,0 +1,116 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// Make io accessible in routes
+app.set('io', io);
+
+// Middleware
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/restaurant', require('./routes/restaurant'));
+app.use('/api/customer', require('./routes/customer'));
+app.use('/api/delivery', require('./routes/delivery'));
+app.use('/api/payment', require('./routes/payment'));
+app.use('/api/upload', require('./routes/upload'));
+
+// Socket.io
+io.on('connection', (socket) => {
+  console.log('🔌 Client connected:', socket.id);
+
+  socket.on('join_order_room', (orderId) => {
+    socket.join(`order_${orderId}`);
+    console.log(`Socket ${socket.id} joined room order_${orderId}`);
+  });
+
+  socket.on('join_restaurant_room', (restaurantId) => {
+    socket.join(`restaurant_${restaurantId}`);
+    console.log(`Socket ${socket.id} joined restaurant room ${restaurantId}`);
+  });
+
+  socket.on('join_delivery_room', (deliveryId) => {
+    socket.join(`delivery_${deliveryId}`);
+    console.log(`Socket ${socket.id} joined delivery room ${deliveryId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('🔌 Client disconnected:', socket.id);
+  });
+});
+
+// MongoDB connection + seed admin
+mongoose.connect(process.env.MONGODB_URI)
+  .then(async () => {
+    console.log('✅ MongoDB Connected');
+    await seedAdmin();
+    await seedCategories();
+  })
+  .catch((err) => console.error('❌ MongoDB Error:', err));
+
+// Seed default admin
+async function seedAdmin() {
+  const User = require('./models/User');
+  const bcrypt = require('bcryptjs');
+  const existing = await User.findOne({ role: 'admin' });
+  if (!existing) {
+    const hashed = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123', 10);
+    await User.create({
+      name: 'Admin',
+      email: process.env.ADMIN_EMAIL || 'admin@foodhub.com',
+      password: hashed,
+      role: 'admin',
+      phone: '9999999999',
+    });
+    console.log('✅ Admin seeded: admin@foodhub.com / Admin@123');
+  }
+}
+
+// Seed default categories
+async function seedCategories() {
+  const Category = require('./models/Category');
+  const count = await Category.countDocuments();
+  if (count === 0) {
+    await Category.insertMany([
+      { name: 'Pizza', icon: '🍕' },
+      { name: 'Burger', icon: '🍔' },
+      { name: 'Biryani', icon: '🍛' },
+      { name: 'Chinese', icon: '🥡' },
+      { name: 'Desserts', icon: '🍰' },
+      { name: 'South Indian', icon: '🥘' },
+      { name: 'North Indian', icon: '🫕' },
+      { name: 'Rolls', icon: '🌯' },
+      { name: 'Beverages', icon: '🥤' },
+      { name: 'Pasta', icon: '🍝' },
+    ]);
+    console.log('✅ Categories seeded');
+  }
+}
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

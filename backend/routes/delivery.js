@@ -1,0 +1,235 @@
+const express = require('express');
+const router = express.Router();
+const { protect, authorize } = require('../middleware/auth');
+const Order = require('../models/Order');
+const User = require('../models/User');
+
+// All delivery routes require auth + delivery role
+router.use(protect, authorize('delivery'));
+
+// ── Get My Assigned Orders ────────────────────────────────────────────────────
+router.get('/orders', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const filter = { deliveryAgentId: req.user._id };
+    if (status) filter.status = status;
+
+    const orders = await Order.find(filter)
+      .sort({ updatedAt: -1 })
+      .populate('customerId', 'name phone email')
+      .populate('restaurantId', 'name address phone');
+
+    res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Get Active (current) order for delivery boy ───────────────────────────────
+router.get('/orders/active', async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      deliveryAgentId: req.user._id,
+      status: { $in: ['out_for_delivery', 'picked_up', 'on_the_way'] },
+    })
+      .populate('customerId', 'name phone email')
+      .populate('restaurantId', 'name address phone');
+
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Accept assigned order ─────────────────────────────────────────────────────
+router.patch('/orders/:id/accept', async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      deliveryAgentId: req.user._id,
+      status: 'out_for_delivery',
+    }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone');
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found or not assigned to you' });
+
+    order.status = 'picked_up';
+    order.statusHistory.push({ status: 'picked_up', timestamp: new Date(), note: 'Accepted by delivery agent' });
+    await order.save();
+
+    // Mark agent as busy
+    await User.findByIdAndUpdate(req.user._id, { deliveryStatus: 'busy' });
+
+    const io = req.app.get('io');
+    io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: order.status, statusHistory: order.statusHistory });
+
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Reject assigned order (admin will reassign) ───────────────────────────────
+router.patch('/orders/:id/reject', async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      deliveryAgentId: req.user._id,
+      status: 'out_for_delivery',
+    });
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found or not assigned to you' });
+
+    // Un-assign the agent
+    order.deliveryAgentId = null;
+    order.deliveryAgentName = '';
+    order.status = 'preparing'; // Revert to preparing so admin can reassign
+    order.statusHistory.push({ status: 'preparing', timestamp: new Date(), note: `Rejected by delivery agent ${req.user.name}` });
+    await order.save();
+
+    // Set agent back to available
+    await User.findByIdAndUpdate(req.user._id, { deliveryStatus: 'available' });
+
+    const io = req.app.get('io');
+    io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: order.status, statusHistory: order.statusHistory });
+    io.to(`restaurant_${order.restaurantId}`).emit('order:updated', order);
+
+    res.json({ success: true, message: 'Order rejected. Admin will reassign.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Update delivery status ────────────────────────────────────────────────────
+// Delivery boy can move: picked_up → on_the_way → [OTP verify → delivered]
+router.patch('/orders/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validTransitions = {
+      picked_up: 'on_the_way',
+      on_the_way: null, // delivery requires OTP
+    };
+
+    if (!['on_the_way'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Delivery agent can only update to on_the_way. Use /verify-otp to complete delivery.' });
+    }
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      deliveryAgentId: req.user._id,
+      status: 'picked_up',
+    }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone');
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found or wrong state' });
+
+    order.status = 'on_the_way';
+    order.statusHistory.push({ status: 'on_the_way', timestamp: new Date(), note: 'Delivery agent is on the way' });
+    await order.save();
+
+    const io = req.app.get('io');
+    io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: order.status, statusHistory: order.statusHistory });
+
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Verify OTP and complete delivery ─────────────────────────────────────────
+router.post('/orders/:id/verify-otp', async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const order = await Order.findOne({
+      _id: req.params.id,
+      deliveryAgentId: req.user._id,
+      status: { $in: ['picked_up', 'on_the_way'] },
+    }).populate('customerId', 'name phone email');
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found or wrong state' });
+    if (order.deliveryOTP !== otp.toString().trim()) {
+      return res.status(400).json({ success: false, message: 'Incorrect OTP. Please ask customer to confirm the code.' });
+    }
+
+    order.status = 'delivered';
+    order.otpVerified = true;
+    order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: 'OTP verified by delivery agent' });
+    await order.save();
+
+    // Set agent back to available
+    await User.findByIdAndUpdate(req.user._id, { deliveryStatus: 'available' });
+
+    const io = req.app.get('io');
+    io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: 'delivered', statusHistory: order.statusHistory });
+    if (order.restaurantId) io.to(`restaurant_${order.restaurantId}`).emit('order:delivered', { orderId: order._id });
+
+    res.json({ success: true, message: '🎉 Delivery confirmed! Earn ₹' + (order.deliveryFee || 0) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Earnings & History ────────────────────────────────────────────────────────
+router.get('/earnings', async (req, res) => {
+  try {
+    const allOrders = await Order.find({ deliveryAgentId: req.user._id })
+      .sort({ updatedAt: -1 })
+      .populate('restaurantId', 'name');
+
+    const delivered = allOrders.filter(o => o.status === 'delivered');
+    const totalEarnings = delivered.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+    // Weekly breakdown
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const thisWeek = delivered.filter(o => new Date(o.updatedAt) >= startOfWeek);
+    const weeklyEarnings = thisWeek.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+    // Today
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const today = delivered.filter(o => new Date(o.updatedAt) >= todayStart);
+    const todayEarnings = today.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+    res.json({
+      success: true,
+      stats: {
+        totalDeliveries: delivered.length,
+        totalEarnings,
+        weeklyEarnings,
+        todayEarnings,
+        todayDeliveries: today.length,
+        activeOrders: allOrders.filter(o => ['out_for_delivery', 'picked_up', 'on_the_way'].includes(o.status)).length,
+      },
+      history: allOrders,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Toggle availability ───────────────────────────────────────────────────────
+router.patch('/availability', async (req, res) => {
+  try {
+    const { deliveryStatus } = req.body;
+    if (!['available', 'offline'].includes(deliveryStatus)) {
+      return res.status(400).json({ success: false, message: 'Can only set available or offline' });
+    }
+    const user = await User.findByIdAndUpdate(req.user._id, { deliveryStatus }, { new: true }).select('-password');
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Get my profile ────────────────────────────────────────────────────────────
+router.get('/profile', async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+module.exports = router;
