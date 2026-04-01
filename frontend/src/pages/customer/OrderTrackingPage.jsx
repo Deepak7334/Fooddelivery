@@ -4,9 +4,24 @@ import { io } from 'socket.io-client';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
-const STATUSES = ['pending', 'accepted', 'preparing', 'out_for_delivery', 'delivered'];
-const STATUS_LABELS = { pending: 'Order Placed', accepted: 'Accepted', preparing: 'Preparing', out_for_delivery: 'Out for Delivery', delivered: 'Delivered' };
-const STATUS_ICONS = { pending: '📦', accepted: '✅', preparing: '👨‍🍳', out_for_delivery: '🛵', delivered: '🎉' };
+const MAIN_STEPS = ['pending', 'accepted', 'preparing', 'out_for_delivery', 'delivered'];
+const STEP_MAP = {
+  pending: 0, accepted: 1, preparing: 2, out_for_delivery: 3, 
+  accepted_by_driver: 3, reached_restaurant: 3, picked_up: 3, on_the_way: 3, reached_customer: 3, 
+  delivered: 4
+};
+const STATUS_LABELS = { 
+  pending: 'Order Placed', accepted: 'Accepted', preparing: 'Preparing Food', 
+  out_for_delivery: 'Agent Assigned', accepted_by_driver: 'Agent Heading to Restaurant',
+  reached_restaurant: 'Agent Waiting at Restaurant', picked_up: 'Order Picked Up',
+  on_the_way: 'Agent On the Way', reached_customer: 'Agent Arrived with Food', 
+  delivered: 'Delivered' 
+};
+const STATUS_ICONS = { 
+  pending: '📦', accepted: '✅', preparing: '👨‍🍳', out_for_delivery: '🛵', 
+  accepted_by_driver: '🏍', reached_restaurant: '🏪', picked_up: '🏃', 
+  on_the_way: '🚴', reached_customer: '📍', delivered: '🎉' 
+};
 
 export default function OrderTrackingPage() {
   const { id } = useParams();
@@ -29,8 +44,8 @@ export default function OrderTrackingPage() {
     socketRef.current.emit('join_order_room', id);
     socketRef.current.on('order:status_update', (data) => {
       setOrder(prev => prev ? { ...prev, status: data.status, statusHistory: data.statusHistory } : prev);
-      toast(`📦 Order status: ${STATUS_LABELS[data.status] || data.status}`, { icon: STATUS_ICONS[data.status] });
-      if (data.status === 'out_for_delivery') setOtpSent(true);
+      toast(`📦 Order status: ${STATUS_LABELS[data.status] || data.status}`, { icon: STATUS_ICONS[data.status] || '🔔' });
+      if (['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'].includes(data.status)) setOtpSent(true);
     });
     socketRef.current.on('order:otp_sent', () => {
       setOtpSent(true);
@@ -80,7 +95,7 @@ export default function OrderTrackingPage() {
   if (loading) return <div style={{ padding: 120, textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
   if (!order) return <div className="empty-state" style={{ paddingTop: 120 }}><div className="empty-state-icon">❌</div><h3>Order not found</h3></div>;
 
-  const currentIdx = STATUSES.indexOf(order.status);
+  const currentIdx = STEP_MAP[order.status] ?? 0;
   const isCancelled = order.status === 'cancelled';
 
   return (
@@ -97,14 +112,14 @@ export default function OrderTrackingPage() {
         {!isCancelled && (
           <div className="card" style={{ padding: 28, marginBottom: 20 }}>
             <div className="step-tracker">
-              {STATUSES.map((status, i) => (
-                <>
-                  <div key={status} className={`step ${i <= currentIdx ? 'done' : ''} ${i === currentIdx ? 'active' : ''}`}>
-                    <div className="step-circle">{i <= currentIdx ? STATUS_ICONS[status] : i + 1}</div>
-                    <div className="step-label">{STATUS_LABELS[status]}</div>
+              {MAIN_STEPS.map((stepId, i) => (
+                <div key={stepId} style={{ display: 'contents' }}>
+                  <div className={`step ${i <= currentIdx ? 'done' : ''} ${i === currentIdx ? 'active' : ''}`}>
+                    <div className="step-circle">{i <= currentIdx ? STATUS_ICONS[i === 3 && currentIdx === 3 ? order.status : stepId] : i + 1}</div>
+                    <div className="step-label">{i === 3 && currentIdx === 3 ? STATUS_LABELS[order.status] : STATUS_LABELS[stepId]}</div>
                   </div>
-                  {i < STATUSES.length - 1 && <div key={`line-${i}`} className={`step-line ${i < currentIdx ? 'done' : ''}`} />}
-                </>
+                  {i < MAIN_STEPS.length - 1 && <div className={`step-line ${i < currentIdx ? 'done' : ''}`} />}
+                </div>
               ))}
             </div>
             <div style={{ textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--primary)', marginTop: 8 }}>
@@ -117,7 +132,7 @@ export default function OrderTrackingPage() {
         )}
 
         {/* OTP Verification */}
-        {order.status === 'out_for_delivery' && !order.otpVerified && (
+        {['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'].includes(order.status) && !order.otpVerified && (
           <div className="card" style={{ padding: 28, marginBottom: 20, border: '1px solid rgba(255,87,34,0.3)', animation: 'glow 2s infinite' }}>
             <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: 'var(--primary)' }}>🔐 Enter Delivery OTP</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 0 }}>

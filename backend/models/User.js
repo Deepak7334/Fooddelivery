@@ -50,6 +50,11 @@ const userSchema = new mongoose.Schema({
     enum: ['available', 'busy', 'offline'],
     default: 'available',
   },
+  location: {
+    lat: Number,
+    lng: Number,
+    lastUpdated: Date
+  },
   vehicleNumber: {
     type: String,
     default: '',

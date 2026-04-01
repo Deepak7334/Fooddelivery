@@ -9,9 +9,21 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
+// Parse allowed origins from CLIENT_URL (comma-separated)
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim());
+
+function originCheck(origin, callback) {
+  // Allow requests with no origin (mobile apps, curl, etc.)
+  if (!origin) return callback(null, true);
+  if (allowedOrigins.includes(origin)) return callback(null, true);
+  callback(new Error('Not allowed by CORS'));
+}
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -22,12 +34,22 @@ app.set('io', io);
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: originCheck,
   credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Ensure uploads directory exists
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+// Health check (Render pings this)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -37,6 +59,7 @@ app.use('/api/customer', require('./routes/customer'));
 app.use('/api/delivery', require('./routes/delivery'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/booking', require('./routes/booking'));
 
 // Socket.io
 io.on('connection', (socket) => {
@@ -55,6 +78,16 @@ io.on('connection', (socket) => {
   socket.on('join_delivery_room', (deliveryId) => {
     socket.join(`delivery_${deliveryId}`);
     console.log(`Socket ${socket.id} joined delivery room ${deliveryId}`);
+  });
+
+  socket.on('join_admin_tracking_room', () => {
+    socket.join('admin_live_tracking');
+    console.log(`Socket ${socket.id} joined admin_live_tracking`);
+  });
+
+  socket.on('delivery:update_location', (data) => {
+    // data = { agentId, lat, lng }
+    io.to('admin_live_tracking').emit('admin:delivery_location', data);
   });
 
   socket.on('disconnect', () => {

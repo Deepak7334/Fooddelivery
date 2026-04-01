@@ -1,24 +1,52 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { io } from 'socket.io-client';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix leaflet icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const deliveryIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3204/3204121.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40]
+});
 
 const STATUS_CONFIG = {
   pending:          { label: 'Pending',          color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
   accepted:         { label: 'Accepted',          color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
   preparing:        { label: 'Preparing',         color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
-  out_for_delivery: { label: 'Out for Delivery',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
+  out_for_delivery: { label: 'Assigned',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
+  accepted_by_driver:{ label: 'Agent Proceeding',  color: '#14B8A6', bg: 'rgba(20,184,166,0.12)' },
+  reached_restaurant:{ label: 'Agent at Rest.',  color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+  picked_up:        { label: 'Picked Up',  color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
+  on_the_way:       { label: 'Agent on Way',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
+  reached_customer: { label: 'Agent Arr.',  color: '#EAB308', bg: 'rgba(234,179,8,0.12)' },
   delivered:        { label: 'Delivered',          color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
   cancelled:        { label: 'Cancelled',          color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
 const AGENT_STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6B7280' };
 
-// Admin can move any order forward or cancel
 const ADMIN_NEXT = {
   pending:          ['accepted', 'cancelled'],
   accepted:         ['preparing', 'cancelled'],
   preparing:        ['out_for_delivery', 'cancelled'],
-  out_for_delivery: ['delivered', 'cancelled'],
+  out_for_delivery: ['cancelled'],
+  accepted_by_driver: ['cancelled'],
+  reached_restaurant: ['cancelled'],
+  picked_up: ['cancelled'],
+  on_the_way: ['cancelled'],
+  reached_customer: ['cancelled']
 };
 
 function StatusBadge({ status }) {
@@ -34,10 +62,31 @@ function StatusBadge({ status }) {
 
 function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loading }) {
   const [selectedAgent, setSelectedAgent] = useState(order?.deliveryAgentId?._id || order?.deliveryAgentId || '');
+  const [showMap, setShowMap] = useState(false);
+  const [agentLocation, setAgentLocation] = useState(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     setSelectedAgent(order?.deliveryAgentId?._id || order?.deliveryAgentId || '');
+    if (order?.deliveryAgentId?.location) {
+      setAgentLocation({ lat: order.deliveryAgentId.location.lat, lng: order.deliveryAgentId.location.lng });
+    }
   }, [order]);
+
+  useEffect(() => {
+    if (showMap && order?.deliveryAgentId) {
+      const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
+      socketRef.current = socket;
+      socket.emit('join_admin_tracking_room');
+      
+      socket.on('admin:delivery_location', (data) => {
+        if (data.agentId === (order.deliveryAgentId._id || order.deliveryAgentId)) {
+          setAgentLocation({ lat: data.lat, lng: data.lng });
+        }
+      });
+      return () => socket.disconnect();
+    }
+  }, [showMap, order]);
 
   if (!order) return null;
 
@@ -105,7 +154,16 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
         {/* Delivery Agent Assignment */}
         {order.deliveryAgentId ? (
           <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
-            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Assigned Delivery Agent</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Assigned Delivery Agent</div>
+              {['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'].includes(order.status) && (
+                <button 
+                  onClick={() => setShowMap(true)}
+                  style={{ padding: '4px 10px', background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 12, color: '#EAB308', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  📍 Track Live
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 24 }}>🚴</span>
               <div>
@@ -155,6 +213,44 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
           </div>
         )}
       </div>
+      
+      {/* Live Tracking Map Modal overlay */}
+      {showMap && (
+        <div style={{...ms.overlay, zIndex: 1100}} onClick={(e) => { e.stopPropagation(); setShowMap(false); }}>
+          <div style={{...ms.modal, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '80vh'}} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', background: '#161B22', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 800, color: '#E5E7EB', fontSize: 16 }}>Live Location Tracking</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>Agent: {order.deliveryAgentId?.name}</div>
+              </div>
+              <button onClick={() => setShowMap(false)} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 24, cursor: 'pointer' }}>✕</button>
+            </div>
+            
+            <div style={{ flex: 1, background: '#0F1117', position: 'relative' }}>
+              {agentLocation ? (
+                <MapContainer center={[agentLocation.lat, agentLocation.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                  />
+                  <Marker position={[agentLocation.lat, agentLocation.lng]} icon={deliveryIcon}>
+                    <Popup>
+                      <b>{order.deliveryAgentId?.name}</b><br/>
+                      Vehicle: {order.deliveryAgentId?.vehicleNumber}
+                    </Popup>
+                  </Marker>
+                </MapContainer>
+              ) : (
+                <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#6B7280' }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>📡</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Waiting for GPS Signal...</div>
+                  <div style={{ fontSize: 12 }}>The agent might have location disabled or bad reception.</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

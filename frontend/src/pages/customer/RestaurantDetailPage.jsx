@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
@@ -66,6 +67,23 @@ export default function RestaurantDetailPage() {
             <span style={{ color: restaurant.isOpen ? 'var(--success)' : 'var(--danger)' }}>
               {restaurant.isOpen ? '🟢 Open' : '🔴 Closed'}
             </span>
+            {restaurant.bookingEnabled && (
+              <button 
+                onClick={() => navigate(`/booking/${restaurant._id}`)}
+                style={{
+                  padding: '6px 14px',
+                  background: 'rgba(34,197,94,0.1)',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  color: 'var(--success)',
+                  borderRadius: 20,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                🪑 Book Table
+              </button>
+            )}
           </div>
           {restaurant.cuisine && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>{restaurant.cuisine.join(' • ')}</div>}
         </div>
@@ -95,9 +113,8 @@ export default function RestaurantDetailPage() {
                 {menuGrouped[cat].map(food => (
                   <FoodCard key={food._id} food={food} qty={getItemQty(food._id)} onAdd={() => handleAdd(food)}
                     onIncrease={() => handleAdd(food)}
-                    onDecrease={() => {
+ onDecrease={() => {
                       if (!user) return;
-                      const { updateQuantity } = require('../../context/CartContext').useCart ? { updateQuantity: null } : {};
                     }} />
                 ))}
               </div>

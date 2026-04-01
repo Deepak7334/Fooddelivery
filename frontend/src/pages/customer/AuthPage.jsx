@@ -13,6 +13,7 @@ export default function AuthPage() {
   if (user) {
     if (user.role === 'admin') navigate('/admin', { replace: true });
     else if (user.role === 'restaurant') navigate('/restaurant', { replace: true });
+    else if (user.role === 'delivery') navigate('/delivery', { replace: true });
     else navigate('/', { replace: true });
     return null;
   }
@@ -35,6 +36,7 @@ export default function AuthPage() {
         const role = res.user.role;
         if (role === 'admin') navigate('/admin');
         else if (role === 'restaurant') navigate('/restaurant');
+        else if (role === 'delivery') navigate('/delivery');
         else navigate('/');
       }
     } catch (err) {

@@ -6,10 +6,13 @@ import toast from 'react-hot-toast';
 
 // ── Status Config ─────────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  out_for_delivery: { label: 'New Assignment', color: '#F97316', bg: 'rgba(249,115,22,0.15)', icon: '📦', next: null },
-  picked_up:        { label: 'Picked Up',       color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', icon: '🏃', next: 'on_the_way' },
-  on_the_way:       { label: 'On The Way',      color: '#06B6D4', bg: 'rgba(6,182,212,0.15)',  icon: '🚴', next: 'otp_verify' },
-  delivered:        { label: 'Delivered',        color: '#22C55E', bg: 'rgba(34,197,94,0.15)',  icon: '✅', next: null },
+  out_for_delivery: { label: 'New Assignment', color: '#F97316', bg: 'rgba(249,115,22,0.15)', icon: '📦' },
+  accepted_by_driver: { label: 'Proceed to Restaurant', color: '#14B8A6', bg: 'rgba(20,184,166,0.15)', icon: '🏍' },
+  reached_restaurant: { label: 'Reached Restaurant', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', icon: '🏪' },
+  picked_up: { label: 'Picked Up', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', icon: '🏃' },
+  on_the_way: { label: 'On The Way to Customer', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)', icon: '🚴' },
+  reached_customer: { label: 'Reached Customer', color: '#EAB308', bg: 'rgba(234,179,8,0.15)', icon: '📍' },
+  delivered: { label: 'Delivered', color: '#22C55E', bg: 'rgba(34,197,94,0.15)', icon: '✅' },
 };
 
 const AGENT_STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6B7280' };
@@ -108,15 +111,37 @@ export default function DeliveryDashboard() {
 
     socket.emit('join_delivery_room', user._id);
     socket.on('delivery:new_assignment', (order) => {
-      toast('📦 New order assigned!', { icon: '🔔', duration: 8000 });
+      toast(' New order assigned!', { icon: '🔔', duration: 8000 });
       setPendingOrders(prev => [order, ...prev.filter(o => o._id !== order._id)]);
     });
+
     socket.on('delivery:order_cancelled', ({ orderId }) => {
       setPendingOrders(prev => prev.filter(o => o._id !== orderId));
       if (activeOrder?._id === orderId) { setActiveOrder(null); toast.error('Order was cancelled'); }
     });
     return () => socket.disconnect();
-  }, [user?._id]);
+  }, [user?._id, activeOrder?._id]);
+
+  // Live GPS Tracking
+  useEffect(() => {
+    if (!profile || profile.deliveryStatus === 'offline') return;
+
+    let watchId;
+    if ('geolocation' in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          api.patch('/delivery/location', { lat: latitude, lng: longitude }).catch(() => {});
+          if (socketRef.current && user?._id) {
+            socketRef.current.emit('delivery:update_location', { agentId: user._id, lat: latitude, lng: longitude });
+          }
+        },
+        (error) => console.log('Geolocation error:', error),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+      );
+    }
+    return () => { if (watchId) navigator.geolocation.clearWatch(watchId); };
+  }, [profile?.deliveryStatus, user?._id]);
 
   const handleAccept = async (orderId) => {
     setActionLoading(true);
@@ -245,18 +270,20 @@ export default function DeliveryDashboard() {
 
               {/* Progress steps */}
               <div className="progress-steps">
-                {['out_for_delivery', 'picked_up', 'on_the_way', 'delivered'].map((s, i) => {
-                  const statuses = ['out_for_delivery', 'picked_up', 'on_the_way', 'delivered'];
+                {['accepted_by_driver', 'reached_restaurant', 'picked_up', 'reached_customer'].map((s, i) => {
+                  const statuses = ['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer', 'delivered'];
                   const curIdx = statuses.indexOf(activeOrder.status);
-                  const done = i <= curIdx;
-                  const active = i === curIdx;
+                  const myIdx = statuses.indexOf(s);
+                  const done = curIdx >= myIdx || (s === 'picked_up' && curIdx >= statuses.indexOf('on_the_way'));
+                  const active = curIdx === myIdx || (s === 'picked_up' && curIdx === statuses.indexOf('on_the_way'));
+                  
                   return (
                     <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.07)', border: `2px solid ${done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.15)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: 'all 0.3s', boxShadow: active ? `0 0 12px ${STATUS_CFG[s]?.color}60` : 'none' }}>
                         {done ? '✓' : i + 1}
                       </div>
                       <div style={{ fontSize: 9, color: done ? '#E5E7EB' : '#4B5563', marginTop: 4, textAlign: 'center', fontWeight: done ? 700 : 400 }}>
-                        {['Assigned', 'Picked Up', 'On Way', 'Done'][i]}
+                        {['Go Rest', 'Reached', 'Pick/Run', 'Done'][i]}
                       </div>
                     </div>
                   );
@@ -301,15 +328,30 @@ export default function DeliveryDashboard() {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 10 }}>
-                {activeOrder.status === 'picked_up' && (
-                  <button className="action-main" disabled={actionLoading} onClick={() => handleStatusUpdate(activeOrder._id, 'on_the_way')}>
-                    🚴 I'm On My Way
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {activeOrder.status === 'accepted_by_driver' && (
+                  <button className="action-main" disabled={actionLoading} style={{ background: '#14B8A6' }} onClick={() => handleStatusUpdate(activeOrder._id, 'reached_restaurant')}>
+                    🏪 Reached Restaurant
                   </button>
                 )}
-                {(activeOrder.status === 'picked_up' || activeOrder.status === 'on_the_way') && (
+                {activeOrder.status === 'reached_restaurant' && (
+                  <button className="action-main" disabled={actionLoading} style={{ background: '#8B5CF6' }} onClick={() => handleStatusUpdate(activeOrder._id, 'picked_up')}>
+                    ✅ Confirm Pickup
+                  </button>
+                )}
+                {activeOrder.status === 'picked_up' && (
+                  <button className="action-main" disabled={actionLoading} style={{ background: '#06B6D4' }} onClick={() => handleStatusUpdate(activeOrder._id, 'on_the_way')}>
+                    🚴 Start for Customer
+                  </button>
+                )}
+                {activeOrder.status === 'on_the_way' && (
+                  <button className="action-main" disabled={actionLoading} style={{ background: '#EAB308', color: '#000' }} onClick={() => handleStatusUpdate(activeOrder._id, 'reached_customer')}>
+                    📍 Reached Customer Location
+                  </button>
+                )}
+                {activeOrder.status === 'reached_customer' && (
                   <button className="action-otp" disabled={actionLoading} onClick={() => setShowOTP(true)}>
-                    🔐 Enter OTP & Complete
+                    🔐 Ask for OTP & Deliver
                   </button>
                 )}
               </div>

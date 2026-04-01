@@ -43,9 +43,13 @@ router.get('/restaurants', async (req, res) => {
 // Get single restaurant with menu
 router.get('/restaurants/:id', async (req, res) => {
   try {
-    const restaurant = await Restaurant.findById(req.params.id);
+    const restaurant = await Restaurant.findById(req.params.id).populate('tables');
     if (!restaurant || !restaurant.isActive) {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+    // Default tables if none
+    if (restaurant.tables.length === 0) {
+      restaurant.tables = [{ number: 1, maxGuests: 4 }, { number: 2, maxGuests: 6 }];
     }
     const menu = await Food.find({ restaurantId: restaurant._id, isAvailable: true });
     // Group by category

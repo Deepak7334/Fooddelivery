@@ -78,6 +78,19 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
-}, { timestamps: true });
+}, {
+  timestamps: true
+});
+
+restaurantSchema.add({
+  tables: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Table'
+  }],
+  bookingEnabled: {
+    type: Boolean,
+    default: true
+  }
+});
 
 module.exports = mongoose.model('Restaurant', restaurantSchema);

@@ -1,11 +1,13 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiList, FiPackage, FiLogOut, FiX } from 'react-icons/fi';
+import { FiGrid, FiList, FiPackage, FiLogOut, FiX, FiLayout, FiCalendar } from 'react-icons/fi';
 
 const navLinks = [
   { to: '/restaurant', icon: <FiGrid />, label: 'Dashboard', exact: true },
   { to: '/restaurant/menu', icon: <FiPackage />, label: 'My Menu' },
   { to: '/restaurant/orders', icon: <FiList />, label: 'Orders' },
+  { to: '/restaurant/tables', icon: <FiLayout />, label: 'Tables' },
+  { to: '/restaurant/table-bookings', icon: <FiCalendar />, label: 'Bookings' },
 ];
 
 export default function RestaurantSidebar({ open, onClose }) {

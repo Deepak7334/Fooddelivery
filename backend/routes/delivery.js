@@ -30,7 +30,7 @@ router.get('/orders/active', async (req, res) => {
   try {
     const order = await Order.findOne({
       deliveryAgentId: req.user._id,
-      status: { $in: ['out_for_delivery', 'picked_up', 'on_the_way'] },
+      status: { $in: ['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'] },
     })
       .populate('customerId', 'name phone email')
       .populate('restaurantId', 'name address phone');
@@ -52,8 +52,8 @@ router.patch('/orders/:id/accept', async (req, res) => {
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or not assigned to you' });
 
-    order.status = 'picked_up';
-    order.statusHistory.push({ status: 'picked_up', timestamp: new Date(), note: 'Accepted by delivery agent' });
+    order.status = 'accepted_by_driver';
+    order.statusHistory.push({ status: 'accepted_by_driver', timestamp: new Date(), note: 'Accepted by delivery agent' });
     await order.save();
 
     // Mark agent as busy
@@ -100,29 +100,26 @@ router.patch('/orders/:id/reject', async (req, res) => {
 });
 
 // ── Update delivery status ────────────────────────────────────────────────────
-// Delivery boy can move: picked_up → on_the_way → [OTP verify → delivered]
+// Delivery boy can progress through granular states
 router.patch('/orders/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    const validTransitions = {
-      picked_up: 'on_the_way',
-      on_the_way: null, // delivery requires OTP
-    };
+    const validStatuses = ['reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'];
 
-    if (!['on_the_way'].includes(status)) {
-      return res.status(400).json({ success: false, message: 'Delivery agent can only update to on_the_way. Use /verify-otp to complete delivery.' });
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status update for delivery agent.' });
     }
 
     const order = await Order.findOne({
       _id: req.params.id,
       deliveryAgentId: req.user._id,
-      status: 'picked_up',
+      status: { $in: ['accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'] }
     }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or wrong state' });
 
-    order.status = 'on_the_way';
-    order.statusHistory.push({ status: 'on_the_way', timestamp: new Date(), note: 'Delivery agent is on the way' });
+    order.status = status;
+    order.statusHistory.push({ status, timestamp: new Date(), note: `Delivery agent: ${status}` });
     await order.save();
 
     const io = req.app.get('io');
@@ -141,7 +138,7 @@ router.post('/orders/:id/verify-otp', async (req, res) => {
     const order = await Order.findOne({
       _id: req.params.id,
       deliveryAgentId: req.user._id,
-      status: { $in: ['picked_up', 'on_the_way'] },
+      status: 'reached_customer',
     }).populate('customerId', 'name phone email');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or wrong state' });
@@ -199,7 +196,7 @@ router.get('/earnings', async (req, res) => {
         weeklyEarnings,
         todayEarnings,
         todayDeliveries: today.length,
-        activeOrders: allOrders.filter(o => ['out_for_delivery', 'picked_up', 'on_the_way'].includes(o.status)).length,
+        activeOrders: allOrders.filter(o => ['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'].includes(o.status)).length,
       },
       history: allOrders,
     });
@@ -217,6 +214,22 @@ router.patch('/availability', async (req, res) => {
     }
     const user = await User.findByIdAndUpdate(req.user._id, { deliveryStatus }, { new: true }).select('-password');
     res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Update Location (GPS polling from driver app) ──────────────────────────
+router.patch('/location', async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+    if (lat === undefined || lng === undefined) return res.status(400).json({ success: false, message: 'Coords required' });
+
+    const user = await User.findByIdAndUpdate(req.user._id, {
+      location: { lat, lng, lastUpdated: new Date() }
+    }, { new: true });
+
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
