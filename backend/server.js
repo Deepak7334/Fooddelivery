@@ -51,6 +51,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root route so users don't see "Cannot GET /"
+app.get('/', (req, res) => {
+  res.send('🍔 Foodhub API is running! Please visit the Vercel frontend URL to use the app.');
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
