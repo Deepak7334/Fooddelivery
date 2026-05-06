@@ -100,8 +100,12 @@ io.on('connection', (socket) => {
   });
 });
 
+// Clean MONGODB_URI to fix accidental quotes or spaces from Render dashboard
+const rawMongoUri = process.env.MONGODB_URI || '';
+const cleanMongoUri = rawMongoUri.replace(/^["']|["']$/g, '').trim();
+
 // MongoDB connection + seed admin
-mongoose.connect(process.env.MONGODB_URI, {
+mongoose.connect(cleanMongoUri, {
   serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 10s
 })
   .then(async () => {
