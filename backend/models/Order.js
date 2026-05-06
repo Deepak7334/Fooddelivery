@@ -47,7 +47,7 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'preparing', 'out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer', 'delivered', 'cancelled'],
+    enum: ['pending', 'accepted', 'preparing', 'assignment_pending', 'out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer', 'delivered', 'cancelled'],
     default: 'pending',
   },
   paymentStatus: {
@@ -80,6 +80,10 @@ const orderSchema = new mongoose.Schema({
   deliveryAgentName: {
     type: String,
     default: '',
+  },
+  agentAccepted: {
+    type: Boolean,
+    default: false,
   },
   deliveryOTP: {
     type: String,

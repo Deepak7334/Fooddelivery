@@ -96,13 +96,32 @@ io.on('connection', (socket) => {
 });
 
 // MongoDB connection + seed admin
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 10s
+})
   .then(async () => {
     console.log('✅ MongoDB Connected');
     await seedAdmin();
     await seedCategories();
   })
-  .catch((err) => console.error('❌ MongoDB Error:', err));
+  .catch((err) => {
+    if (err.message.includes('authentication failed')) {
+      console.error('❌ MongoDB Error: Authentication failed. Please check your username and password in .env');
+    } else if (err.message.includes('ECONNREFUSED')) {
+      console.error('❌ MongoDB Error: Connection refused. Check your IP whitelisting in Atlas and your DNS settings.');
+    } else {
+      console.error('❌ MongoDB Error:', err.message);
+    }
+  });
+
+// Connection event listeners
+mongoose.connection.on('error', err => {
+  console.error('❌ Mongoose Connection Error:', err.message);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ Mongoose Disconnected');
+});
 
 // Seed default admin
 async function seedAdmin() {
@@ -146,4 +165,11 @@ async function seedCategories() {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use. Please kill the process using this port and try again.`);
+  } else {
+    console.error('❌ Server Error:', err);
+  }
 });
+// Bypassed DNS SRV resolution by using standard connection string in .env

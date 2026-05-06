@@ -6,7 +6,8 @@ import toast from 'react-hot-toast';
 
 // ── Status Config ─────────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  out_for_delivery: { label: 'New Assignment', color: '#F97316', bg: 'rgba(249,115,22,0.15)', icon: '📦' },
+  assignment_pending: { label: 'New Assignment', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', icon: '🔔' },
+  out_for_delivery: { label: 'Assigned', color: '#F97316', bg: 'rgba(249,115,22,0.15)', icon: '📦' },
   accepted_by_driver: { label: 'Proceed to Restaurant', color: '#14B8A6', bg: 'rgba(20,184,166,0.15)', icon: '🏍' },
   reached_restaurant: { label: 'Reached Restaurant', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', icon: '🏪' },
   picked_up: { label: 'Picked Up', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', icon: '🏃' },
@@ -89,7 +90,7 @@ export default function DeliveryDashboard() {
     try {
       const [activeRes, ordersRes, profileRes, earningsRes] = await Promise.all([
         api.get('/delivery/orders/active'),
-        api.get('/delivery/orders?status=out_for_delivery'),
+        api.get('/delivery/orders?status=assignment_pending'),
         api.get('/delivery/profile'),
         api.get('/delivery/earnings'),
       ]);
@@ -271,7 +272,7 @@ export default function DeliveryDashboard() {
               {/* Progress steps */}
               <div className="progress-steps">
                 {['accepted_by_driver', 'reached_restaurant', 'picked_up', 'reached_customer'].map((s, i) => {
-                  const statuses = ['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer', 'delivered'];
+                  const statuses = ['assignment_pending', 'out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer', 'delivered'];
                   const curIdx = statuses.indexOf(activeOrder.status);
                   const myIdx = statuses.indexOf(s);
                   const done = curIdx >= myIdx || (s === 'picked_up' && curIdx >= statuses.indexOf('on_the_way'));

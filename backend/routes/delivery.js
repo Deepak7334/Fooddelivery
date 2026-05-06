@@ -3,6 +3,8 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const generateOTP = require('../utils/generateOTP');
+const sendEmail = require('../utils/sendEmail');
 
 // All delivery routes require auth + delivery role
 router.use(protect, authorize('delivery'));
@@ -47,13 +49,33 @@ router.patch('/orders/:id/accept', async (req, res) => {
     const order = await Order.findOne({
       _id: req.params.id,
       deliveryAgentId: req.user._id,
-      status: 'out_for_delivery',
+      status: { $in: ['assignment_pending', 'out_for_delivery'] },
     }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or not assigned to you' });
 
     order.status = 'accepted_by_driver';
+    order.agentAccepted = true;
     order.statusHistory.push({ status: 'accepted_by_driver', timestamp: new Date(), note: 'Accepted by delivery agent' });
+    
+    // Generate and send OTP to customer
+    if (!order.deliveryOTP) {
+      const otp = generateOTP();
+      order.deliveryOTP = otp;
+      const customerEmail = order.customerEmail || order.customerId?.email;
+      const customerName = order.customerId?.name || 'Customer';
+      
+      try {
+        await sendEmail({
+          to: customerEmail,
+          subject: '🚴 FoodHub — Your Delivery Agent is Assigned',
+          html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 FoodHub</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Delivery Partner Assigned!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p><strong>${req.user.name}</strong> has been assigned to your order and is heading out.</p><p>Share this OTP with them to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
+        });
+      } catch (err) {
+        console.error('Failed to send OTP email on agent accept', err);
+      }
+    }
+
     await order.save();
 
     // Mark agent as busy
@@ -62,7 +84,7 @@ router.patch('/orders/:id/accept', async (req, res) => {
     const io = req.app.get('io');
     io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: order.status, statusHistory: order.statusHistory });
 
-    res.json({ success: true, order });
+    res.json({ success: true, order, ...(process.env.NODE_ENV !== 'production' && order.deliveryOTP ? { devOtp: order.deliveryOTP } : {}) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -74,7 +96,7 @@ router.patch('/orders/:id/reject', async (req, res) => {
     const order = await Order.findOne({
       _id: req.params.id,
       deliveryAgentId: req.user._id,
-      status: 'out_for_delivery',
+      status: { $in: ['assignment_pending', 'out_for_delivery'] },
     });
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or not assigned to you' });
@@ -82,6 +104,7 @@ router.patch('/orders/:id/reject', async (req, res) => {
     // Un-assign the agent
     order.deliveryAgentId = null;
     order.deliveryAgentName = '';
+    order.agentAccepted = false;
     order.status = 'preparing'; // Revert to preparing so admin can reassign
     order.statusHistory.push({ status: 'preparing', timestamp: new Date(), note: `Rejected by delivery agent ${req.user.name}` });
     await order.save();

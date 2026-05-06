@@ -17,6 +17,19 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// Get popular foods
+router.get('/foods', async (req, res) => {
+  try {
+    const foods = await Food.find({ isAvailable: true })
+      .limit(12)
+      .populate('restaurantId', 'name image address')
+      .sort({ rating: -1 });
+    res.json({ success: true, foods });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Get all restaurants (with search & filter)
 router.get('/restaurants', async (req, res) => {
   try {

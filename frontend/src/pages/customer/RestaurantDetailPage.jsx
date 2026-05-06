@@ -172,3 +172,4 @@ function FoodCard({ food, qty, onAdd }) {
     </div>
   );
 }
+

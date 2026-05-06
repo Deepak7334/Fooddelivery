@@ -25,6 +25,7 @@ const STATUS_CONFIG = {
   pending:          { label: 'Pending',          color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
   accepted:         { label: 'Accepted',          color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
   preparing:        { label: 'Preparing',         color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+  assignment_pending:{ label: 'Waiting for Agent', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
   out_for_delivery: { label: 'Assigned',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
   accepted_by_driver:{ label: 'Agent Proceeding',  color: '#14B8A6', bg: 'rgba(20,184,166,0.12)' },
   reached_restaurant:{ label: 'Agent at Rest.',  color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
@@ -40,7 +41,8 @@ const AGENT_STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6
 const ADMIN_NEXT = {
   pending:          ['accepted', 'cancelled'],
   accepted:         ['preparing', 'cancelled'],
-  preparing:        ['out_for_delivery', 'cancelled'],
+  preparing:        ['cancelled'], // Admin assigns using the dropdown now
+  assignment_pending: ['cancelled'],
   out_for_delivery: ['cancelled'],
   accepted_by_driver: ['cancelled'],
   reached_restaurant: ['cancelled'],
@@ -153,9 +155,11 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
 
         {/* Delivery Agent Assignment */}
         {order.deliveryAgentId ? (
-          <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+          <div style={{ background: order.agentAccepted || order.status !== 'assignment_pending' ? 'rgba(6,182,212,0.08)' : 'rgba(245,158,11,0.08)', border: '1px solid', borderColor: order.agentAccepted || order.status !== 'assignment_pending' ? 'rgba(6,182,212,0.25)' : 'rgba(245,158,11,0.25)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Assigned Delivery Agent</div>
+              <div style={{ fontSize: 11, color: order.agentAccepted || order.status !== 'assignment_pending' ? '#6B7280' : '#F59E0B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                {order.status === 'assignment_pending' ? '⏳ Waiting for Agent to Accept' : 'Assigned Delivery Agent'}
+              </div>
               {['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'].includes(order.status) && (
                 <button 
                   onClick={() => setShowMap(true)}

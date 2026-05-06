@@ -43,7 +43,8 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  padding-top: 70px; /* offset for fixed navbar */
+  padding-top: 70px;
+  /* offset for fixed navbar */
 }
 
 /* Scrollbar */
@@ -270,7 +271,8 @@ select.form-input option {
   .cart-layout {
     grid-template-columns: 1fr;
   }
-  .cart-layout > :last-child {
+
+  .cart-layout> :last-child {
     position: static !important;
   }
 }
@@ -789,6 +791,7 @@ tbody tr:last-child td {
   .otp-inputs {
     gap: 6px;
   }
+
   .otp-input {
     width: 42px;
     height: 50px;
@@ -877,6 +880,7 @@ tbody tr:last-child td {
     height: 30px;
     font-size: 12px;
   }
+
   .step-label {
     font-size: 9px;
     max-width: 52px;
@@ -904,4 +908,56 @@ tbody tr:last-child td {
 .empty-state p {
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+/* === Global Responsive Utility Classes === */
+@media (max-width: 768px) {
+  .responsive-flex-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .responsive-flex-wrap {
+    flex-wrap: wrap !important;
+  }
+
+  .responsive-grid-1 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .responsive-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .responsive-header>div {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .responsive-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 16px !important;
+    margin: 10px !important;
+    height: auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  .responsive-hide {
+    display: none !important;
+  }
+
+  .responsive-overflow-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .responsive-w-full {
+    width: 100% !important;
+  }
 }

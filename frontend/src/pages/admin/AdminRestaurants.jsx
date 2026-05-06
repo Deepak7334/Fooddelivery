@@ -112,10 +112,10 @@ export default function AdminRestaurants() {
 
       {showModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="modal-box" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-box responsive-modal" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 className="modal-title">{editing ? ' Edit Restaurant' : ' Add New Restaurant'}</h2>
             <p className="modal-subtitle">{editing ? 'Update restaurant details below.' : 'Fill in details and owner credentials. Owner can login with these.'}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <div className="responsive-grid-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
               <F label="Restaurant Name *" field="name" placeholder="e.g. Pizza Palace" {...fProps} />
               <F label="City" field="city" placeholder="Mumbai" {...fProps} />
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -139,7 +139,7 @@ export default function AdminRestaurants() {
                 <div style={{ padding: '12px 16px', background: 'rgba(255,87,34,0.08)', borderRadius: 10, border: '1px solid rgba(255,87,34,0.2)', marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
                   🔐 <strong>Owner Credentials</strong> — The restaurant owner will use these to login.
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                <div className="responsive-grid-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
                   <F label="Owner Name" field="ownerName" placeholder="John Doe" {...fProps} />
                   <F label="Owner Email *" field="ownerEmail" type="email" placeholder="owner@restaurant.com" {...fProps} />
                   <F label="Owner Password *" field="ownerPassword" type="password" placeholder="Min 6 characters" {...fProps} />

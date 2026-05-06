@@ -188,6 +188,31 @@ router.delete('/delivery-agents/:id', async (req, res) => {
   }
 });
 
+router.get('/delivery-agents/:id/details', async (req, res) => {
+  try {
+    const agent = await User.findOne({ _id: req.params.id, role: 'delivery' }).select('-password');
+    if (!agent) return res.status(404).json({ success: false, message: 'Agent not found' });
+    
+    const orders = await Order.find({ deliveryAgentId: agent._id })
+      .sort({ createdAt: -1 })
+      .populate('customerId', 'name phone')
+      .populate('restaurantId', 'name address');
+      
+    // Calculate stats
+    const stats = {
+      totalAssigned: orders.length,
+      delivered: orders.filter(o => o.status === 'delivered').length,
+      active: orders.filter(o => !['delivered', 'cancelled', 'pending', 'accepted', 'preparing', 'assignment_pending'].includes(o.status)).length,
+      cancelled: orders.filter(o => o.status === 'cancelled').length,
+      totalEarnings: orders.filter(o => o.status === 'delivered').reduce((acc, curr) => acc + (curr.deliveryFee || 0), 0) // Approximation if delivery fee exists, else 0
+    };
+
+    res.json({ success: true, agent, orders, stats });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // ========== ORDER MANAGEMENT (Full Admin Control) ==========
 
 router.get('/orders', async (req, res) => {
@@ -286,17 +311,32 @@ router.patch('/orders/:id/assign-agent', async (req, res) => {
     const { agentId } = req.body;
     const agent = await User.findOne({ _id: agentId, role: 'delivery', isActive: true });
     if (!agent) return res.status(404).json({ success: false, message: 'Delivery agent not found or inactive' });
+    
+    if (agent.deliveryStatus !== 'available') {
+      return res.status(400).json({ success: false, message: 'Agent is currently busy or offline and cannot be assigned.' });
+    }
 
     const order = await Order.findByIdAndUpdate(
       req.params.id,
-      { deliveryAgentId: agentId, deliveryAgentName: agent.name },
+      { 
+        deliveryAgentId: agentId, 
+        deliveryAgentName: agent.name,
+        status: 'assignment_pending',
+        agentAccepted: false
+      },
       { new: true }
     ).populate('customerId', 'name email phone').populate('restaurantId', 'name').populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    
+    order.statusHistory.push({ status: 'assignment_pending', timestamp: new Date(), note: 'Admin assigned. Waiting for agent to accept.' });
+    await order.save();
 
     const io = req.app.get('io');
     io.to(`order_${order._id}`).emit('order:agent_assigned', { orderId: order._id, agent: { name: agent.name, phone: agent.phone } });
+    
+    // Notify delivery agent
+    io.to(`delivery_${order.deliveryAgentId._id || order.deliveryAgentId}`).emit('delivery:new_assignment', order);
 
     res.json({ success: true, order });
   } catch (err) {
