@@ -10,12 +10,12 @@ import { useAuth } from '../../context/AuthContext';
 const REFRESH_INTERVAL = 30000;
 
 const STATUS_CONFIG = {
-  pending:          { label: 'Pending',          color: '#F59E0B', bg: 'rgba(245,158,11,0.13)',  dot: '#F59E0B' },
-  accepted:         { label: 'Accepted',          color: '#3B82F6', bg: 'rgba(59,130,246,0.13)',  dot: '#3B82F6' },
-  preparing:        { label: 'Preparing',         color: '#8B5CF6', bg: 'rgba(139,92,246,0.13)', dot: '#8B5CF6' },
-  out_for_delivery: { label: 'Out for Delivery',  color: '#06B6D4', bg: 'rgba(6,182,212,0.13)',  dot: '#06B6D4' },
-  delivered:        { label: 'Delivered',          color: '#22C55E', bg: 'rgba(34,197,94,0.13)',  dot: '#22C55E' },
-  cancelled:        { label: 'Cancelled',          color: '#EF4444', bg: 'rgba(239,68,68,0.13)',  dot: '#EF4444' },
+  pending: { label: 'Pending', color: '#F59E0B', bg: 'rgba(245,158,11,0.13)', dot: '#F59E0B' },
+  accepted: { label: 'Accepted', color: '#3B82F6', bg: 'rgba(59,130,246,0.13)', dot: '#3B82F6' },
+  preparing: { label: 'Preparing', color: '#8B5CF6', bg: 'rgba(139,92,246,0.13)', dot: '#8B5CF6' },
+  out_for_delivery: { label: 'Out for Delivery', color: '#06B6D4', bg: 'rgba(6,182,212,0.13)', dot: '#06B6D4' },
+  delivered: { label: 'Delivered', color: '#22C55E', bg: 'rgba(34,197,94,0.13)', dot: '#22C55E' },
+  cancelled: { label: 'Cancelled', color: '#EF4444', bg: 'rgba(239,68,68,0.13)', dot: '#EF4444' },
 };
 
 // Restaurant can only move orders up to 'preparing'. Admin handles dispatch.
@@ -100,14 +100,14 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
         {/* Pending alert */}
         {order.status === 'pending' && (
           <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#F59E0B', fontWeight: 600 }}>
-            ⏳ This order is waiting for your confirmation
+            This order is waiting for your confirmation
           </div>
         )}
 
         {/* OFD note */}
         {isOFD && (
           <div style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#06B6D4', fontWeight: 600 }}>
-            📧 OTP has been sent to customer's email. Customer will share it with the delivery agent.
+            OTP has been sent to customer's email. Customer will share it with the delivery agent.
           </div>
         )}
 
@@ -142,7 +142,7 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {order.items?.map((item, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 13, color: '#E5E7EB' }}>
-                <span>🍽 {item.name} × {item.quantity}</span>
+                <span> {item.name} × {item.quantity}</span>
                 <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
               </div>
             ))}
@@ -165,7 +165,7 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
         {/* Special Instructions */}
         {order.specialInstructions && (
           <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#F59E0B' }}>
-            📝 <strong>Note:</strong> {order.specialInstructions}
+            <strong>Note:</strong> {order.specialInstructions}
           </div>
         )}
 
@@ -307,7 +307,7 @@ export default function RestaurantDashboard() {
       toast.success(`Order marked as ${statusLabel}`);
 
       if (newStatus === 'out_for_delivery') {
-        toast('📧 OTP sent to customer\'s email!', { icon: '🔐', duration: 5000 });
+        toast('OTP sent to customer\'s email!', { icon: '🔐', duration: 5000 });
         if (devOtp) toast(`🔐 Dev OTP: ${devOtp}`, { duration: 10000 });
       }
       if (newStatus === 'cancelled') {
@@ -337,7 +337,7 @@ export default function RestaurantDashboard() {
     }
     return true;
   }).sort((a, b) => {
-    const ORDER = ['pending','accepted','preparing','out_for_delivery','delivered','cancelled'];
+    const ORDER = ['pending', 'accepted', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'];
     if (sortBy === 'pending_first') {
       const ai = ORDER.indexOf(a.status), bi = ORDER.indexOf(b.status);
       if (ai !== bi) return ai - bi;
@@ -354,10 +354,10 @@ export default function RestaurantDashboard() {
 
   const statCards = stats ? [
     { label: "Today's Orders", value: stats.todayOrders, icon: '📦', color: '#F97316' },
-    { label: 'Pending',        value: stats.pendingOrders, icon: '⏳', color: '#EAB308' },
-    { label: 'Total Orders',   value: stats.totalOrders,  icon: '📋', color: '#8B5CF6' },
-    { label: 'Revenue',        value: stats.totalRevenue, prefix: '₹', icon: '💰', color: '#22C55E' },
-    { label: 'Menu Items',     value: stats.totalFoods,   icon: '🍽️', color: '#06B6D4' },
+    { label: 'Pending', value: stats.pendingOrders, icon: '⏳', color: '#EAB308' },
+    { label: 'Total Orders', value: stats.totalOrders, icon: '📋', color: '#8B5CF6' },
+    { label: 'Revenue', value: stats.totalRevenue, prefix: '₹', icon: '💰', color: '#22C55E' },
+    { label: 'Menu Items', value: stats.totalFoods, icon: '🍽️', color: '#06B6D4' },
   ] : [];
 
   if (loading) return (
@@ -384,7 +384,7 @@ export default function RestaurantDashboard() {
         <div style={styles.header}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <span style={{ fontSize: 28 }}>🍛</span>
+              <span style={{ fontSize: 28 }}></span>
               <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>
                 {restaurant?.name || 'Your Restaurant'}
                 <span style={{ color: '#F97316' }}> Dashboard</span>
@@ -459,7 +459,7 @@ export default function RestaurantDashboard() {
 
         {/* ── Tabs ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 18, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {[['overview', '📊 Overview'], ['orders', '📋 Orders']].map(([t, l]) => (
+          {[['overview', 'Overview'], ['orders', 'Orders']].map(([t, l]) => (
             <button key={t} className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>{l}</button>
           ))}
         </div>
@@ -565,42 +565,42 @@ export default function RestaurantDashboard() {
                   {displayOrders.length === 0
                     ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: '#6B7280' }}>No orders match your filters</td></tr>
                     : displayOrders.map((o, i) => {
-                        const nextStatus = STATUS_FLOW[o.status];
-                        const isPending = o.status === 'pending';
-                        return (
-                          <tr key={o._id} className={`trow${isPending ? ' pending-row' : ''}`} style={{ animationDelay: `${i * 0.015}s`, cursor: 'pointer' }} onClick={() => setSelectedOrder(o)}>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {isPending && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', animation: 'pulse 1.2s ease infinite' }} />}
-                                <span style={{ fontFamily: 'monospace', color: '#F97316', fontSize: 12, fontWeight: 700 }}>#{o._id.slice(-8).toUpperCase()}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
-                              <div style={{ fontWeight: 600, color: '#E5E7EB' }}>{o.customerId?.name || 'Customer'}</div>
-                              <div style={{ fontSize: 11, color: '#6B7280' }}>{o.customerId?.phone || o.customerPhone || '—'}</div>
-                            </td>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle', color: '#9CA3AF', fontSize: 12 }}>{o.items?.map(i => `${i.name}×${i.quantity}`).join(', ')}</td>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
-                              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#22C55E' }}>₹{o.finalAmount?.toLocaleString('en-IN')}</span>
-                            </td>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}><StatusBadge status={o.status} /></td>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle', color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap' }}>{timeSince(o.createdAt)}</td>
-                            <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
-                              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                                <button className="acbtn-sm info" onClick={() => setSelectedOrder(o)}>View</button>
-                                {nextStatus && (
-                                  <button className="acbtn-sm accept" disabled={actionLoading} onClick={() => handleAction(o._id, nextStatus)}>
-                                    {STATUS_CONFIG[nextStatus]?.label}
-                                  </button>
-                                )}
-                                {o.status === 'pending' && (
-                                  <button className="acbtn-sm reject" disabled={actionLoading} onClick={() => handleAction(o._id, 'cancelled')}>Reject</button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
+                      const nextStatus = STATUS_FLOW[o.status];
+                      const isPending = o.status === 'pending';
+                      return (
+                        <tr key={o._id} className={`trow${isPending ? ' pending-row' : ''}`} style={{ animationDelay: `${i * 0.015}s`, cursor: 'pointer' }} onClick={() => setSelectedOrder(o)}>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {isPending && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', animation: 'pulse 1.2s ease infinite' }} />}
+                              <span style={{ fontFamily: 'monospace', color: '#F97316', fontSize: 12, fontWeight: 700 }}>#{o._id.slice(-8).toUpperCase()}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
+                            <div style={{ fontWeight: 600, color: '#E5E7EB' }}>{o.customerId?.name || 'Customer'}</div>
+                            <div style={{ fontSize: 11, color: '#6B7280' }}>{o.customerId?.phone || o.customerPhone || '—'}</div>
+                          </td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle', color: '#9CA3AF', fontSize: 12 }}>{o.items?.map(i => `${i.name}×${i.quantity}`).join(', ')}</td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#22C55E' }}>₹{o.finalAmount?.toLocaleString('en-IN')}</span>
+                          </td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}><StatusBadge status={o.status} /></td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle', color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap' }}>{timeSince(o.createdAt)}</td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                              <button className="acbtn-sm info" onClick={() => setSelectedOrder(o)}>View</button>
+                              {nextStatus && (
+                                <button className="acbtn-sm accept" disabled={actionLoading} onClick={() => handleAction(o._id, nextStatus)}>
+                                  {STATUS_CONFIG[nextStatus]?.label}
+                                </button>
+                              )}
+                              {o.status === 'pending' && (
+                                <button className="acbtn-sm reject" disabled={actionLoading} onClick={() => handleAction(o._id, 'cancelled')}>Reject</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   }
                 </tbody>
               </table>
@@ -611,34 +611,34 @@ export default function RestaurantDashboard() {
               {displayOrders.length === 0
                 ? <div style={{ textAlign: 'center', padding: 48, color: '#6B7280' }}>No orders match your filters</div>
                 : displayOrders.map((o, i) => {
-                    const nextStatus = STATUS_FLOW[o.status];
-                    const isPending = o.status === 'pending';
-                    return (
-                      <div key={o._id} className={`mobile-order-card${isPending ? ' pending-glow' : ''}`} style={{ animationDelay: `${i * 0.02}s` }} onClick={() => setSelectedOrder(o)}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {isPending && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', animation: 'pulse 1.2s ease infinite' }} />}
-                            <span style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 13 }}>#{o._id.slice(-8).toUpperCase()}</span>
-                          </div>
-                          <StatusBadge status={o.status} />
+                  const nextStatus = STATUS_FLOW[o.status];
+                  const isPending = o.status === 'pending';
+                  return (
+                    <div key={o._id} className={`mobile-order-card${isPending ? ' pending-glow' : ''}`} style={{ animationDelay: `${i * 0.02}s` }} onClick={() => setSelectedOrder(o)}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {isPending && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', animation: 'pulse 1.2s ease infinite' }} />}
+                          <span style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 13 }}>#{o._id.slice(-8).toUpperCase()}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                          <div>
-                            <span style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{o.customerId?.name || 'Customer'}</span>
-                            <div style={{ fontSize: 11, color: '#6B7280' }}>{o.customerId?.phone || '—'}</div>
-                          </div>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#22C55E', fontSize: 15 }}>₹{o.finalAmount?.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 10 }}>{o.items?.map(it => `${it.name}×${it.quantity}`).join(' · ')} · {timeSince(o.createdAt)}</div>
-                        {(nextStatus || o.status === 'pending') && (
-                          <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
-                            {nextStatus && <button className="acbtn accept" style={{ flex: 2 }} disabled={actionLoading} onClick={() => handleAction(o._id, nextStatus)}>{STATUS_NEXT_LABEL[o.status]}</button>}
-                            {o.status === 'pending' && <button className="acbtn reject" disabled={actionLoading} onClick={() => handleAction(o._id, 'cancelled')}>✕ Reject</button>}
-                          </div>
-                        )}
+                        <StatusBadge status={o.status} />
                       </div>
-                    );
-                  })
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <div>
+                          <span style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{o.customerId?.name || 'Customer'}</span>
+                          <div style={{ fontSize: 11, color: '#6B7280' }}>{o.customerId?.phone || '—'}</div>
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#22C55E', fontSize: 15 }}>₹{o.finalAmount?.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 10 }}>{o.items?.map(it => `${it.name}×${it.quantity}`).join(' · ')} · {timeSince(o.createdAt)}</div>
+                      {(nextStatus || o.status === 'pending') && (
+                        <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
+                          {nextStatus && <button className="acbtn accept" style={{ flex: 2 }} disabled={actionLoading} onClick={() => handleAction(o._id, nextStatus)}>{STATUS_NEXT_LABEL[o.status]}</button>}
+                          {o.status === 'pending' && <button className="acbtn reject" disabled={actionLoading} onClick={() => handleAction(o._id, 'cancelled')}>✕ Reject</button>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               }
             </div>
           </div>

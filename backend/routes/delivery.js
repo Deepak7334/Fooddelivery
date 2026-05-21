@@ -57,14 +57,14 @@ router.patch('/orders/:id/accept', async (req, res) => {
     order.status = 'accepted_by_driver';
     order.agentAccepted = true;
     order.statusHistory.push({ status: 'accepted_by_driver', timestamp: new Date(), note: 'Accepted by delivery agent' });
-    
+
     // Generate and send OTP to customer
     if (!order.deliveryOTP) {
       const otp = generateOTP();
       order.deliveryOTP = otp;
       const customerEmail = order.customerEmail || order.customerId?.email;
       const customerName = order.customerId?.name || 'Customer';
-      
+
       try {
         await sendEmail({
           to: customerEmail,

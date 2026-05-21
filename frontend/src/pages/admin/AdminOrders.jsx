@@ -22,26 +22,26 @@ const deliveryIcon = new L.Icon({
 });
 
 const STATUS_CONFIG = {
-  pending:          { label: 'Pending',          color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-  accepted:         { label: 'Accepted',          color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
-  preparing:        { label: 'Preparing',         color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
-  assignment_pending:{ label: 'Waiting for Agent', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-  out_for_delivery: { label: 'Assigned',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
-  accepted_by_driver:{ label: 'Agent Proceeding',  color: '#14B8A6', bg: 'rgba(20,184,166,0.12)' },
-  reached_restaurant:{ label: 'Agent at Rest.',  color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
-  picked_up:        { label: 'Picked Up',  color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
-  on_the_way:       { label: 'Agent on Way',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
-  reached_customer: { label: 'Agent Arr.',  color: '#EAB308', bg: 'rgba(234,179,8,0.12)' },
-  delivered:        { label: 'Delivered',          color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
-  cancelled:        { label: 'Cancelled',          color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
+  pending: { label: 'Pending', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+  accepted: { label: 'Accepted', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
+  preparing: { label: 'Preparing', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+  assignment_pending: { label: 'Waiting for Agent', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+  out_for_delivery: { label: 'Assigned', color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
+  accepted_by_driver: { label: 'Agent Proceeding', color: '#14B8A6', bg: 'rgba(20,184,166,0.12)' },
+  reached_restaurant: { label: 'Agent at Rest.', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+  picked_up: { label: 'Picked Up', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
+  on_the_way: { label: 'Agent on Way', color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
+  reached_customer: { label: 'Agent Arr.', color: '#EAB308', bg: 'rgba(234,179,8,0.12)' },
+  delivered: { label: 'Delivered', color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+  cancelled: { label: 'Cancelled', color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
 const AGENT_STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6B7280' };
 
 const ADMIN_NEXT = {
-  pending:          ['accepted', 'cancelled'],
-  accepted:         ['preparing', 'cancelled'],
-  preparing:        ['cancelled'], // Admin assigns using the dropdown now
+  pending: ['accepted', 'cancelled'],
+  accepted: ['preparing', 'cancelled'],
+  preparing: ['cancelled'], // Admin assigns using the dropdown now
   assignment_pending: ['cancelled'],
   out_for_delivery: ['cancelled'],
   accepted_by_driver: ['cancelled'],
@@ -80,7 +80,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
       const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
       socketRef.current = socket;
       socket.emit('join_admin_tracking_room');
-      
+
       socket.on('admin:delivery_location', (data) => {
         if (data.agentId === (order.deliveryAgentId._id || order.deliveryAgentId)) {
           setAgentLocation({ lat: data.lat, lng: data.lng });
@@ -103,7 +103,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
-            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🔑 Admin — Order Details</div>
+            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}> Admin — Order Details</div>
             <div style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 800, fontSize: 20, marginTop: 3 }}>#{order._id?.slice(-8).toUpperCase()}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 22, cursor: 'pointer' }}>✕</button>
@@ -144,7 +144,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
           <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Items</div>
           {order.items?.map((item, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, marginBottom: 4, fontSize: 13, color: '#E5E7EB' }}>
-              <span>🍽 {item.name} × {item.quantity}</span>
+              <span>{item.name} × {item.quantity}</span>
               <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
             </div>
           ))}
@@ -161,7 +161,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
                 {order.status === 'assignment_pending' ? '⏳ Waiting for Agent to Accept' : 'Assigned Delivery Agent'}
               </div>
               {['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'].includes(order.status) && (
-                <button 
+                <button
                   onClick={() => setShowMap(true)}
                   style={{ padding: '4px 10px', background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 12, color: '#EAB308', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                   📍 Track Live
@@ -217,11 +217,11 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
           </div>
         )}
       </div>
-      
+
       {/* Live Tracking Map Modal overlay */}
       {showMap && (
-        <div style={{...ms.overlay, zIndex: 1100}} onClick={(e) => { e.stopPropagation(); setShowMap(false); }}>
-          <div style={{...ms.modal, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '80vh'}} onClick={e => e.stopPropagation()}>
+        <div style={{ ...ms.overlay, zIndex: 1100 }} onClick={(e) => { e.stopPropagation(); setShowMap(false); }}>
+          <div style={{ ...ms.modal, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '80vh' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', background: '#161B22', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontWeight: 800, color: '#E5E7EB', fontSize: 16 }}>Live Location Tracking</div>
@@ -229,7 +229,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
               </div>
               <button onClick={() => setShowMap(false)} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 24, cursor: 'pointer' }}>✕</button>
             </div>
-            
+
             <div style={{ flex: 1, background: '#0F1117', position: 'relative' }}>
               {agentLocation ? (
                 <MapContainer center={[agentLocation.lat, agentLocation.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
@@ -239,7 +239,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
                   />
                   <Marker position={[agentLocation.lat, agentLocation.lng]} icon={deliveryIcon}>
                     <Popup>
-                      <b>{order.deliveryAgentId?.name}</b><br/>
+                      <b>{order.deliveryAgentId?.name}</b><br />
                       Vehicle: {order.deliveryAgentId?.vehicleNumber}
                     </Popup>
                   </Marker>
@@ -292,7 +292,7 @@ export default function AdminOrders() {
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   useEffect(() => {
-    api.get('/admin/delivery-agents').then(r => setAgents(r.data.agents || [])).catch(() => {});
+    api.get('/admin/delivery-agents').then(r => setAgents(r.data.agents || [])).catch(() => { });
   }, []);
 
   const handleStatusChange = async (orderId, status) => {
@@ -303,7 +303,7 @@ export default function AdminOrders() {
       setOrders(prev => prev.map(o => o._id === orderId ? updated : o));
       setSelectedOrder(prev => prev?._id === orderId ? updated : prev);
       toast.success(`Order marked as ${STATUS_CONFIG[status]?.label || status}`);
-      if (status === 'out_for_delivery') toast('📧 OTP sent to customer!', { icon: '🔐', duration: 5000 });
+      if (status === 'out_for_delivery') toast(' OTP sent to customer!', { icon: '🔐', duration: 5000 });
       if (res.data.devOtp) toast(`🔐 Dev OTP: ${res.data.devOtp}`, { duration: 10000 });
     } catch (e) { toast.error(e.response?.data?.message || 'Failed to update status'); }
     finally { setActionLoading(false); }
@@ -332,7 +332,7 @@ export default function AdminOrders() {
       <OrderModal order={selectedOrder} agents={agents} onClose={() => setSelectedOrder(null)} onStatusChange={handleStatusChange} onAssignAgent={handleAssignAgent} loading={actionLoading} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>📦 All <span style={{ color: 'var(--primary)' }}>Orders</span></h1>
+        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>All <span style={{ color: 'var(--primary)' }}>Orders</span></h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input className="ao-input" placeholder="🔍 Search…" value={search} onChange={e => setSearch(e.target.value)} />
           <select className="ao-select" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>

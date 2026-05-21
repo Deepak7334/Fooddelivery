@@ -55,8 +55,8 @@ export default function RestaurantsPage() {
           <select value={sort} onChange={e => setSort(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
             <option value="">Sort by</option>
             <option value="rating">⭐ Rating</option>
-            <option value="deliveryTime">🕐 Delivery Time</option>
-            <option value="deliveryFee">🛵 Delivery Fee</option>
+            <option value="deliveryTime">Delivery Time</option>
+            <option value="deliveryFee">Delivery Fee</option>
           </select>
 
           {cuisine && (
@@ -73,7 +73,7 @@ export default function RestaurantsPage() {
           </div>
         ) : restaurants.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🍽️</div>
+            <div className="empty-state-icon"></div>
             <h3>No Restaurants Found</h3>
             <p>Try a different search or filter</p>
           </div>
@@ -94,7 +94,7 @@ function RestaurantCard({ restaurant }) {
         {restaurant.image ? (
           <img src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🍽️</div>
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}></div>
         )}
         {!restaurant.isOpen && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>Closed</div>}
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', padding: '3px 10px', borderRadius: 100, fontSize: 12 }}>
@@ -105,9 +105,9 @@ function RestaurantCard({ restaurant }) {
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{restaurant.name}</div>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{restaurant.cuisine?.join(' • ')}</div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-          <span>🕐 {restaurant.deliveryTime}</span>
-          <span>🛵 ₹{restaurant.deliveryFee}</span>
-          <span>📍 Min ₹{restaurant.minOrder}</span>
+          <span>{restaurant.deliveryTime}</span>
+          <span>₹{restaurant.deliveryFee}</span>
+          <span> Min ₹{restaurant.minOrder}</span>
         </div>
       </div>
     </Link>

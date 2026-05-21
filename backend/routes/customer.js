@@ -172,7 +172,7 @@ router.post('/orders/:id/verify-otp', protect, authorize('customer'), async (req
       statusHistory: order.statusHistory,
     });
 
-    res.json({ success: true, message: 'Delivery confirmed! Enjoy your meal! 🎉', order });
+    res.json({ success: true, message: 'Delivery confirmed! Enjoy your meal! ', order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

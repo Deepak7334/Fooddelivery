@@ -32,7 +32,7 @@ export default function AuthPage() {
         res = await register(form);
       }
       if (res.success) {
-        toast.success(mode === 'login' ? 'Welcome back! 🎉' : 'Account created! 🎉');
+        toast.success(mode === 'login' ? 'Welcome back! ' : 'Account created! ');
         const role = res.user.role;
         if (role === 'admin') navigate('/admin');
         else if (role === 'restaurant') navigate('/restaurant');
@@ -107,12 +107,12 @@ export default function AuthPage() {
             </button>
           </form>
 
-            <div style={{ marginTop: 20, padding: 16, background: 'rgba(255,87,34,0.08)', borderRadius: 10, border: '1px solid rgba(255,87,34,0.2)', fontSize: 13 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--primary)' }}></div>
-              <div style={{ color: 'var(--text-secondary)', lineHeight: 2 }}>
-                <div>👤 Don't have an account? Switch to Register to create one.</div>
-              </div>
+          <div style={{ marginTop: 20, padding: 16, background: 'rgba(255,87,34,0.08)', borderRadius: 10, border: '1px solid rgba(255,87,34,0.2)', fontSize: 13 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--primary)' }}></div>
+            <div style={{ color: 'var(--text-secondary)', lineHeight: 2 }}>
+              <div> Don't have an account? Switch to Register to create one.</div>
             </div>
+          </div>
         </div>
       </div>
     </div>

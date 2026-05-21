@@ -40,7 +40,7 @@ export default function RestaurantOrders() {
     });
     socketRef.current.on('order:agent_assigned', ({ orderId, agent }) => {
       setOrders(prev => prev.map(o => o._id === orderId ? { ...o, deliveryAgentName: agent.name } : o));
-      toast(`🚚 Agent ${agent.name} assigned to order #${orderId.slice(-4)}`, { icon: '🚴' });
+      toast(` Agent ${agent.name} assigned to order #${orderId.slice(-4)}`, { icon: '🚴' });
     });
     return () => socketRef.current?.disconnect();
   }, [user?.restaurantId]);
@@ -59,7 +59,7 @@ export default function RestaurantOrders() {
     setUpdating(p => ({ ...p, [`otp_${orderId}`]: true }));
     try {
       const res = await api.post(`/restaurant/orders/${orderId}/send-otp`);
-      toast.success('OTP sent to customer! 📧');
+      toast.success('OTP sent to customer! ');
       if (res.data.otp) toast(`Dev OTP: ${res.data.otp}`, { duration: 10000, icon: '🔐' });
     } catch (err) { toast.error(err.response?.data?.message || 'Error sending OTP'); }
     finally { setUpdating(p => ({ ...p, [`otp_${orderId}`]: false })); }
@@ -92,9 +92,9 @@ export default function RestaurantOrders() {
                       <span className={`badge badge-${order.paymentStatus}`}>{order.paymentStatus}</span>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{order.customerId?.name || 'Customer'}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>📞 {order.customerId?.phone || order.customerPhone || '—'} · 📧 {order.customerId?.email || '—'}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>📍 {order.deliveryAddress}</div>
-                    {order.specialInstructions && <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>📝 {order.specialInstructions}</div>}
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}> {order.customerId?.phone || order.customerPhone || '—'} · {order.customerId?.email || '—'}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}> {order.deliveryAddress}</div>
+                    {order.specialInstructions && <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>{order.specialInstructions}</div>}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>₹{order.finalAmount}</div>

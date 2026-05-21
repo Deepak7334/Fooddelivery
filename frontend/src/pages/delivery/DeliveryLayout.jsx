@@ -17,7 +17,7 @@ export default function DeliveryLayout({ children }) {
             {/* Sidebar (desktop) */}
             <aside className={`delivery-sidebar ${open ? 'open' : ''}`}>
                 <div style={{ padding: '24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    <div style={{ fontWeight: 900, fontSize: 18, color: '#F97316' }}>🍕 FoodHub</div>
+                    <div style={{ fontWeight: 900, fontSize: 18, color: '#F97316' }}> FoodHub</div>
                     <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: 600 }}>Delivery Partner</div>
                 </div>
                 <nav style={{ padding: '16px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -33,7 +33,7 @@ export default function DeliveryLayout({ children }) {
                     <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>{user?.phone}</div>
                     <button onClick={() => { logout(); navigate('/login'); }}
                         style={{ width: '100%', padding: '9px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        🚪 Logout
+                        Logout
                     </button>
                 </div>
             </aside>

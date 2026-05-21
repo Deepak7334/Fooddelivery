@@ -157,7 +157,7 @@ export default function UpiPaymentPage() {
         razorpayPaymentId: `upi_${method}_${Date.now()}`,
         razorpaySignature: 'mock',
       });
-      toast.success('Payment successful! 🎉');
+      toast.success('Payment successful! ');
       navigate(`/orders/${orderId}/track`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Payment failed. Try again.');
@@ -373,7 +373,7 @@ export default function UpiPaymentPage() {
                 borderRadius: 10, padding: '12px 16px',
                 display: 'flex', gap: 10, alignItems: 'flex-start',
               }}>
-                <span style={{ fontSize: 18 }}>⚡</span>
+                <span style={{ fontSize: 18 }}></span>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   A payment request of <b style={{ color: 'var(--primary)' }}>₹{amount}</b> will be sent to your UPI app. Approve it within 5 minutes.
                 </div>

@@ -18,7 +18,7 @@ export default function OrderHistoryPage() {
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 32 }}>My <span style={{ color: 'var(--primary)' }}>Orders</span></h1>
         {orders.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">📦</div>
+            <div className="empty-state-icon"></div>
             <h3>No orders yet!</h3>
             <p>Start exploring restaurants and place your first order.</p>
             <Link to="/restaurants" className="btn btn-primary btn-lg" style={{ marginTop: 24 }}>Browse Restaurants</Link>

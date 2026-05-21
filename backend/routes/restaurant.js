@@ -144,11 +144,11 @@ router.patch('/orders/:id/status', async (req, res) => {
       // Send OTP email
       await sendEmail({
         to: customerEmail,
-        subject: '🚴 FoodHub — Your Delivery OTP',
+        subject: 'FoodHub — Your Delivery OTP',
         html: `
           <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
             <div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center">
-              <h1 style="color:#fff;margin:0;font-size:22px">🍕 FoodHub</h1>
+              <h1 style="color:#fff;margin:0;font-size:22px">FoodHub</h1>
               <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px">Your order is on the way!</p>
             </div>
             <div style="padding:28px 24px">
@@ -213,7 +213,7 @@ router.post('/orders/:id/send-otp', async (req, res) => {
       subject: 'FoodHub - Delivery OTP',
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #eee;border-radius:12px">
-          <h2 style="color:#FF5722">🍕 FoodHub Delivery OTP</h2>
+          <h2 style="color:#FF5722">FoodHub Delivery OTP</h2>
           <p>Hi <strong>${order.customerId?.name || 'Customer'}</strong>,</p>
           <p>Your order is arriving! Share this OTP with the delivery agent:</p>
           <div style="font-size:36px;font-weight:bold;letter-spacing:8px;text-align:center;color:#FF5722;padding:20px;background:#FFF3E0;border-radius:8px;margin:20px 0">${otp}</div>
@@ -222,7 +222,7 @@ router.post('/orders/:id/send-otp', async (req, res) => {
       `,
     });
 
-    console.log(`📦 OTP for Order ${order._id}: ${otp}`);
+    console.log(` OTP for Order ${order._id}: ${otp}`);
 
     // Emit to customer
     const io = req.app.get('io');

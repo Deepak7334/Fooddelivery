@@ -20,14 +20,14 @@ const deliveryIcon = new L.Icon({
   popupAnchor: [0, -40]
 });
 const STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6B7280' };
-const STATUS_BG =    { available: 'rgba(34,197,94,0.12)', busy: 'rgba(245,158,11,0.12)', offline: 'rgba(107,114,128,0.12)' };
+const STATUS_BG = { available: 'rgba(34,197,94,0.12)', busy: 'rgba(245,158,11,0.12)', offline: 'rgba(107,114,128,0.12)' };
 
 function AgentBadge({ status }) {
   const isAvail = status === 'available';
   const isBusy = status === 'busy';
   const col = isAvail ? '#10B981' : isBusy ? '#F59E0B' : '#6B7280';
   const bg = isAvail ? 'rgba(16,185,129,0.1)' : isBusy ? 'rgba(245,158,11,0.1)' : 'rgba(107,114,128,0.1)';
-  
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: bg, border: `1px solid ${col}30` }}>
       <div style={{ width: 6, height: 6, borderRadius: '50%', background: col, boxShadow: `0 0 8px ${col}` }} />
@@ -117,7 +117,7 @@ function AgentDetailsModal({ agentId, onClose }) {
       const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
       socketRef.current = socket;
       socket.emit('join_admin_tracking_room');
-      
+
       socket.on('admin:delivery_location', (locData) => {
         if (locData.agentId === agentId) {
           setAgentLocation({ lat: locData.lat, lng: locData.lng });
@@ -142,7 +142,7 @@ function AgentDetailsModal({ agentId, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
       <div style={{ background: '#12151C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, width: '100%', maxWidth: 900, height: '90vh', maxHeight: 800, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
-        
+
         {/* Header */}
         <div style={{ padding: '24px 32px', background: 'linear-gradient(to right, #1A2030, #161B22)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -158,7 +158,7 @@ function AgentDetailsModal({ agentId, onClose }) {
         </div>
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          
+
           {/* Left Panel: Map & Stats */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)', minWidth: 0 }}>
             <div style={{ padding: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -174,12 +174,12 @@ function AgentDetailsModal({ agentId, onClose }) {
                 </div>
               ))}
             </div>
-            
+
             <div style={{ flex: 1, background: '#0F1117', position: 'relative', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 1000, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: '#14B8A6', border: '1px solid rgba(20,184,166,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#14B8A6', boxShadow: '0 0 8px #14B8A6' }}></div> Live Tracking
               </div>
-              
+
               {agentLocation ? (
                 <MapContainer center={[agentLocation.lat, agentLocation.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
                   <TileLayer
@@ -191,7 +191,7 @@ function AgentDetailsModal({ agentId, onClose }) {
                 </MapContainer>
               ) : (
                 <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#6B7280', textAlign: 'center', padding: 20 }}>
-                  <div style={{ fontSize: 32, marginBottom: 12 }}>📡</div>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}></div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>Waiting for GPS Signal...</div>
                   <div style={{ fontSize: 12, marginTop: 4 }}>Agent is currently not sharing location or app is closed.</div>
                 </div>
@@ -213,7 +213,7 @@ function AgentDetailsModal({ agentId, onClose }) {
                     <div key={o._id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 14 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <span style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 13 }}>#{o._id.slice(-8).toUpperCase()}</span>
-                        <span style={{ fontSize: 11,  color: '#9CA3AF' }}>{new Date(o.createdAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span style={{ fontSize: 11, color: '#9CA3AF' }}>{new Date(o.createdAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 12 }}>
                         <div style={{ width: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 2 }} />
@@ -223,10 +223,10 @@ function AgentDetailsModal({ agentId, onClose }) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: 10 }}>
-                         <span style={{ fontSize: 14, fontWeight: 800, color: '#10B981' }}>₹{o.finalAmount}</span>
-                         <span style={{ fontSize: 10, fontWeight: 800, padding: '4px 10px', borderRadius: 12, background: o.status==='delivered'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)', color: o.status==='delivered'?'#22C55E':'#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                           {o.status.replace(/_/g, ' ')}
-                         </span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#10B981' }}>₹{o.finalAmount}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '4px 10px', borderRadius: 12, background: o.status === 'delivered' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)', color: o.status === 'delivered' ? '#22C55E' : '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {o.status.replace(/_/g, ' ')}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -347,7 +347,7 @@ export default function AdminDeliveryAgents() {
         <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
       ) : filtered.length === 0 ? (
         <div className="empty-state" style={{ background: '#11141A', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 24 }}>
-          <div className="empty-state-icon" style={{ fontSize: 48, marginBottom: 16 }}>🛵</div>
+          <div className="empty-state-icon" style={{ fontSize: 48, marginBottom: 16 }}></div>
           <h3 style={{ color: '#F3F4F6' }}>No delivery partners found</h3>
           <p style={{ color: '#9CA3AF' }}>Recruit and add your first delivery partner to start dispatching orders.</p>
           <button className="da-btn-add" style={{ marginTop: 16 }} onClick={() => setModalAgent('new')}>+ Add Partner</button>

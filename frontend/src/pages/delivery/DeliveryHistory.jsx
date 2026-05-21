@@ -3,18 +3,18 @@ import api from '../../lib/api';
 
 const STATUS_LABEL = {
   out_for_delivery: 'Assigned',
-  picked_up:        'Picked Up',
-  on_the_way:       'On My Way',
-  delivered:        'Delivered',
-  cancelled:        'Cancelled',
+  picked_up: 'Picked Up',
+  on_the_way: 'On My Way',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
 };
 
 const STATUS_COLOR = {
   out_for_delivery: '#F97316',
-  picked_up:        '#8B5CF6',
-  on_the_way:       '#06B6D4',
-  delivered:        '#22C55E',
-  cancelled:        '#EF4444',
+  picked_up: '#8B5CF6',
+  on_the_way: '#06B6D4',
+  delivered: '#22C55E',
+  cancelled: '#EF4444',
 };
 
 const timeSince = (iso) => {
@@ -53,7 +53,7 @@ export default function DeliveryHistory() {
   const allOrders = data?.history || [];
   const filtered = filter === 'all' ? allOrders
     : filter === 'delivered' ? allOrders.filter(o => o.status === 'delivered')
-    : allOrders.filter(o => ['out_for_delivery', 'picked_up', 'on_the_way'].includes(o.status));
+      : allOrders.filter(o => ['out_for_delivery', 'picked_up', 'on_the_way'].includes(o.status));
 
   const s = data?.stats || {};
 

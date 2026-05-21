@@ -34,7 +34,7 @@ export default function CheckoutPage() {
 
       if (paymentMethod === 'cod') {
         clearCart();
-        toast.success('Order placed! Pay on delivery. 🎉');
+        toast.success('Order placed! Pay on delivery. ');
         navigate(`/orders/${order._id}/track`);
         return;
       }
@@ -75,7 +75,7 @@ export default function CheckoutPage() {
             razorpaySignature: response.razorpay_signature,
           });
           clearCart();
-          toast.success('Payment successful! 🎉');
+          toast.success('Payment successful! ');
           navigate(`/orders/${order._id}/track`);
         },
         prefill: { name: user.name, email: user.email, contact: user.phone },
@@ -102,7 +102,7 @@ export default function CheckoutPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Delivery Address */}
             <div className="card" style={{ padding: 24 }}>
-              <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}>📍 Delivery Address</h3>
+              <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}> Delivery Address</h3>
               <textarea className="form-input" rows={3} placeholder="Enter your full delivery address..." value={address} onChange={e => setAddress(e.target.value)} style={{ resize: 'vertical' }} />
             </div>
 
@@ -117,9 +117,9 @@ export default function CheckoutPage() {
               <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}> Payment Method</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { id: 'upi', label: '📱 UPI / Online Payment', desc: 'GPay · PhonePe · Paytm · BHIM · QR Code', badge: 'RECOMMENDED' },
-                  { id: 'razorpay', label: '💳 Cards & Wallets', desc: 'Credit / Debit Card · Net Banking · Wallets' },
-                  { id: 'cod', label: '💵 Cash on Delivery', desc: 'Pay cash when your order arrives' },
+                  { id: 'upi', label: ' UPI / Online Payment', desc: 'GPay · PhonePe · Paytm · BHIM · QR Code', badge: 'RECOMMENDED' },
+                  { id: 'razorpay', label: 'Cards & Wallets', desc: 'Credit / Debit Card · Net Banking · Wallets' },
+                  { id: 'cod', label: 'Cash on Delivery', desc: 'Pay cash when your order arrives' },
                 ].map(pm => (
                   <label key={pm.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, background: paymentMethod === pm.id ? 'rgba(255,87,34,0.08)' : 'rgba(255,255,255,0.03)', borderRadius: 10, border: `1px solid ${paymentMethod === pm.id ? 'rgba(255,87,34,0.4)' : 'var(--border)'}`, cursor: 'pointer', transition: 'var(--transition)' }}>
                     <input type="radio" name="payment" value={pm.id} checked={paymentMethod === pm.id} onChange={() => setPaymentMethod(pm.id)} style={{ marginTop: 2 }} />
@@ -160,7 +160,7 @@ export default function CheckoutPage() {
               <span>Total</span><span style={{ color: 'var(--primary)' }}>₹{total}</span>
             </div>
             <button onClick={handlePlaceOrder} disabled={loading} className="btn btn-primary btn-full btn-lg">
-              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? '🛵 Place Order' : paymentMethod === 'upi' ? `📱 Proceed to UPI Payment · ₹${total}` : `💳 Pay ₹${total}`}
+              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? ' Place Order' : paymentMethod === 'upi' ? `Proceed to UPI Payment · ₹${total}` : ` Pay ₹${total}`}
             </button>
           </div>
         </div>

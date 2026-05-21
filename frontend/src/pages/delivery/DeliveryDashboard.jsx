@@ -6,14 +6,14 @@ import toast from 'react-hot-toast';
 
 // ── Status Config ─────────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  assignment_pending: { label: 'New Assignment', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', icon: '🔔' },
-  out_for_delivery: { label: 'Assigned', color: '#F97316', bg: 'rgba(249,115,22,0.15)', icon: '📦' },
-  accepted_by_driver: { label: 'Proceed to Restaurant', color: '#14B8A6', bg: 'rgba(20,184,166,0.15)', icon: '🏍' },
-  reached_restaurant: { label: 'Reached Restaurant', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', icon: '🏪' },
-  picked_up: { label: 'Picked Up', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', icon: '🏃' },
-  on_the_way: { label: 'On The Way to Customer', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)', icon: '🚴' },
-  reached_customer: { label: 'Reached Customer', color: '#EAB308', bg: 'rgba(234,179,8,0.15)', icon: '📍' },
-  delivered: { label: 'Delivered', color: '#22C55E', bg: 'rgba(34,197,94,0.15)', icon: '✅' },
+  assignment_pending: { label: 'New Assignment', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', icon: '' },
+  out_for_delivery: { label: 'Assigned', color: '#F97316', bg: 'rgba(249,115,22,0.15)', icon: '' },
+  accepted_by_driver: { label: 'Proceed to Restaurant', color: '#14B8A6', bg: 'rgba(20,184,166,0.15)', icon: '' },
+  reached_restaurant: { label: 'Reached Restaurant', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', icon: '' },
+  picked_up: { label: 'Picked Up', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', icon: '' },
+  on_the_way: { label: 'On The Way to Customer', color: '#06B6D4', bg: 'rgba(6,182,212,0.15)', icon: '' },
+  reached_customer: { label: 'Reached Customer', color: '#EAB308', bg: 'rgba(234,179,8,0.15)', icon: '' },
+  delivered: { label: 'Delivered', color: '#22C55E', bg: 'rgba(34,197,94,0.15)', icon: '' },
 };
 
 const AGENT_STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6B7280' };
@@ -132,7 +132,7 @@ export default function DeliveryDashboard() {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          api.patch('/delivery/location', { lat: latitude, lng: longitude }).catch(() => {});
+          api.patch('/delivery/location', { lat: latitude, lng: longitude }).catch(() => { });
           if (socketRef.current && user?._id) {
             socketRef.current.emit('delivery:update_location', { agentId: user._id, lat: latitude, lng: longitude });
           }
@@ -179,7 +179,7 @@ export default function DeliveryDashboard() {
     setActionLoading(true);
     try {
       const res = await api.post(`/delivery/orders/${orderId}/verify-otp`, { otp });
-      toast.success(res.data.message || '🎉 Delivery confirmed!');
+      toast.success(res.data.message || ' Delivery confirmed!');
       setShowOTP(false);
       setActiveOrder(null);
       fetchData();
@@ -252,7 +252,7 @@ export default function DeliveryDashboard() {
         {/* ── ACTIVE ORDER ────────────────────────────────────── */}
         {activeOrder ? (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>🔥 Active Delivery</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Active Delivery</div>
             <div className="active-card">
               {/* Status banner */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -277,7 +277,7 @@ export default function DeliveryDashboard() {
                   const myIdx = statuses.indexOf(s);
                   const done = curIdx >= myIdx || (s === 'picked_up' && curIdx >= statuses.indexOf('on_the_way'));
                   const active = curIdx === myIdx || (s === 'picked_up' && curIdx === statuses.indexOf('on_the_way'));
-                  
+
                   return (
                     <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.07)', border: `2px solid ${done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.15)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: 'all 0.3s', boxShadow: active ? `0 0 12px ${STATUS_CFG[s]?.color}60` : 'none' }}>
@@ -293,18 +293,18 @@ export default function DeliveryDashboard() {
 
               {/* Restaurant pickup info */}
               <div className="info-section">
-                <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>🏪 Pickup</div>
+                <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Pickup</div>
                 <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{activeOrder.restaurantId?.name}</div>
                 <div style={{ fontSize: 12, color: '#9CA3AF' }}>{activeOrder.restaurantId?.address}</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF' }}>📞 {activeOrder.restaurantId?.phone}</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>{activeOrder.restaurantId?.phone}</div>
               </div>
 
               {/* Customer drop info */}
               <div className="info-section" style={{ background: 'rgba(34,197,94,0.05)', borderColor: 'rgba(34,197,94,0.2)' }}>
-                <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>📍 Deliver To</div>
+                <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}> Deliver To</div>
                 <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{activeOrder.customerId?.name}</div>
                 <div style={{ fontSize: 12, color: '#9CA3AF' }}>{activeOrder.deliveryAddress}</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF' }}>📞 {activeOrder.customerId?.phone || activeOrder.customerPhone}</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>{activeOrder.customerId?.phone || activeOrder.customerPhone}</div>
               </div>
 
               {/* Items */}
@@ -321,10 +321,10 @@ export default function DeliveryDashboard() {
               {/* Navigation Buttons */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
                 <button className="map-btn" onClick={() => openMaps(activeOrder.restaurantId?.address)}>
-                  🗺 Restaurant
+                  Restaurant
                 </button>
                 <button className="map-btn green" onClick={() => openMaps(activeOrder.deliveryAddress)}>
-                  📍 Customer
+                  Customer
                 </button>
               </div>
 
@@ -332,27 +332,27 @@ export default function DeliveryDashboard() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {activeOrder.status === 'accepted_by_driver' && (
                   <button className="action-main" disabled={actionLoading} style={{ background: '#14B8A6' }} onClick={() => handleStatusUpdate(activeOrder._id, 'reached_restaurant')}>
-                    🏪 Reached Restaurant
+                    Reached Restaurant
                   </button>
                 )}
                 {activeOrder.status === 'reached_restaurant' && (
                   <button className="action-main" disabled={actionLoading} style={{ background: '#8B5CF6' }} onClick={() => handleStatusUpdate(activeOrder._id, 'picked_up')}>
-                    ✅ Confirm Pickup
+                    Confirm Pickup
                   </button>
                 )}
                 {activeOrder.status === 'picked_up' && (
                   <button className="action-main" disabled={actionLoading} style={{ background: '#06B6D4' }} onClick={() => handleStatusUpdate(activeOrder._id, 'on_the_way')}>
-                    🚴 Start for Customer
+                    Start for Customer
                   </button>
                 )}
                 {activeOrder.status === 'on_the_way' && (
                   <button className="action-main" disabled={actionLoading} style={{ background: '#EAB308', color: '#000' }} onClick={() => handleStatusUpdate(activeOrder._id, 'reached_customer')}>
-                    📍 Reached Customer Location
+                    Reached Customer Location
                   </button>
                 )}
                 {activeOrder.status === 'reached_customer' && (
                   <button className="action-otp" disabled={actionLoading} onClick={() => setShowOTP(true)}>
-                    🔐 Ask for OTP & Deliver
+                    Ask for OTP & Deliver
                   </button>
                 )}
               </div>
@@ -360,7 +360,7 @@ export default function DeliveryDashboard() {
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '28px 20px', background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: '1px dashed rgba(255,255,255,0.1)', marginBottom: 20 }}>
-            <div style={{ fontSize: 42, marginBottom: 8 }}>🛵</div>
+            <div style={{ fontSize: 42, marginBottom: 8 }}></div>
             <div style={{ color: '#9CA3AF', fontSize: 14, fontWeight: 600 }}>No active delivery</div>
             <div style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>Accept an order below to start</div>
           </div>
@@ -390,7 +390,7 @@ export default function DeliveryDashboard() {
                     </div>
                   </div>
                   <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 12 }}>
-                    🍽 {order.items?.map(i => `${i.name}×${i.quantity}`).join(', ')}
+                    {order.items?.map(i => `${i.name}×${i.quantity}`).join(', ')}
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button className="btn-accept" disabled={actionLoading || !!activeOrder} onClick={() => handleAccept(order._id)}>
@@ -409,7 +409,7 @@ export default function DeliveryDashboard() {
 
         {!activeOrder && pendingOrders.length === 0 && !loading && (
           <div style={{ textAlign: 'center', padding: '28px 20px', background: 'rgba(34,197,94,0.04)', borderRadius: 16, border: '1px solid rgba(34,197,94,0.15)', color: '#22C55E', fontWeight: 700 }}>
-            ✅ All caught up! Waiting for new orders…
+            All caught up! Waiting for new orders…
           </div>
         )}
       </div>

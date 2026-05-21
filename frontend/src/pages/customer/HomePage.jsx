@@ -132,7 +132,7 @@ export default function HomePage() {
 
       {(!loading && restaurants.length === 0) ? (
         <section style={{ padding: '80px 20px', textAlign: 'center', minHeight: 400, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ fontSize: 80, marginBottom: 24, filter: 'grayscale(1)', opacity: 0.8 }}>🛵</div>
+          <div style={{ fontSize: 80, marginBottom: 24, filter: 'grayscale(1)', opacity: 0.8 }}></div>
           <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>We are not in your area yet!</h2>
           <p style={{ fontSize: 18, color: 'var(--text-secondary)', maxWidth: 500 }}>
             We currently don't have any restaurants delivering to your exact location. We are expanding rapidly, so check back soon!
@@ -258,8 +258,8 @@ function RestaurantCard({ restaurant }) {
           {restaurant.cuisine?.join(' • ')}
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-muted)' }}>
-          <span>🕐 {restaurant.deliveryTime}</span>
-          <span>🛵 ₹{restaurant.deliveryFee} delivery</span>
+          <span> {restaurant.deliveryTime}</span>
+          <span> ₹{restaurant.deliveryFee} delivery</span>
         </div>
       </div>
     </Link>

@@ -153,7 +153,7 @@ export default function Navbar() {
         {user ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
             <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
-              👋 {user.name}
+              {user.name}
             </div>
             {user.role === 'customer' && (
               <Link to="/orders" onClick={() => setMobileOpen(false)}

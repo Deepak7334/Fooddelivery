@@ -28,7 +28,7 @@ export default function AdminDashboard() {
     <div>
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800 }}>Admin <span style={{ color: 'var(--primary)' }}>Dashboard</span></h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>Welcome back, Admin 👋</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>Welcome back, Admin</p>
       </div>
 
       {/* Stats */}

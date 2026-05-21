@@ -55,7 +55,7 @@ export default function RestaurantDetailPage() {
         {restaurant.image ? (
           <img src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}>🍽️</div>
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}></div>
         )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,15,26,1) 0%, rgba(15,15,26,0.3) 60%, transparent 100%)' }} />
         <div className="container" style={{ position: 'absolute', bottom: 24, left: 0, right: 0 }}>
@@ -63,12 +63,12 @@ export default function RestaurantDetailPage() {
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 14, color: 'var(--text-secondary)' }}>
             <span>⭐ {restaurant.rating?.toFixed(1)} · {restaurant.totalRatings}+ ratings</span>
             <span>🕐 {restaurant.deliveryTime}</span>
-            <span>🛵 ₹{restaurant.deliveryFee} delivery</span>
+            <span>₹{restaurant.deliveryFee} delivery</span>
             <span style={{ color: restaurant.isOpen ? 'var(--success)' : 'var(--danger)' }}>
               {restaurant.isOpen ? '🟢 Open' : '🔴 Closed'}
             </span>
             {restaurant.bookingEnabled && (
-              <button 
+              <button
                 onClick={() => navigate(`/booking/${restaurant._id}`)}
                 style={{
                   padding: '6px 14px',
@@ -105,7 +105,7 @@ export default function RestaurantDetailPage() {
         {/* Menu Items */}
         <div style={{ flex: 1 }}>
           {categories.length === 0 ? (
-            <div className="empty-state"><div className="empty-state-icon">🍽️</div><h3>Menu coming soon!</h3></div>
+            <div className="empty-state"><div className="empty-state-icon"></div><h3>Menu coming soon!</h3></div>
           ) : categories.map(cat => (
             <div key={cat} id={`cat-${cat}`} style={{ marginBottom: 40 }}>
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>{cat}</h2>
@@ -113,7 +113,7 @@ export default function RestaurantDetailPage() {
                 {menuGrouped[cat].map(food => (
                   <FoodCard key={food._id} food={food} qty={getItemQty(food._id)} onAdd={() => handleAdd(food)}
                     onIncrease={() => handleAdd(food)}
- onDecrease={() => {
+                    onDecrease={() => {
                       if (!user) return;
                     }} />
                 ))}

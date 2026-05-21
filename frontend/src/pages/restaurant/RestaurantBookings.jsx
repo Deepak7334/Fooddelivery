@@ -6,13 +6,13 @@ export default function RestaurantBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchBookings = () => { 
+  const fetchBookings = () => {
     api.get('/api/booking/restaurant/bookings')
       .then(res => setBookings(res.data || []))
       .catch(err => toast.error('Failed to load bookings'))
-      .finally(() => setLoading(false)); 
+      .finally(() => setLoading(false));
   };
-  
+
   useEffect(() => {
     fetchBookings();
   }, []);
@@ -45,14 +45,14 @@ export default function RestaurantBookings() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800 }}>📅 Table <span style={{ color: 'var(--primary)' }}>Bookings</span></h1>
+        <h1 style={{ fontSize: 26, fontWeight: 800 }}>Table <span style={{ color: 'var(--primary)' }}>Bookings</span></h1>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
       ) : bookings.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">📅</div>
+          <div className="empty-state-icon"></div>
           <h3>No bookings yet!</h3>
           <p>When customers book a table, it will appear here.</p>
         </div>
