@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiList } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiList, FiCalendar } from 'react-icons/fi';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -16,10 +16,8 @@ export default function Navbar() {
   const handleLogout = () => { logout(); navigate('/'); setMobileOpen(false); };
   const isActive = (path) => location.pathname === path;
 
-  // Close mobile drawer on route change
   useEffect(() => { setMobileOpen(false); setDropdownOpen(false); }, [location.pathname]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
     document.addEventListener('mousedown', handler);
@@ -36,8 +34,8 @@ export default function Navbar() {
       }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           {/* Logo */}
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 22, color: 'var(--primary)' }}>
-            <span>Food<span style={{ color: 'var(--text-primary)' }}>Hub</span></span>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 22, color: 'var(--primary)', textDecoration: 'none' }}>
+            <span>JD<span style={{ color: 'var(--text-primary)' }}>mart</span></span>
           </Link>
 
           {/* Desktop Nav */}
@@ -64,7 +62,7 @@ export default function Navbar() {
                 <button onClick={() => setDropdownOpen(!dropdownOpen)} style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
                   background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.2)',
-                  borderRadius: 100, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600,
+                  borderRadius: 100, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>
                   <FiUser size={16} color="var(--primary)" />
                   {user.name.split(' ')[0]}
@@ -77,24 +75,35 @@ export default function Navbar() {
                     boxShadow: 'var(--shadow)',
                   }}>
                     {user.role === 'customer' && (
-                      <Link to="/orders" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <FiPackage size={16} /> My Orders
-                      </Link>
+                      <>
+                        <Link to="/orders" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <FiPackage size={16} /> My Orders
+                        </Link>
+                        <Link to="/orders?tab=bookings" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <FiCalendar size={16} /> My Bookings
+                        </Link>
+                      </>
                     )}
                     {user.role === 'admin' && (
-                      <Link to="/admin" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
+                      <Link to="/admin" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         Admin Panel
                       </Link>
                     )}
                     {user.role === 'restaurant' && (
-                      <Link to="/restaurant" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
+                      <Link to="/restaurant" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         Dashboard
                       </Link>
                     )}
                     <div className="divider" style={{ margin: '6px 0' }} />
-                    <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--danger)', width: '100%', background: 'transparent', transition: 'var(--transition)' }}
+                    <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--danger)', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(244,67,54,0.08)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                       <FiLogOut size={16} /> Logout
@@ -135,7 +144,6 @@ export default function Navbar() {
         transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
       }}>
-        {/* Nav links */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
           <Link to="/" onClick={() => setMobileOpen(false)}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 15, fontWeight: 600, color: isActive('/') ? 'var(--primary)' : 'var(--text-secondary)', background: isActive('/') ? 'rgba(255,87,34,0.08)' : 'transparent' }}>
@@ -149,17 +157,22 @@ export default function Navbar() {
 
         <div className="divider" />
 
-        {/* User section */}
         {user ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
             <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
-              {user.name}
+              👋 {user.name}
             </div>
             {user.role === 'customer' && (
-              <Link to="/orders" onClick={() => setMobileOpen(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                <FiPackage size={16} /> My Orders
-              </Link>
+              <>
+                <Link to="/orders" onClick={() => setMobileOpen(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+                  <FiPackage size={16} /> My Orders
+                </Link>
+                <Link to="/orders?tab=bookings" onClick={() => setMobileOpen(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+                  <FiCalendar size={16} /> My Bookings
+                </Link>
+              </>
             )}
             {user.role === 'admin' && (
               <Link to="/admin" onClick={() => setMobileOpen(false)}

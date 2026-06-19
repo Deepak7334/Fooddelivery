@@ -6,15 +6,17 @@ export default function Footer() {
       <div className="container">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32, marginBottom: 40 }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 12 }}> FoodHub</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 12 }}>
+              JD<span style={{ color: 'var(--text-primary)' }}>mart</span>
+            </div>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-              Delivering happiness to your doorstep. Order from the best restaurants near you.
+              Delivering happiness to your doorstep. Order from the best restaurants near you or book a table instantly.
             </p>
           </div>
           <div>
             <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>Quick Links</div>
-            {[['Home', '/'], ['Restaurants', '/restaurants'], ['My Orders', '/orders']].map(([label, path]) => (
-              <div key={path} style={{ marginBottom: 8 }}>
+            {[['Home', '/'], ['Restaurants', '/restaurants'], ['My Orders', '/orders'], ['Book a Table', '/restaurants']].map(([label, path]) => (
+              <div key={label} style={{ marginBottom: 8 }}>
                 <Link to={path} style={{ fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}>
@@ -25,14 +27,14 @@ export default function Footer() {
           </div>
           <div>
             <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>Contact</div>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📧 support@foodhub.com</p>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📞 1800-FoodHub</p>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📧 support@jdmart.com</p>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📞 1800-JDmart</p>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>⏰ 24/7 Support</p>
           </div>
         </div>
         <div className="divider" />
         <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-          © 2026 FoodHub. Made with ❤️ for food lovers.
+          © 2026 JDmart. Made with ❤️ for food lovers.
         </div>
       </div>
     </footer>

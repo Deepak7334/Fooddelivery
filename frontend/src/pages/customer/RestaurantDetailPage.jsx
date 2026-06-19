@@ -5,6 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { calculateDistance } from '../../utils/distance';
 
 export default function RestaurantDetailPage() {
   const { id } = useParams();
@@ -15,6 +16,7 @@ export default function RestaurantDetailPage() {
   const { addToCart, cartItems, restaurantId } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [distance, setDistance] = useState(null);
 
   useEffect(() => {
     api.get(`/customer/restaurants/${id}`)
@@ -23,9 +25,21 @@ export default function RestaurantDetailPage() {
         setMenuGrouped(res.data.menuGrouped || {});
         const cats = Object.keys(res.data.menuGrouped || {});
         if (cats.length) setActiveCategory(cats[0]);
+        
+        // Calculate distance if location available
+        const locStr = localStorage.getItem('jdmart_coords');
+        if (locStr && res.data.restaurant?.location?.lat && res.data.restaurant?.location?.lng) {
+          try {
+            const loc = JSON.parse(locStr);
+            const d = calculateDistance(loc.lat, loc.lng, res.data.restaurant.location.lat, res.data.restaurant.location.lng);
+            setDistance(d);
+          } catch(e) {}
+        }
       }).catch(() => toast.error('Restaurant not found'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const canDeliver = distance === null || distance <= 5;
 
   const getItemQty = (foodId) => {
     const item = cartItems.find(i => i.foodId === foodId);
@@ -34,6 +48,10 @@ export default function RestaurantDetailPage() {
 
   const handleAdd = (food) => {
     if (!user) { navigate('/login'); return; }
+    if (!canDeliver) {
+      toast.error("Sorry, we can't reach you. You are more than 5km away.");
+      return;
+    }
     addToCart({
       foodId: food._id,
       name: food.name,
@@ -89,10 +107,16 @@ export default function RestaurantDetailPage() {
         </div>
       </div>
 
-      <div className="container" style={{ display: 'flex', gap: 24, padding: '24px 24px' }}>
+      {!canDeliver && (
+        <div style={{ background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', padding: '16px 24px', textAlign: 'center', borderBottom: '1px solid rgba(244,67,54,0.2)' }}>
+          <strong>⚠️ Sorry, we can't reach you!</strong> You are {distance.toFixed(1)}km away. We only deliver within a 5km radius.
+        </div>
+      )}
+
+      <div className="container restaurant-layout">
         {/* Category Sidebar */}
-        <div style={{ width: 160, flexShrink: 0, position: 'sticky', top: 90, height: 'fit-content' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="restaurant-sidebar">
+          <div className="restaurant-sidebar-inner">
             {categories.map(cat => (
               <button key={cat} onClick={() => { setActiveCategory(cat); document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
                 style={{ padding: '10px 14px', borderRadius: 10, background: activeCategory === cat ? 'rgba(255,87,34,0.1)' : 'transparent', border: activeCategory === cat ? '1px solid rgba(255,87,34,0.3)' : '1px solid transparent', color: activeCategory === cat ? 'var(--primary)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }}>
@@ -103,7 +127,7 @@ export default function RestaurantDetailPage() {
         </div>
 
         {/* Menu Items */}
-        <div style={{ flex: 1 }}>
+        <div className="restaurant-content">
           {categories.length === 0 ? (
             <div className="empty-state"><div className="empty-state-icon"></div><h3>Menu coming soon!</h3></div>
           ) : categories.map(cat => (
@@ -115,7 +139,7 @@ export default function RestaurantDetailPage() {
                     onIncrease={() => handleAdd(food)}
                     onDecrease={() => {
                       if (!user) return;
-                    }} />
+                    }} canDeliver={canDeliver} />
                 ))}
               </div>
             </div>
@@ -136,7 +160,7 @@ export default function RestaurantDetailPage() {
   );
 }
 
-function FoodCard({ food, qty, onAdd }) {
+function FoodCard({ food, qty, onAdd, canDeliver = true }) {
   return (
     <div style={{ display: 'flex', gap: 16, padding: 16, background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', transition: 'var(--transition)' }}>
       <div style={{ flex: 1 }}>
@@ -164,9 +188,9 @@ function FoodCard({ food, qty, onAdd }) {
         ) : (
           <div style={{ width: 90, height: 80, background: 'var(--bg-card2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍽️</div>
         )}
-        <button onClick={onAdd} disabled={!food.isAvailable}
-          style={{ width: '100%', padding: '6px 0', background: qty > 0 ? 'var(--primary)' : 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: qty > 0 ? 'white' : 'var(--primary)', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'var(--transition)' }}>
-          {!food.isAvailable ? 'Unavailable' : qty > 0 ? `+ ADD (${qty})` : '+ ADD'}
+        <button onClick={onAdd} disabled={!food.isAvailable || !canDeliver}
+          style={{ width: '100%', padding: '6px 0', background: qty > 0 ? 'var(--primary)' : 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: qty > 0 ? 'white' : 'var(--primary)', fontWeight: 700, fontSize: 13, cursor: (!food.isAvailable || !canDeliver) ? 'not-allowed' : 'pointer', transition: 'var(--transition)', opacity: (!food.isAvailable || !canDeliver) ? 0.6 : 1 }}>
+          {!food.isAvailable ? 'Unavailable' : !canDeliver ? 'Too Far' : qty > 0 ? `+ ADD (${qty})` : '+ ADD'}
         </button>
       </div>
     </div>

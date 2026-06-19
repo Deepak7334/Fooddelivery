@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEdit2 } from 'react-icons/fi';
 
 const emptyForm = { number: '', maxGuests: '', description: '' };
 
@@ -11,9 +11,10 @@ export default function RestaurantTables() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [editingTable, setEditingTable] = useState(null);
 
   const fetchTables = () => { 
-    api.get('/api/booking/restaurant/tables')
+    api.get('/booking/restaurant/tables')
       .then(res => setTables(res.data || []))
       .catch(err => toast.error('Failed to load tables'))
       .finally(() => setLoading(false)); 
@@ -23,18 +24,29 @@ export default function RestaurantTables() {
     fetchTables();
   }, []);
 
-  const openAdd = () => { setForm(emptyForm); setShowModal(true); };
+  const openAdd = () => { setForm(emptyForm); setEditingTable(null); setShowModal(true); };
+  
+  const openEdit = (t) => {
+    setForm({ number: t.number, maxGuests: t.maxGuests, description: t.description || '' });
+    setEditingTable(t._id);
+    setShowModal(true);
+  };
 
   const handleSave = async () => {
     if (!form.number || !form.maxGuests) { toast.error('Table Number and Max Guests are required'); return; }
     setSaving(true);
     try {
-      await api.post('/api/booking/restaurant/tables', form);
-      toast.success('Table added successfully!');
+      if (editingTable) {
+        await api.put(`/booking/restaurant/tables/${editingTable}`, form);
+        toast.success('Table updated successfully!');
+      } else {
+        await api.post('/booking/restaurant/tables', form);
+        toast.success('Table added successfully!');
+      }
       setShowModal(false); 
       fetchTables();
     } catch (err) { 
-      toast.error(err.response?.data?.message || 'Error adding table'); 
+      toast.error(err.response?.data?.message || 'Error saving table'); 
     } finally { 
       setSaving(false); 
     }
@@ -43,7 +55,7 @@ export default function RestaurantTables() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this table?')) return;
     try { 
-      await api.delete(`/api/booking/restaurant/tables/${id}`); 
+      await api.delete(`/booking/restaurant/tables/${id}`); 
       toast.success('Table deleted'); 
       fetchTables(); 
     }
@@ -83,7 +95,10 @@ export default function RestaurantTables() {
                   <td>{t.maxGuests} <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>people</span></td>
                   <td>{t.description || '-'}</td>
                   <td>
-                    <button onClick={() => handleDelete(t._id)} className="btn btn-danger btn-sm"><FiTrash2 size={14} /> Delete</button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => openEdit(t)} className="btn btn-secondary btn-sm"><FiEdit2 size={14} /> Edit</button>
+                      <button onClick={() => handleDelete(t._id)} className="btn btn-danger btn-sm"><FiTrash2 size={14} /> Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -94,8 +109,8 @@ export default function RestaurantTables() {
 
       {showModal && (
         <div className="modal-overlay" onClick={e => { if (e.target.className === 'modal-overlay') setShowModal(false); }}>
-          <div className="modal-box" style={{ maxWidth: 400 }}>
-            <h2 className="modal-title">➕ Add Table</h2>
+          <div className="modal-box responsive-modal" style={{ maxWidth: 400, maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 className="modal-title">{editingTable ? '✏️ Edit Table' : '➕ Add Table'}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Table Number *</label>
@@ -103,7 +118,7 @@ export default function RestaurantTables() {
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Max Guests Capacity *</label>
-                <input type="number" min="1" max="20" className="form-input" value={form.maxGuests} onChange={e => setForm({ ...form, maxGuests: e.target.value })} placeholder="e.g. 4" />
+                <input type="number" min="1" max="100" className="form-input" value={form.maxGuests} onChange={e => setForm({ ...form, maxGuests: e.target.value })} placeholder="e.g. 4" />
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Description (Optional)</label>
@@ -113,7 +128,7 @@ export default function RestaurantTables() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
               <button onClick={() => setShowModal(false)} className="btn btn-secondary">Cancel</button>
               <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-                {saving ? 'Saving...' : 'Add Table'}
+                {saving ? 'Saving...' : (editingTable ? 'Update Table' : 'Add Table')}
               </button>
             </div>
           </div>

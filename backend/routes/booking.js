@@ -19,21 +19,38 @@ const DEFAULT_SLOTS = [
 router.get('/availability/:restaurantId/:date', protect, async (req, res) => {
   try {
     const { restaurantId, date } = req.params;
-    const targetDate = new Date(date);
+    
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999);
     
     // Find tables for restaurant
     const tables = await Table.find({ restaurantId, isActive: true });
     
-    // For each table, get available slots (mock/simple logic)
-    const availableTables = tables.map(table => ({
-      _id: table._id,
-      number: table.number,
-      maxGuests: table.maxGuests,
-      availableSlots: DEFAULT_SLOTS // Enhanced later with real booking conflicts
-    }));
+    // Find existing bookings
+    const existingBookings = await Booking.find({
+      restaurantId,
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: { $nin: ['cancelled', 'rejected'] }
+    });
+    
+    const availableTables = tables.map(table => {
+      const tableBookings = existingBookings.filter(b => b.tableId.toString() === table._id.toString());
+      const bookedSlots = tableBookings.map(b => b.timeSlot);
+      const freeSlots = DEFAULT_SLOTS.filter(slot => !bookedSlots.includes(slot));
+      
+      return {
+        _id: table._id,
+        number: table.number,
+        maxGuests: table.maxGuests,
+        availableSlots: freeSlots
+      };
+    }).filter(t => t.availableSlots.length > 0);
 
-    res.json({ tables: availableTables, date: targetDate });
+    res.json({ tables: availableTables, date: startOfDay });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -120,7 +137,7 @@ router.put('/restaurant/bookings/:id/confirm', protect, authorize('restaurant'),
     const booking = await Booking.findById(req.params.id).populate('restaurantId');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
-    if (booking.restaurantId.ownerId.toString() !== req.user.id) {
+    if (booking.restaurantId._id.toString() !== req.user.restaurantId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -145,7 +162,7 @@ router.put('/restaurant/bookings/:id/reject', protect, authorize('restaurant'), 
     const booking = await Booking.findById(req.params.id).populate('restaurantId');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
-    if (booking.restaurantId.ownerId.toString() !== req.user.id) {
+    if (booking.restaurantId._id.toString() !== req.user.restaurantId.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -160,7 +177,7 @@ router.put('/restaurant/bookings/:id/reject', protect, authorize('restaurant'), 
 
 router.get('/restaurant/bookings', protect, authorize('restaurant'), async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({ ownerId: req.user.id });
+    const restaurant = await Restaurant.findById(req.user.restaurantId);
     if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
 
     const bookings = await Booking.find({ restaurantId: restaurant._id })
@@ -176,7 +193,7 @@ router.get('/restaurant/bookings', protect, authorize('restaurant'), async (req,
 // ========== TABLE MANAGEMENT ==========
 router.get('/restaurant/tables', protect, authorize('restaurant'), async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({ ownerId: req.user.id });
+    const restaurant = await Restaurant.findById(req.user.restaurantId);
     if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
 
     const tables = await Table.find({ restaurantId: restaurant._id }).sort({ number: 1 });
@@ -188,7 +205,7 @@ router.get('/restaurant/tables', protect, authorize('restaurant'), async (req, r
 
 router.post('/restaurant/tables', protect, authorize('restaurant'), async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({ ownerId: req.user.id });
+    const restaurant = await Restaurant.findById(req.user.restaurantId);
     if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
 
     const { number, maxGuests, description } = req.body;
@@ -210,15 +227,57 @@ router.post('/restaurant/tables', protect, authorize('restaurant'), async (req, 
   }
 });
 
+router.put('/restaurant/tables/:id', protect, authorize('restaurant'), async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.user.restaurantId);
+    if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
+
+    const { number, maxGuests, description } = req.body;
+    
+    if (number) {
+      const existingTable = await Table.findOne({ restaurantId: restaurant._id, number, _id: { $ne: req.params.id } });
+      if (existingTable) return res.status(400).json({ message: 'Table number already exists' });
+    }
+
+    const table = await Table.findOneAndUpdate(
+      { _id: req.params.id, restaurantId: restaurant._id },
+      { number, maxGuests, description },
+      { new: true }
+    );
+    
+    if (!table) return res.status(404).json({ message: 'Table not found' });
+    res.json(table);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.delete('/restaurant/tables/:id', protect, authorize('restaurant'), async (req, res) => {
   try {
-    const restaurant = await Restaurant.findOne({ ownerId: req.user.id });
+    const restaurant = await Restaurant.findById(req.user.restaurantId);
     if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
 
     const table = await Table.findOneAndDelete({ _id: req.params.id, restaurantId: restaurant._id });
     if (!table) return res.status(404).json({ message: 'Table not found' });
 
     res.json({ message: 'Table removed' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Customer: cancel their own booking
+router.patch('/customer/bookings/:id/cancel', protect, async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (['confirmed', 'rejected', 'cancelled'].includes(booking.status)) {
+      return res.status(400).json({ message: `Cannot cancel a booking that is already ${booking.status}` });
+    }
+    booking.status = 'cancelled';
+    await booking.save();
+    res.json({ message: 'Booking cancelled', booking });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

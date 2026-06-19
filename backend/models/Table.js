@@ -8,14 +8,13 @@ const tableSchema = new mongoose.Schema({
   },
   number: {
     type: Number,
-    required: true,
-    unique: true
+    required: true
   },
   maxGuests: {
     type: Number,
     required: true,
     min: 1,
-    max: 20
+    max: 100
   },
   description: {
     type: String,
@@ -43,6 +42,9 @@ const tableSchema = new mongoose.Schema({
     }]
   }]
 }, { timestamps: true });
+
+// Ensure table numbers are unique per restaurant
+tableSchema.index({ restaurantId: 1, number: 1 }, { unique: true });
 
 module.exports = mongoose.model('Table', tableSchema);
 

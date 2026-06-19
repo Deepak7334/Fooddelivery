@@ -7,6 +7,7 @@ const Restaurant = require('../models/Restaurant');
 const Food = require('../models/Food');
 const Order = require('../models/Order');
 const Category = require('../models/Category');
+const Table = require('../models/Table');
 const generateOTP = require('../utils/generateOTP');
 const sendEmail = require('../utils/sendEmail');
 
@@ -16,18 +17,20 @@ router.use(protect, authorize('admin'));
 // ========== DASHBOARD STATS ==========
 router.get('/stats', async (req, res) => {
   try {
-    const [totalUsers, totalRestaurants, totalOrders, revenueAgg, totalDeliveryAgents] = await Promise.all([
+    const Booking = require('../models/Booking');
+    const [totalUsers, totalRestaurants, totalOrders, revenueAgg, totalDeliveryAgents, totalBookings] = await Promise.all([
       User.countDocuments({ role: 'customer' }),
       Restaurant.countDocuments(),
       Order.countDocuments(),
       Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$finalAmount' } } }]),
       User.countDocuments({ role: 'delivery' }),
+      Booking.countDocuments(),
     ]);
     const recentOrders = await Order.find().sort({ createdAt: -1 }).limit(10)
       .populate('customerId', 'name email phone')
       .populate('restaurantId', 'name')
       .populate('deliveryAgentId', 'name phone');
-    res.json({ success: true, stats: { totalUsers, totalRestaurants, totalOrders, totalRevenue: revenueAgg[0]?.total || 0, totalDeliveryAgents }, recentOrders });
+    res.json({ success: true, stats: { totalUsers, totalRestaurants, totalOrders, totalRevenue: revenueAgg[0]?.total || 0, totalDeliveryAgents, totalBookings }, recentOrders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -102,6 +105,71 @@ router.get('/users', async (req, res) => {
   try {
     const users = await User.find({ role: { $ne: 'admin' } }).select('-password');
     res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ========== TABLE MANAGEMENT ==========
+router.get('/restaurants/:id/tables', async (req, res) => {
+  try {
+    const tables = await Table.find({ restaurantId: req.params.id }).sort({ number: 1 });
+    res.json({ success: true, tables });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/restaurants/:id/tables', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+    const { number, maxGuests, description } = req.body;
+    
+    const existingTable = await Table.findOne({ restaurantId: restaurant._id, number });
+    if (existingTable) return res.status(400).json({ success: false, message: 'Table number already exists' });
+
+    const table = new Table({
+      restaurantId: restaurant._id,
+      number,
+      maxGuests,
+      description
+    });
+    await table.save();
+    res.status(201).json({ success: true, table });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/restaurants/:id/tables/:tableId', async (req, res) => {
+  try {
+    const { number, maxGuests, description } = req.body;
+    
+    if (number) {
+      const existingTable = await Table.findOne({ restaurantId: req.params.id, number, _id: { $ne: req.params.tableId } });
+      if (existingTable) return res.status(400).json({ success: false, message: 'Table number already exists' });
+    }
+
+    const table = await Table.findOneAndUpdate(
+      { _id: req.params.tableId, restaurantId: req.params.id },
+      { number, maxGuests, description },
+      { new: true }
+    );
+    
+    if (!table) return res.status(404).json({ success: false, message: 'Table not found' });
+    res.json({ success: true, table });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/restaurants/:id/tables/:tableId', async (req, res) => {
+  try {
+    const table = await Table.findOneAndDelete({ _id: req.params.tableId, restaurantId: req.params.id });
+    if (!table) return res.status(404).json({ success: false, message: 'Table not found' });
+    res.json({ success: true, message: 'Table removed' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -278,8 +346,8 @@ router.patch('/orders/:id/status', async (req, res) => {
       const customerName = order.customerId?.name || 'Customer';
       await sendEmail({
         to: customerEmail,
-        subject: '🚴 FoodHub — Your Delivery OTP',
-        html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 FoodHub</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Your order is on the way!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p>Share this OTP with the delivery agent to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
+        subject: '🚴 JDmart — Your Delivery OTP',
+        html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDmart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Your order is on the way!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p>Share this OTP with the delivery agent to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
       });
       // Do NOT set agent to busy here yet — agent becomes busy when they *accept* it (picked_up)
     }
@@ -376,6 +444,57 @@ router.delete('/categories/:id', async (req, res) => {
   try {
     await Category.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Category deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ========== BOOKING MANAGEMENT (Admin View) ==========
+router.get('/bookings', async (req, res) => {
+  try {
+    const Booking = require('../models/Booking');
+    const pageNum  = Math.max(1, parseInt(req.query.page  || '1',  10));
+    const limitNum = Math.max(1, parseInt(req.query.limit || '20', 10));
+    const { status, restaurantId } = req.query;
+
+    const filter = {};
+    if (status && status !== 'all') filter.status = status;
+    if (restaurantId)               filter.restaurantId = restaurantId;
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .populate('restaurantId', 'name city')
+        .populate('userId',       'name email phone')
+        .populate('tableId',      'number maxGuests'),
+      Booking.countDocuments(filter),
+    ]);
+
+    res.json({ success: true, bookings, total, pages: Math.ceil(total / limitNum) });
+  } catch (err) {
+    console.error('Admin /bookings error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin action on bookings (confirm / reject / cancel)
+router.put('/bookings/:id/:action', async (req, res) => {
+  try {
+    const { action } = req.params;
+    const validActions = ['confirm', 'reject', 'cancel'];
+    if (!validActions.includes(action)) return res.status(400).json({ success: false, message: 'Invalid action' });
+    
+    const statusMap = { confirm: 'confirmed', reject: 'rejected', cancel: 'cancelled' };
+    const Booking = require('../models/Booking');
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    
+    booking.status = statusMap[action];
+    await booking.save();
+    
+    res.json({ success: true, booking });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

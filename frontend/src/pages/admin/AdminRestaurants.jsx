@@ -27,6 +27,13 @@ export default function AdminRestaurants() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Table Management State
+  const [tablesModal, setTablesModal] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [tables, setTables] = useState([]);
+  const [tableForm, setTableForm] = useState({ number: '', maxGuests: '', description: '' });
+  const [editingTable, setEditingTable] = useState(null);
+
   const fetchRestaurants = () => {
     api.get('/admin/restaurants').then(res => setRestaurants(res.data.restaurants || [])).catch(console.error).finally(() => setLoading(false));
   };
@@ -67,6 +74,48 @@ export default function AdminRestaurants() {
     catch { toast.error('Error'); }
   };
 
+  const openTables = async (r) => {
+    setSelectedRestaurant(r);
+    setTablesModal(true);
+    setTableForm({ number: '', maxGuests: '', description: '' });
+    setEditingTable(null);
+    try {
+      const res = await api.get(`/admin/restaurants/${r._id}/tables`);
+      setTables(res.data.tables || []);
+    } catch { toast.error('Error loading tables'); }
+  };
+
+  const handleSaveTable = async () => {
+    if (!tableForm.number || !tableForm.maxGuests) return toast.error('Number and max guests required');
+    try {
+      if (editingTable) {
+        await api.put(`/admin/restaurants/${selectedRestaurant._id}/tables/${editingTable}`, tableForm);
+        toast.success('Table updated');
+      } else {
+        await api.post(`/admin/restaurants/${selectedRestaurant._id}/tables`, tableForm);
+        toast.success('Table added');
+      }
+      setTableForm({ number: '', maxGuests: '', description: '' });
+      setEditingTable(null);
+      const res = await api.get(`/admin/restaurants/${selectedRestaurant._id}/tables`);
+      setTables(res.data.tables || []);
+    } catch (err) { toast.error(err.response?.data?.message || 'Error saving table'); }
+  };
+
+  const handleDeleteTable = async (id) => {
+    if (!confirm('Delete this table?')) return;
+    try {
+      await api.delete(`/admin/restaurants/${selectedRestaurant._id}/tables/${id}`);
+      setTables(tables.filter(t => t._id !== id));
+      toast.success('Table deleted');
+    } catch { toast.error('Error deleting table'); }
+  };
+
+  const editTable = (t) => {
+    setTableForm({ number: t.number, maxGuests: t.maxGuests, description: t.description || '' });
+    setEditingTable(t._id);
+  };
+
   // ✅ Shorthand props passer for cleaner JSX
   const fProps = { form, setForm };
 
@@ -99,6 +148,7 @@ export default function AdminRestaurants() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => openTables(r)} className="btn btn-primary btn-sm" title="Manage Tables">🪑</button>
                         <button onClick={() => openEdit(r)} className="btn btn-secondary btn-sm"><FiEdit2 /></button>
                         <button onClick={() => handleDelete(r._id)} className="btn btn-danger btn-sm"><FiTrash2 /></button>
                       </div>
@@ -151,6 +201,65 @@ export default function AdminRestaurants() {
               <button onClick={handleSave} disabled={saving} className="btn btn-primary">
                 {saving ? <><span className="spinner" style={{ width: 16, height: 16 }} /> Saving...</> : editing ? 'Update' : 'Create Restaurant'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tables Management Modal */}
+      {tablesModal && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setTablesModal(false)}>
+          <div className="modal-box responsive-modal" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 className="modal-title">🪑 Manage Tables</h2>
+            <p className="modal-subtitle">For {selectedRestaurant?.name}</p>
+            
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, marginBottom: 24, border: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: 16, marginBottom: 12 }}>{editingTable ? 'Edit Table' : 'Add New Table'}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Table Number</label>
+                  <input type="number" className="form-input" value={tableForm.number} onChange={e => setTableForm({ ...tableForm, number: e.target.value })} placeholder="e.g. 1" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Max Guests</label>
+                  <input type="number" min="1" max="100" className="form-input" value={tableForm.maxGuests} onChange={e => setTableForm({ ...tableForm, maxGuests: e.target.value })} placeholder="e.g. 4" />
+                </div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Description (optional)</label>
+                  <input type="text" className="form-input" value={tableForm.description} onChange={e => setTableForm({ ...tableForm, description: e.target.value })} placeholder="e.g. Window seat" />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+                {editingTable && <button onClick={() => { setEditingTable(null); setTableForm({ number: '', maxGuests: '', description: '' }); }} className="btn btn-secondary btn-sm">Cancel Edit</button>}
+                <button onClick={handleSaveTable} className="btn btn-primary btn-sm">{editingTable ? 'Update Table' : 'Add Table'}</button>
+              </div>
+            </div>
+
+            <div className="table-wrapper">
+              <table>
+                <thead><tr><th>No.</th><th>Guests</th><th>Description</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {tables.length === 0 ? <tr><td colSpan={4} style={{ textAlign: 'center', padding: 20 }}>No tables added yet.</td></tr> :
+                    tables.map(t => (
+                      <tr key={t._id}>
+                        <td style={{ fontWeight: 700 }}>{t.number}</td>
+                        <td>{t.maxGuests}</td>
+                        <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t.description || '-'}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={() => editTable(t)} className="btn btn-secondary btn-sm"><FiEdit2 size={12}/></button>
+                            <button onClick={() => handleDeleteTable(t._id)} className="btn btn-danger btn-sm"><FiTrash2 size={12}/></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => setTablesModal(false)} className="btn btn-secondary">Close</button>
             </div>
           </div>
         </div>

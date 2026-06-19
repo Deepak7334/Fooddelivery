@@ -21,6 +21,7 @@ export default function AdminDashboard() {
     { icon: '', label: 'Total Customers', value: stats?.totalUsers || 0, color: '#00BCD4', link: '/admin/users' },
     { icon: '', label: 'Restaurants', value: stats?.totalRestaurants || 0, color: '#FF5722', link: '/admin/restaurants' },
     { icon: '', label: 'Total Orders', value: stats?.totalOrders || 0, color: '#9C27B0', link: '/admin/orders' },
+    { icon: '', label: 'Table Bookings', value: stats?.totalBookings || 0, color: '#FF9800', link: '/admin/bookings' },
     { icon: '', label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString('en-IN')}`, color: '#4CAF50', link: '/admin/orders' },
   ];
 
@@ -53,6 +54,7 @@ export default function AdminDashboard() {
         <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Quick Actions</h2>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Link to="/admin/restaurants" className="btn btn-primary"><FiShoppingBag /> Add Restaurant</Link>
+          <Link to="/admin/bookings" className="btn btn-primary" style={{ background: '#FF9800' }}>Manage Bookings</Link>
           <Link to="/admin/categories" className="btn btn-secondary"><span></span> Manage Categories</Link>
           <Link to="/admin/orders" className="btn btn-secondary"><FiList /> View All Orders</Link>
         </div>

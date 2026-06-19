@@ -28,6 +28,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminDeliveryAgents from './pages/admin/AdminDeliveryAgents';
+import AdminBookings from './pages/admin/AdminBookings';
 
 // Restaurant Pages
 import RestaurantDashboard from './pages/restaurant/RestaurantDashboard';
@@ -44,7 +45,7 @@ import DeliveryHistory from './pages/delivery/DeliveryHistory';
 // Guards
 const PrivateRoute = ({ children, role }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div className="loading-overlay"><div className="loading-box"><div className="loading-logo"></div><div className="spinner" style={{ margin: '0 auto' }}></div></div></div>;
+  if (loading) return <div className="loading-overlay"><div className="loading-box"><div className="loading-logo">🛒</div><div className="spinner" style={{ margin: '0 auto' }}></div></div></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (role && user.role !== role) {
     if (user.role === 'admin') return <Navigate to="/admin" replace />;
@@ -74,7 +75,7 @@ const AdminLayout = ({ children }) => {
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
             <FiMenu size={20} />
           </button>
-          <span className="panel-topbar-title">🍕 Admin Panel</span>
+          <span className="panel-topbar-title">🛒 JDmart Admin</span>
         </div>
         <div style={{ padding: '24px' }}>
           {children}
@@ -95,7 +96,7 @@ const RestaurantLayout = ({ children }) => {
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
             <FiMenu size={20} />
           </button>
-          <span className="panel-topbar-title">🍕 Restaurant Panel</span>
+          <span className="panel-topbar-title">🛒 Restaurant Panel</span>
         </div>
         <div style={{ padding: '24px' }}>
           {children}
@@ -125,6 +126,7 @@ export default function App() {
       <Route path="/admin/restaurants" element={<PrivateRoute role="admin"><AdminLayout><AdminRestaurants /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/users" element={<PrivateRoute role="admin"><AdminLayout><AdminUsers /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/orders" element={<PrivateRoute role="admin"><AdminLayout><AdminOrders /></AdminLayout></PrivateRoute>} />
+      <Route path="/admin/bookings" element={<PrivateRoute role="admin"><AdminLayout><AdminBookings /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/delivery-agents" element={<PrivateRoute role="admin"><AdminLayout><AdminDeliveryAgents /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/categories" element={<PrivateRoute role="admin"><AdminLayout><AdminCategories /></AdminLayout></PrivateRoute>} />
 
@@ -144,4 +146,3 @@ export default function App() {
     </Routes>
   );
 }
-

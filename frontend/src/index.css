@@ -1,4 +1,4 @@
-/* === FoodHub Global Styles === */
+/* === JDmart Global Styles === */
 *,
 *::before,
 *::after {
@@ -274,6 +274,92 @@ select.form-input option {
 
   .cart-layout> :last-child {
     position: static !important;
+  }
+}
+
+/* === Search Form (HomePage) === */
+.search-form {
+  display: flex;
+  gap: 0;
+  max-width: 640px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  align-items: stretch;
+}
+.search-location {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-right: 1px solid rgba(255,255,255,0.1);
+}
+.search-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+@media (max-width: 640px) {
+  .search-form {
+    flex-direction: column;
+    border-radius: 12px;
+  }
+  .search-location {
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .search-form .btn {
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+/* === Restaurant Detail Layout === */
+.restaurant-layout {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+}
+
+.restaurant-sidebar {
+  width: 160px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 90px;
+  height: fit-content;
+}
+
+.restaurant-sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.restaurant-content {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .restaurant-layout {
+    flex-direction: column;
+    padding: 16px;
+  }
+  .restaurant-sidebar {
+    width: 100%;
+    position: static;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 8px;
+  }
+  .restaurant-sidebar::-webkit-scrollbar {
+    height: 4px;
+  }
+  .restaurant-sidebar-inner {
+    flex-direction: row;
+    gap: 8px;
   }
 }
 
@@ -959,5 +1045,124 @@ tbody tr:last-child td {
 
   .responsive-w-full {
     width: 100% !important;
+  }
+}
+
+/* === Booking Slot Chips === */
+.slot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1.5px solid transparent;
+}
+
+.slot-chip-available {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #4CAF50;
+}
+
+.slot-chip-available:hover {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4CAF50;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.25);
+}
+
+.slot-chip-booked {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* === Tab Bar === */
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.tab-btn-active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  box-shadow: 0 2px 12px rgba(255, 87, 34, 0.35);
+}
+
+.tab-btn-active:hover {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  transform: none;
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tab-btn-active .tab-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* === Booking Status Badges === */
+.badge-confirmed {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.badge-rejected {
+  background: rgba(244, 67, 54, 0.2);
+  color: #F44336;
+}
+
+/* === Responsive: small screens touch-friendly === */
+@media (max-width: 480px) {
+  .slot-chip {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  .tab-btn {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  .modal-box {
+    padding: 20px 16px;
+  }
+
+  td, th {
+    padding: 10px 12px;
+    font-size: 13px;
   }
 }

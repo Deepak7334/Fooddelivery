@@ -64,7 +64,7 @@ export default function CheckoutPage() {
         key,
         amount,
         currency: 'INR',
-        name: 'FoodHub',
+        name: 'JDmart',
         description: 'Food Order Payment',
         order_id: razorpayOrderId,
         handler: async (response) => {

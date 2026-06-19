@@ -127,7 +127,7 @@ export default function UpiPaymentPage() {
   const timerRef = useRef(null);
 
   // UPI string for QR
-  const upiString = `upi://pay?pa=foodhub@upi&pn=FoodHub&am=${amount || 0}&cu=INR&tn=FoodOrder`;
+  const upiString = `upi://pay?pa=jdmart@upi&pn=JDmart&am=${amount || 0}&cu=INR&tn=FoodOrder`;
 
   useEffect(() => {
     if (!orderId || !amount) {
@@ -289,7 +289,7 @@ export default function UpiPaymentPage() {
                   border: '1px solid var(--border)',
                   wordBreak: 'break-all',
                 }}>
-                  <b>UPI ID:</b> foodhub@upi
+                  <b>UPI ID:</b> jdmart@upi
                 </div>
               </div>
               {!paying && (

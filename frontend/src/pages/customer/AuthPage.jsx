@@ -58,7 +58,7 @@ export default function AuthPage() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <Link to="/" style={{ display: 'inline-block', fontSize: 28, fontWeight: 900, color: 'var(--primary)' }}>
-            FoodHub
+            JDmart
           </Link>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 8 }}>
             {mode === 'login' ? 'Welcome back! Sign in to continue.' : 'Create your account to get started.'}

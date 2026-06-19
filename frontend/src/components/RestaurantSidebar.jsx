@@ -30,8 +30,11 @@ export default function RestaurantSidebar({ open, onClose }) {
           <FiX size={16} />
         </button>
 
-        <div className="sidebar-logo"> FoodHub <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400, display: 'block' }}>Restaurant Panel</span></div>
-        {user && <div style={{ padding: '0 12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>Welcome' {user.name}</div>}
+        <div className="sidebar-logo">
+          JD<span style={{ color: 'var(--text-primary)' }}>mart</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400, display: 'block' }}>Restaurant Panel</span>
+        </div>
+        {user && <div style={{ padding: '0 12px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>👋 {user.name}</div>}
         <nav className="sidebar-nav">
           {navLinks.map(link => (
             <Link key={link.to} to={link.to} className={`sidebar-link ${isActive(link.to, link.exact) ? 'active' : ''}`} onClick={onClose}>
