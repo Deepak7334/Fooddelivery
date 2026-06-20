@@ -29,9 +29,7 @@ const STORE_TYPES = [
   { _id: 'electronics', name: 'Electronics', icon: '📱', color: '#9C27B0', type: 'store' },
   { _id: 'beauty', name: 'Beauty', icon: '🧴', color: '#E91E63', type: 'store' },
   { _id: 'bakery', name: 'Bakery', icon: '🥐', color: '#FF5722', type: 'store' },
-  { _id: 'pets', name: 'Pets', icon: '🐾', color: '#FF9800', type: 'store' },
-  { _id: 'supermarket', name: 'Supermarket', icon: '🏪', color: '#607D8B', type: 'store' },
-  { _id: 'sports', name: 'Sports', icon: '⚽', color: '#00BCD4', type: 'store' }
+ 
 ];
 
 export default function HomePage() {
@@ -57,11 +55,11 @@ export default function HomePage() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/customer/categories'),
-      api.get('/customer/restaurants'),
-      api.get('/customer/foods'),
-      api.get('/store/products'),
-      api.get('/store/stores')
+      api.get('/customer/categories').catch(() => ({ data: { categories: [] } })),
+      api.get('/customer/restaurants').catch(() => ({ data: { restaurants: [] } })),
+      api.get('/customer/foods').catch(() => ({ data: { foods: [] } })),
+      api.get('/store/products').catch(() => ({ data: { products: [] } })),
+      api.get('/store/stores').catch(() => ({ data: { stores: [] } }))
     ]).then(([catRes, restRes, foodRes, prodRes, storeRes]) => {
       setCategories(catRes.data.categories || []);
       setRestaurants(restRes.data.restaurants || []);
@@ -352,7 +350,7 @@ export default function HomePage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
                 {loading ? Array(6).fill(0).map((_, i) => (
                   <div key={i} style={{ height: 270, borderRadius: 16 }} className="shimmer" />
-                )) : mixedVendors.slice(0, 12).map(v => (
+                )) : mixedVendors.map(v => (
                   v.isStore ? <StoreCard key={v._id} store={v} /> : <RestaurantCard key={v._id} restaurant={v} userCoords={userCoords} />
                 ))}
               </div>
@@ -375,7 +373,7 @@ export default function HomePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 18 }}>
                   {loading ? Array(6).fill(0).map((_, i) => (
                     <div key={i} style={{ height: 160, borderRadius: 16 }} className="shimmer" />
-                  )) : mixedItems.slice(0, 18).map(item => (
+                  )) : mixedItems.map(item => (
                     item.isProduct 
                       ? <HomeProductCard 
                           key={item._id} 

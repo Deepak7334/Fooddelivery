@@ -11,7 +11,7 @@ const Store = require('../models/Store');
 // Get all categories
 router.get('/categories', async (req, res) => {
   try {
-    const categories = await Category.find({ isActive: true }).sort({ sortOrder: 1 });
+    const categories = await Category.find({ isActive: true });
     res.json({ success: true, categories });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -21,10 +21,7 @@ router.get('/categories', async (req, res) => {
 // Get popular foods
 router.get('/foods', async (req, res) => {
   try {
-    const foods = await Food.find({ isAvailable: true })
-      .limit(12)
-      .populate('restaurantId', 'name image address')
-      .sort({ rating: -1 });
+    const foods = await Food.find({ isAvailable: true }).limit(24).populate('restaurantId', 'name image address cuisine');
     res.json({ success: true, foods });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

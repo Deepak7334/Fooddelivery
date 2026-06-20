@@ -34,7 +34,7 @@ router.get('/stores', async (req, res) => {
       { tags: { $regex: search, $options: 'i' } },
     ];
 
-    const stores = await Store.find(filter).sort({ rating: -1 });
+    const stores = await Store.find(filter);
     res.json({ success: true, stores });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -78,7 +78,6 @@ router.get('/products', async (req, res) => {
 
     const products = await Product.find(filter)
       .populate('storeId', 'name storeType city deliveryTime deliveryFee')
-      .sort({ isFeatured: -1, createdAt: -1 })
       .limit(60);
 
     res.json({ success: true, products });
