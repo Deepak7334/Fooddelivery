@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const PROD_BACKEND_URL = 'https://fooddelivery-ryjf.onrender.com';
+const baseURL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PROD_BACKEND_URL : '');
+
 const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || '') + '/api',
+  baseURL: baseURL + '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
