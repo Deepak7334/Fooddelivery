@@ -114,7 +114,8 @@ router.patch('/orders/:id/reject', async (req, res) => {
 
     const io = req.app.get('io');
     io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: order.status, statusHistory: order.statusHistory });
-    io.to(`restaurant_${order.restaurantId}`).emit('order:updated', order);
+    if (order.restaurantId) io.to(`restaurant_${order.restaurantId}`).emit('order:updated', order);
+    if (order.storeId) io.to(`store_${order.storeId}`).emit('order:updated', order);
 
     res.json({ success: true, message: 'Order rejected. Admin will reassign.' });
   } catch (err) {
@@ -180,6 +181,7 @@ router.post('/orders/:id/verify-otp', async (req, res) => {
     const io = req.app.get('io');
     io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: 'delivered', statusHistory: order.statusHistory });
     if (order.restaurantId) io.to(`restaurant_${order.restaurantId}`).emit('order:delivered', { orderId: order._id });
+    if (order.storeId) io.to(`store_${order.storeId}`).emit('order:delivered', { orderId: order._id });
 
     res.json({ success: true, message: '🎉 Delivery confirmed! Earn ₹' + (order.deliveryFee || 0) });
   } catch (err) {

@@ -5,6 +5,7 @@ const Restaurant = require('../models/Restaurant');
 const Food = require('../models/Food');
 const Order = require('../models/Order');
 const Category = require('../models/Category');
+const Store = require('../models/Store');
 
 // ========== PUBLIC ROUTES ==========
 // Get all categories
@@ -81,38 +82,71 @@ router.get('/restaurants/:id', async (req, res) => {
 // Place order
 router.post('/orders', protect, authorize('customer'), async (req, res) => {
   try {
-    const { restaurantId, items, deliveryAddress, specialInstructions, paymentMethod } = req.body;
+    const { items, deliveryAddress, specialInstructions, paymentMethod } = req.body;
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
-    const restaurant = await Restaurant.findById(restaurantId);
-    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
 
-    const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const deliveryFee = restaurant.deliveryFee || 30;
-    const finalAmount = totalAmount + deliveryFee;
+    const Restaurant = require('../models/Restaurant');
+    const Store = require('../models/Store');
+    
+    // Group items by vendor
+    const vendorGroups = {};
+    for (const item of items) {
+      const vendorId = item.restaurantId || item.storeId;
+      const vendorType = item.type === 'food' ? 'restaurant' : 'store';
+      const key = `${vendorType}_${vendorId}`;
+      if (!vendorGroups[key]) {
+        vendorGroups[key] = { vendorId, vendorType, items: [] };
+      }
+      vendorGroups[key].items.push(item);
+    }
 
-    const order = await Order.create({
-      customerId: req.user._id,
-      restaurantId,
-      restaurantName: restaurant.name,
-      items,
-      totalAmount,
-      deliveryFee,
-      finalAmount,
-      deliveryAddress,
-      specialInstructions,
-      paymentMethod: paymentMethod || 'razorpay',
-      customerEmail: req.user.email,
-      customerPhone: req.user.phone,
-      statusHistory: [{ status: 'pending', timestamp: new Date() }],
-    });
-
-    // Notify restaurant via socket
+    const createdOrders = [];
     const io = req.app.get('io');
-    io.to(`restaurant_${restaurantId}`).emit('order:new', order);
 
-    res.status(201).json({ success: true, order });
+    for (const key of Object.keys(vendorGroups)) {
+      const group = vendorGroups[key];
+      let deliveryFee = 30;
+      let vendorName = 'JDmart';
+
+      if (group.vendorType === 'restaurant' && group.vendorId) {
+        const rest = await Restaurant.findById(group.vendorId);
+        if (rest) { deliveryFee = rest.deliveryFee || 30; vendorName = rest.name; }
+      } else if (group.vendorType === 'store' && group.vendorId) {
+        const store = await Store.findById(group.vendorId);
+        if (store) { deliveryFee = store.deliveryFee || 30; vendorName = store.name; }
+      }
+
+      const totalAmount = group.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const taxes = Math.round(totalAmount * 0.05); // Match frontend logic (5% tax)
+      const finalAmount = totalAmount + deliveryFee + taxes;
+
+      const order = await Order.create({
+        customerId: req.user._id,
+        restaurantId: group.vendorType === 'restaurant' ? group.vendorId : null,
+        restaurantName: group.vendorType === 'restaurant' ? vendorName : null,
+        storeId: group.vendorType === 'store' ? group.vendorId : null,
+        storeName: group.vendorType === 'store' ? vendorName : null,
+        orderType: group.vendorType === 'restaurant' ? 'food' : 'product',
+        items: group.items,
+        totalAmount,
+        deliveryFee,
+        finalAmount,
+        deliveryAddress,
+        specialInstructions,
+        paymentMethod: paymentMethod || 'razorpay',
+        customerEmail: req.user.email,
+        customerPhone: req.user.phone,
+        alternatePhone: req.body.alternatePhone || '',
+        statusHistory: [{ status: 'pending', timestamp: new Date() }],
+      });
+      
+      createdOrders.push(order);
+      io.to(`${group.vendorType}_${group.vendorId}`).emit('order:new', order);
+    }
+
+    res.status(201).json({ success: true, orders: createdOrders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -123,7 +157,8 @@ router.get('/orders', protect, authorize('customer'), async (req, res) => {
   try {
     const orders = await Order.find({ customerId: req.user._id })
       .sort({ createdAt: -1 })
-      .populate('restaurantId', 'name image address');
+      .populate('restaurantId', 'name image address')
+      .populate('storeId', 'name image address');
     res.json({ success: true, orders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -134,7 +169,8 @@ router.get('/orders', protect, authorize('customer'), async (req, res) => {
 router.get('/orders/:id', protect, authorize('customer'), async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, customerId: req.user._id })
-      .populate('restaurantId', 'name image address phone');
+      .populate('restaurantId', 'name image address phone')
+      .populate('storeId', 'name image address phone');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     res.json({ success: true, order });
   } catch (err) {
@@ -192,6 +228,39 @@ router.patch('/orders/:id/cancel', protect, authorize('customer'), async (req, r
     const io = req.app.get('io');
     io.to(`restaurant_${order.restaurantId}`).emit('order:cancelled', { orderId: order._id });
     res.json({ success: true, message: 'Order cancelled', order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ========== STORE ORDER PLACEMENT ==========
+router.post('/store-orders', protect, authorize('customer'), async (req, res) => {
+  try {
+    const { storeId, items, deliveryAddress, paymentMethod, totalAmount, deliveryFee, finalAmount, specialInstructions } = req.body;
+    if (!storeId || !items?.length) return res.status(400).json({ success: false, message: 'storeId and items are required' });
+
+    const store = await Store.findById(storeId);
+    if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
+
+    const order = await Order.create({
+      customerId: req.user.id,
+      storeId,
+      storeName: store.name,
+      orderType: 'product',
+      items,
+      totalAmount,
+      deliveryFee: deliveryFee || store.deliveryFee,
+      finalAmount,
+      deliveryAddress,
+      paymentMethod: paymentMethod || 'cod',
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'pending',
+      specialInstructions: specialInstructions || '',
+      customerPhone: req.user.phone || '',
+      customerEmail: req.user.email || '',
+      statusHistory: [{ status: 'pending', timestamp: new Date() }],
+    });
+
+    res.status(201).json({ success: true, order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

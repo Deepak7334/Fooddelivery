@@ -6,14 +6,37 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
-  const { cartItems, restaurantId, totalPrice, clearCart } = useCart();
+  const { cartItems, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [address, setAddress] = useState(user?.address || '');
+  const [alternatePhone, setAlternatePhone] = useState('');
   const [instructions, setInstructions] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [loading, setLoading] = useState(false);
-  const fee = 30;
+  const [savingAddress, setSavingAddress] = useState(false);
+
+  const handleSaveAddress = async () => {
+    if (!address.trim()) return toast.error('Address cannot be empty');
+    setSavingAddress(true);
+    try {
+      await api.put('/auth/profile', { address });
+      toast.success('Address saved to profile!');
+      // Update local context user object if possible, but a toast is good enough
+    } catch (err) {
+      toast.error('Failed to save address');
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+  
+  const uniqueVendors = new Set();
+  cartItems.forEach(item => {
+    if (item.restaurantId) uniqueVendors.add(item.restaurantId);
+    if (item.storeId) uniqueVendors.add(item.storeId);
+  });
+  const fee = 30 * Math.max(1, uniqueVendors.size);
+  
   const taxes = Math.round(totalPrice * 0.05);
   const total = totalPrice + fee + taxes;
 
@@ -24,13 +47,30 @@ export default function CheckoutPage() {
     try {
       // 1. Create order
       const orderRes = await api.post('/customer/orders', {
-        restaurantId,
-        items: cartItems.map(i => ({ foodId: i.foodId, name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+        items: cartItems.map(i => ({ 
+          foodId: i.type === 'food' ? (i.foodId || i._id) : null,
+          productId: i.type === 'product' ? (i.productId || i._id) : null,
+          type: i.type,
+          restaurantId: i.restaurantId,
+          storeId: i.storeId,
+          name: i.name, 
+          price: i.price, 
+          quantity: i.quantity, 
+          image: i.image 
+        })),
         deliveryAddress: address,
+        alternatePhone: alternatePhone,
         specialInstructions: instructions,
         paymentMethod: paymentMethod === 'upi' ? 'razorpay' : paymentMethod,
       });
-      const order = orderRes.data.order;
+
+      // Automatically update profile address if changed and not empty
+      if (address.trim() && address !== user?.address) {
+        api.put('/auth/profile', { address }).catch(() => {});
+      }
+      // The backend now returns an array of orders or a single order object.
+      // For tracking redirection, we use the first order or a combined success page.
+      const order = Array.isArray(orderRes.data.orders) ? orderRes.data.orders[0] : orderRes.data.order;
 
       if (paymentMethod === 'cod') {
         clearCart();
@@ -40,18 +80,20 @@ export default function CheckoutPage() {
       }
 
       if (paymentMethod === 'upi') {
-        // Navigate to dedicated UPI payment page
-        navigate('/payment/upi', { state: { orderId: order._id, amount: total } });
+        // Navigate to dedicated UPI payment page (we just pass the first orderId for tracking later)
+        navigate('/payment/upi', { state: { orderId: order._id, orderIds: orderRes.data.orders?.map(o => o._id), amount: total } });
         return;
       }
 
+      const orderIds = Array.isArray(orderRes.data.orders) ? orderRes.data.orders.map(o => o._id) : [order._id];
+
       // Razorpay flow
-      const payRes = await api.post('/payment/create-order', { orderId: order._id });
+      const payRes = await api.post('/payment/create-order', { orderIds });
       const { razorpayOrderId, amount, key, mock } = payRes.data;
 
       if (mock || key === 'rzp_test_mock') {
         await api.post('/payment/verify', {
-          orderId: order._id, razorpayOrderId, razorpayPaymentId: 'mock_payment',
+          orderIds, razorpayOrderId, razorpayPaymentId: 'mock_payment',
           razorpaySignature: 'mock',
         });
         clearCart();
@@ -65,11 +107,11 @@ export default function CheckoutPage() {
         amount,
         currency: 'INR',
         name: 'JDmart',
-        description: 'Food Order Payment',
+        description: 'Food & Grocery Order Payment',
         order_id: razorpayOrderId,
         handler: async (response) => {
           await api.post('/payment/verify', {
-            orderId: order._id,
+            orderIds,
             razorpayOrderId: response.razorpay_order_id,
             razorpayPaymentId: response.razorpay_payment_id,
             razorpaySignature: response.razorpay_signature,
@@ -102,8 +144,20 @@ export default function CheckoutPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Delivery Address */}
             <div className="card" style={{ padding: 24 }}>
-              <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}> Delivery Address</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ fontWeight: 700, fontSize: 17, margin: 0 }}> Delivery Address</h3>
+                {address !== user?.address && address.trim().length > 0 && (
+                  <button type="button" onClick={handleSaveAddress} disabled={savingAddress} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: 12 }}>
+                    {savingAddress ? 'Saving...' : 'Update Default'}
+                  </button>
+                )}
+              </div>
               <textarea className="form-input" rows={3} placeholder="Enter your full delivery address..." value={address} onChange={e => setAddress(e.target.value)} style={{ resize: 'vertical' }} />
+              
+              <div style={{ marginTop: 16 }}>
+                <h3 style={{ fontWeight: 700, marginBottom: 8, fontSize: 14, color: 'var(--text-secondary)' }}>Alternate Phone Number (Optional)</h3>
+                <input type="tel" className="form-input" placeholder="e.g. +91 9876543210" value={alternatePhone} onChange={e => setAlternatePhone(e.target.value)} />
+              </div>
             </div>
 
             {/* Special Instructions */}

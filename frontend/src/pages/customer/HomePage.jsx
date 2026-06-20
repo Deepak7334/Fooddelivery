@@ -23,10 +23,24 @@ function getDistanceKm(lat1, lng1, lat2, lng2) {
 
 const DELIVERY_RADIUS_KM = 10; // deliver within 10 km
 
+const STORE_TYPES = [
+  { _id: 'grocery', name: 'Grocery', icon: '🛒', color: '#4CAF50', type: 'store' },
+  { _id: 'pharmacy', name: 'Pharmacy', icon: '💊', color: '#2196F3', type: 'store' },
+  { _id: 'electronics', name: 'Electronics', icon: '📱', color: '#9C27B0', type: 'store' },
+  { _id: 'beauty', name: 'Beauty', icon: '🧴', color: '#E91E63', type: 'store' },
+  { _id: 'bakery', name: 'Bakery', icon: '🥐', color: '#FF5722', type: 'store' },
+  { _id: 'pets', name: 'Pets', icon: '🐾', color: '#FF9800', type: 'store' },
+  { _id: 'supermarket', name: 'Supermarket', icon: '🏪', color: '#607D8B', type: 'store' },
+  { _id: 'sports', name: 'Sports', icon: '⚽', color: '#00BCD4', type: 'store' }
+];
+
 export default function HomePage() {
   const [categories, setCategories]   = useState([]);
   const [restaurants, setRestaurants] = useState([]);
+  const [stores, setStores]           = useState([]);
   const [foods, setFoods]             = useState([]);
+  const [products, setProducts]       = useState([]);
+  const [activeCategory, setActiveCategory] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
   const [locationText, setLocationText] = useState('');
@@ -38,7 +52,7 @@ export default function HomePage() {
   const [outOfRange, setOutOfRange]   = useState(false); // shown after GPS check
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, addProductToCart, cartItems, cartType, storeId: cartStoreId, updateQuantity } = useCart();
   const locationInputRef = useRef(null);
 
   useEffect(() => {
@@ -46,10 +60,14 @@ export default function HomePage() {
       api.get('/customer/categories'),
       api.get('/customer/restaurants'),
       api.get('/customer/foods'),
-    ]).then(([catRes, restRes, foodRes]) => {
+      api.get('/store/products'),
+      api.get('/store/stores')
+    ]).then(([catRes, restRes, foodRes, prodRes, storeRes]) => {
       setCategories(catRes.data.categories || []);
       setRestaurants(restRes.data.restaurants || []);
       setFoods(foodRes.data.foods || []);
+      setProducts(prodRes.data.products || []);
+      setStores(storeRes.data.stores || []);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -92,22 +110,55 @@ export default function HomePage() {
   // Determine if we're "out of range" only when the user explicitly used GPS
   const isOutOfRange = userCoords && restaurants.length > 0 && visibleRestaurants.length === 0;
 
+  const visibleStores = stores.map(s => ({ ...s, isStore: true }));
+
+  const mixedVendors = [
+    ...visibleRestaurants.map(r => ({ ...r, isStore: false })),
+    ...visibleStores
+  ]
+    .filter(v => {
+      if (!activeCategory) return true;
+      if (v.isStore) return v.storeType === activeCategory;
+      else return v.cuisine?.includes(activeCategory);
+    })
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+  const mixedItems = [
+    ...foods.map(f => ({ ...f, isProduct: false })),
+    ...products.map(p => ({ ...p, isProduct: true }))
+  ]
+    .filter(item => {
+      if (!activeCategory) return true;
+      if (item.isProduct) return item.storeId?.storeType === activeCategory || item.category === activeCategory;
+      else return item.category === activeCategory || item.restaurantId?.cuisine?.includes(activeCategory);
+    })
+    .sort(() => Math.random() - 0.5); // Simple shuffle for a "mixed" feel
+
   const handleAddToCart = (food) => {
     if (!user) { navigate('/login'); return; }
-    if (!food.restaurantId) { toast.error('Restaurant details missing'); return; }
-    addToCart({
-      foodId: food._id,
-      name: food.name,
-      price: food.discountedPrice || food.price,
-      image: food.image,
-    }, food.restaurantId._id, food.restaurantId.name);
-    toast.success(`${food.name} added to cart!`);
+    addToCart({ foodId: food._id, name: food.name, price: food.price, image: food.image }, food.restaurantId?._id || food.restaurantId, food.restaurantId?.name || 'Restaurant');
   };
 
   const handleBuy = (food) => {
-    if (!user) { navigate('/login'); return; }
     handleAddToCart(food);
     navigate('/cart');
+  };
+
+  const handleAddProduct = (product) => {
+    if (!user) { navigate('/login'); return; }
+    addProductToCart({
+      productId: product._id,
+      foodId: product._id, // alias
+      name: product.name,
+      price: product.discountedPrice || product.price,
+      image: product.image,
+      unit: product.unit,
+    }, product.storeId?._id, product.storeId?.name);
+  };
+
+  const getProductQty = (productId, storeId) => {
+    if (cartType !== 'product' || cartStoreId !== storeId) return 0;
+    return cartItems.find(i => i.productId === productId)?.quantity || 0;
   };
 
   const handleSearch = (e) => {
@@ -155,7 +206,7 @@ export default function HomePage() {
             </p>
 
             {/* ── Search bar ── */}
-            <form onSubmit={handleSearch} className="search-form" style={{ flexWrap: 'wrap' }}>
+            <form onSubmit={handleSearch} className="search-form">
               {/* Location input */}
               <div className="search-location" style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: '1 1 160px' }}>
                 <button
@@ -163,13 +214,14 @@ export default function HomePage() {
                   onClick={handleDetectLocation}
                   disabled={locLoading}
                   title="Auto-detect location"
-                  style={{ background: 'transparent', border: 'none', cursor: locLoading ? 'not-allowed' : 'pointer', fontSize: 20, color: 'var(--primary)', padding: '0 8px 0 0', flexShrink: 0 }}
+                  style={{ background: 'transparent', border: 'none', cursor: locLoading ? 'not-allowed' : 'pointer', fontSize: 18, color: 'var(--primary)', padding: '0 8px 0 0', flexShrink: 0 }}
                 >
                   {locLoading ? '⏳' : '📍'}
                 </button>
                 <input
                   ref={locationInputRef}
                   type="text"
+                  className="search-input-field"
                   placeholder="Enter city or 📍 detect"
                   value={locationText}
                   onChange={e => {
@@ -177,7 +229,6 @@ export default function HomePage() {
                     // If user edits manually, clear GPS coords so we don't filter by radius
                     if (userCoords) { setUserCoords(null); localStorage.removeItem('jdmart_coords'); }
                   }}
-                  style={{ flex: 1, minWidth: 0, padding: '14px 0', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
                 />
                 {(locationText || userCoords) && (
                   <button type="button" onClick={clearLocation} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16, padding: '0 4px', flexShrink: 0 }} title="Clear location">✕</button>
@@ -188,15 +239,15 @@ export default function HomePage() {
               <div className="search-input-wrap" style={{ flex: '2 1 200px' }}>
                 <input
                   type="text"
-                  placeholder="Search restaurants, cuisines…"
+                  className="search-input-field"
+                  placeholder="Search restaurants, cuisines, groceries…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  style={{ flex: 1, minWidth: 0, padding: '14px 0', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ borderRadius: 10, margin: 6, fontWeight: 700, padding: '0 20px', flexShrink: 0 }}>
-                🔍 Search
+              <button type="submit" className="btn btn-primary search-submit-btn">
+                🔍 <span className="search-submit-text">Search</span>
               </button>
             </form>
 
@@ -265,61 +316,81 @@ export default function HomePage() {
               <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
                 {loading ? Array(8).fill(0).map((_, i) => (
                   <div key={i} style={{ minWidth: 90, height: 88, borderRadius: 16, background: 'var(--bg-card)' }} className="shimmer" />
-                )) : categories.map(cat => (
-                  <Link key={cat._id} to={`/restaurants?cuisine=${encodeURIComponent(cat.name)}`}
-                    style={{ minWidth: 90, textAlign: 'center', textDecoration: 'none', transition: 'var(--transition)', flexShrink: 0 }}
+                )) : [...STORE_TYPES, ...categories].map(cat => {
+                  const catId = cat.type === 'store' ? cat._id : cat.name;
+                  const isActive = activeCategory === catId;
+                  return (
+                  <button key={cat._id} onClick={() => setActiveCategory(isActive ? null : catId)}
+                    style={{ minWidth: 90, textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', padding: 0, transition: 'var(--transition)', flexShrink: 0 }}
                     onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
                     onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '14px 10px', marginBottom: 6, border: '1px solid var(--border)', transition: 'var(--transition)' }}
-                      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,87,34,0.35)'}
-                      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                    <div style={{ background: isActive ? (cat.color ? `${cat.color}22` : 'rgba(255,87,34,0.15)') : 'var(--bg-card)', borderRadius: 16, padding: '14px 10px', marginBottom: 6, border: `1px solid ${isActive ? (cat.color || 'var(--primary)') : 'var(--border)'}`, transition: 'var(--transition)' }}
+                      onMouseEnter={e => { if(!isActive) e.currentTarget.style.borderColor = cat.color ? `${cat.color}88` : 'rgba(255,87,34,0.35)'}}
+                      onMouseLeave={e => { if(!isActive) e.currentTarget.style.borderColor = 'var(--border)'}}>
                       <div style={{ fontSize: 30, marginBottom: 4 }}>{cat.icon}</div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{cat.name}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: isActive ? (cat.color || 'var(--primary)') : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{cat.name}</div>
                     </div>
-                  </Link>
-                ))}
+                  </button>
+                )})}
               </div>
             </div>
           </section>
 
-          {/* TOP RESTAURANTS */}
-          <section style={{ padding: '8px 0 56px' }}>
+          {/* ALL VENDORS (Restaurants & Stores) */}
+          <section style={{ padding: '8px 0 32px' }}>
             <div className="container">
               <div className="section-header">
                 <h2 className="section-title">
-                  {userCoords ? 'Near' : 'Top'} <span>Restaurants</span>
+                  {userCoords ? 'Near' : 'Top'} <span>Restaurants & Stores</span>
                   {userCoords && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(within {DELIVERY_RADIUS_KM} km)</span>}
                 </h2>
-                <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>View all →</Link>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Restaurants →</Link>
+                  <Link to="/stores" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Stores →</Link>
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
                 {loading ? Array(6).fill(0).map((_, i) => (
                   <div key={i} style={{ height: 270, borderRadius: 16 }} className="shimmer" />
-                )) : visibleRestaurants.slice(0, 8).map(r => (
-                  <RestaurantCard key={r._id} restaurant={r} userCoords={userCoords} />
+                )) : mixedVendors.slice(0, 12).map(v => (
+                  v.isStore ? <StoreCard key={v._id} store={v} /> : <RestaurantCard key={v._id} restaurant={v} userCoords={userCoords} />
                 ))}
               </div>
-              {!loading && visibleRestaurants.length === 0 && !isOutOfRange && (
+              {!loading && mixedVendors.length === 0 && !isOutOfRange && (
                 <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>🍽️</div>
-                  <p>No restaurants found. Try a different search or browse all.</p>
+                  <p>No vendors found for this category.</p>
                 </div>
               )}
             </div>
           </section>
 
-          {/* FOOD ITEMS */}
-          {foods.length > 0 && (
+          {/* ALL ITEMS (Dishes & Products) */}
+          {mixedItems.length > 0 && (
             <section style={{ padding: '8px 0 64px' }}>
               <div className="container">
                 <div className="section-header">
-                  <h2 className="section-title">Popular <span>Dishes</span></h2>
+                  <h2 className="section-title">Popular <span>Items</span></h2>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 18 }}>
                   {loading ? Array(6).fill(0).map((_, i) => (
                     <div key={i} style={{ height: 160, borderRadius: 16 }} className="shimmer" />
-                  )) : foods.map(f => (
-                    <HomeFoodCard key={f._id} food={f} onAddToCart={() => handleAddToCart(f)} onBuy={() => handleBuy(f)} />
+                  )) : mixedItems.slice(0, 18).map(item => (
+                    item.isProduct 
+                      ? <HomeProductCard 
+                          key={item._id} 
+                          product={item} 
+                          qty={getProductQty(item._id, item.storeId?._id)} 
+                          onAdd={() => handleAddProduct(item)} 
+                          onUpdate={(qty) => updateQuantity(item._id, qty)} 
+                          onBuy={() => { handleAddProduct(item); navigate('/cart'); }}
+                        />
+                      : <HomeFoodCard 
+                          key={item._id} 
+                          food={item} 
+                          onAddToCart={() => handleAddToCart(item)} 
+                          onBuy={() => handleBuy(item)} 
+                        />
                   ))}
                 </div>
               </div>
@@ -431,5 +502,110 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </button>
       </div>
     </div>
+  );
+}
+
+// ── Home Product Card ──
+function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
+  const discount = product.discountedPrice && product.discountedPrice < product.price
+    ? Math.round((1 - product.discountedPrice / product.price) * 100)
+    : 0;
+
+  return (
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 14 }}>
+      <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 10, background: 'rgba(33,150,243,0.1)', color: '#2196F3', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+              Store Product
+            </span>
+            {discount > 0 && <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 700 }}>★ -{discount}% OFF</span>}
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{product.name}</div>
+          {product.storeId && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>from {product.storeId.name}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {product.discountedPrice ? (
+              <>
+                <span style={{ fontWeight: 800, fontSize: 15 }}>₹{product.discountedPrice}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{product.price}</span>
+              </>
+            ) : <span style={{ fontWeight: 800, fontSize: 15 }}>₹{product.price}</span>}
+          </div>
+        </div>
+        <div style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
+          {product.image ? (
+            <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>
+          )}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+        {qty > 0 ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, padding: '4px 8px', height: 36 }}>
+            <button onClick={() => onUpdate(qty - 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>−</button>
+            <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
+            <button onClick={() => onUpdate(qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
+          </div>
+        ) : (
+          <button
+            onClick={onAdd}
+            disabled={!product.isAvailable}
+            style={{ flex: 1, padding: '9px 0', background: product.isAvailable ? 'rgba(255,87,34,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${product.isAvailable ? 'rgba(255,87,34,0.3)' : 'var(--border)'}`, borderRadius: 8, color: product.isAvailable ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: product.isAvailable ? 'pointer' : 'not-allowed', height: 36 }}
+          >
+            {product.isAvailable ? '+ Cart' : 'Unavailable'}
+          </button>
+        )}
+        <button onClick={onBuy} disabled={!product.isAvailable}
+          style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: product.isAvailable ? 'pointer' : 'not-allowed', opacity: product.isAvailable ? 1 : 0.5, height: 36 }}>
+          Buy Now
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Store Card ──
+function StoreCard({ store }) {
+  const typeInfo = STORE_TYPES.find(t => t._id === store.storeType) || STORE_TYPES[0];
+
+  return (
+    <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: 160, background: 'linear-gradient(135deg, #1a1a2e, #16213e)', overflow: 'hidden' }}>
+        {store.image ? (
+          <img src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>
+            {typeInfo?.icon || '🏬'}
+          </div>
+        )}
+        {!store.isOpen && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>
+            Currently Closed
+          </div>
+        )}
+        {typeInfo && (
+          <div style={{ position: 'absolute', top: 10, left: 10, background: `${typeInfo.color}dd`, color: '#fff', padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
+            {typeInfo.icon} {typeInfo.name}
+          </div>
+        )}
+        <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', padding: '3px 10px', borderRadius: 100, fontSize: 12 }}>
+          <span style={{ color: '#FFD700', fontSize: 12 }}>⭐ {store.rating?.toFixed(1)}</span>
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{store.name}</div>
+        {store.description && (
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {store.description}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-muted)' }}>
+          <span>⏱ {store.deliveryTime}</span>
+          <span>₹{store.deliveryFee} delivery</span>
+        </div>
+      </div>
+    </Link>
   );
 }

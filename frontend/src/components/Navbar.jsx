@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiList, FiCalendar } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiList, FiCalendar, FiShoppingBag } from 'react-icons/fi';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -41,7 +41,8 @@ export default function Navbar() {
           {/* Desktop Nav */}
           <div className="desktop-nav">
             <Link to="/" className={`btn btn-secondary btn-sm ${isActive('/') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Home</Link>
-            <Link to="/restaurants" className={`btn btn-secondary btn-sm ${isActive('/restaurants') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Restaurants</Link>
+            <Link to="/restaurants" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/restaurants') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Restaurants</Link>
+            <Link to="/stores" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/stores') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Stores</Link>
           </div>
 
           {/* Right side */}
@@ -93,6 +94,13 @@ export default function Navbar() {
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         Admin Panel
+                      </Link>
+                    )}
+                    {user.role === 'store_owner' && (
+                      <Link to="/store-owner" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        Store Panel
                       </Link>
                     )}
                     {user.role === 'restaurant' && (
@@ -150,8 +158,12 @@ export default function Navbar() {
             <FiHome size={18} /> Home
           </Link>
           <Link to="/restaurants" onClick={() => setMobileOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 15, fontWeight: 600, color: isActive('/restaurants') ? 'var(--primary)' : 'var(--text-secondary)', background: isActive('/restaurants') ? 'rgba(255,87,34,0.08)' : 'transparent' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 15, fontWeight: 600, color: location.pathname.startsWith('/restaurants') ? 'var(--primary)' : 'var(--text-secondary)', background: location.pathname.startsWith('/restaurants') ? 'rgba(255,87,34,0.08)' : 'transparent' }}>
             <FiList size={18} /> Restaurants
+          </Link>
+          <Link to="/stores" onClick={() => setMobileOpen(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 15, fontWeight: 600, color: location.pathname.startsWith('/stores') ? 'var(--primary)' : 'var(--text-secondary)', background: location.pathname.startsWith('/stores') ? 'rgba(255,87,34,0.08)' : 'transparent' }}>
+            <FiShoppingBag size={18} /> Stores
           </Link>
         </div>
 

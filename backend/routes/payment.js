@@ -15,37 +15,43 @@ const getRazorpay = () => {
 // Create Razorpay order
 router.post('/create-order', protect, authorize('customer'), async (req, res) => {
   try {
-    const { orderId } = req.body;
-    const order = await Order.findOne({ _id: orderId, customerId: req.user._id });
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    const { orderIds } = req.body;
+    if (!orderIds || orderIds.length === 0) return res.status(400).json({ success: false, message: 'No orders provided' });
+    
+    const orders = await Order.find({ _id: { $in: orderIds }, customerId: req.user._id });
+    if (orders.length === 0) return res.status(404).json({ success: false, message: 'Orders not found' });
+    
+    const finalAmount = orders.reduce((sum, o) => sum + o.finalAmount, 0);
 
     // If no real Razorpay key, return mock
     if (!process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'rzp_test_yourkeyhere') {
       const mockRzpOrderId = 'order_mock_' + Date.now();
-      order.razorpayOrderId = mockRzpOrderId;
-      order.paymentStatus = 'paid';
-      order.status = 'pending';
-      await order.save();
+      await Order.updateMany(
+        { _id: { $in: orderIds }, customerId: req.user._id },
+        { razorpayOrderId: mockRzpOrderId, paymentStatus: 'paid', status: 'pending' }
+      );
       return res.json({
         success: true,
         mock: true,
         razorpayOrderId: mockRzpOrderId,
-        amount: order.finalAmount * 100,
+        amount: finalAmount * 100,
         currency: 'INR',
         key: 'rzp_test_mock',
-        orderId: order._id,
+        orderIds,
       });
     }
 
     const razorpay = getRazorpay();
     const rzpOrder = await razorpay.orders.create({
-      amount: Math.round(order.finalAmount * 100),
+      amount: Math.round(finalAmount * 100),
       currency: 'INR',
-      receipt: order._id.toString(),
+      receipt: orders[0]._id.toString(), // just use first order id as receipt
     });
 
-    order.razorpayOrderId = rzpOrder.id;
-    await order.save();
+    await Order.updateMany(
+      { _id: { $in: orderIds }, customerId: req.user._id },
+      { razorpayOrderId: rzpOrder.id }
+    );
 
     res.json({
       success: true,
@@ -53,7 +59,7 @@ router.post('/create-order', protect, authorize('customer'), async (req, res) =>
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
       key: process.env.RAZORPAY_KEY_ID,
-      orderId: order._id,
+      orderIds,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -63,18 +69,24 @@ router.post('/create-order', protect, authorize('customer'), async (req, res) =>
 // Verify payment signature
 router.post('/verify', protect, authorize('customer'), async (req, res) => {
   try {
-    const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+    const { orderIds, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
 
     // Mock payment success
     if (razorpayPaymentId === 'mock_payment') {
-      const order = await Order.findOneAndUpdate(
-        { _id: orderId, customerId: req.user._id },
-        { paymentStatus: 'paid', razorpayPaymentId, status: 'pending' },
-        { new: true }
+      await Order.updateMany(
+        { _id: { $in: orderIds }, customerId: req.user._id },
+        { paymentStatus: 'paid', razorpayPaymentId, status: 'pending' }
       );
+      
+      // Notify vendors
+      const updatedOrders = await Order.find({ _id: { $in: orderIds } });
       const io = req.app.get('io');
-      io.to(`restaurant_${order.restaurantId}`).emit('order:new', order);
-      return res.json({ success: true, message: 'Payment verified', order });
+      updatedOrders.forEach(o => {
+        const room = o.orderType === 'food' ? `restaurant_${o.restaurantId}` : `store_${o.storeId}`;
+        io.to(room).emit('order:new', o);
+      });
+      
+      return res.json({ success: true, message: 'Payment verified' });
     }
 
     // Real signature verification
@@ -88,16 +100,20 @@ router.post('/verify', protect, authorize('customer'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment verification failed' });
     }
 
-    const order = await Order.findOneAndUpdate(
-      { _id: orderId, customerId: req.user._id },
-      { paymentStatus: 'paid', razorpayPaymentId, razorpayOrderId, status: 'pending' },
-      { new: true }
+    await Order.updateMany(
+      { _id: { $in: orderIds }, customerId: req.user._id },
+      { paymentStatus: 'paid', razorpayPaymentId, razorpayOrderId, status: 'pending' }
     );
 
+    // Notify vendors
+    const updatedOrders = await Order.find({ _id: { $in: orderIds } });
     const io = req.app.get('io');
-    io.to(`restaurant_${order.restaurantId}`).emit('order:new', order);
+    updatedOrders.forEach(o => {
+      const room = o.orderType === 'food' ? `restaurant_${o.restaurantId}` : `store_${o.storeId}`;
+      io.to(room).emit('order:new', o);
+    });
 
-    res.json({ success: true, message: 'Payment verified', order });
+    res.json({ success: true, message: 'Payment verified' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

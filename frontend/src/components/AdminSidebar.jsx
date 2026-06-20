@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiShoppingBag, FiUsers, FiList, FiTag, FiLogOut, FiX, FiTruck, FiCalendar } from 'react-icons/fi';
+import { FiGrid, FiShoppingBag, FiUsers, FiList, FiTag, FiLogOut, FiX, FiTruck, FiCalendar, FiPackage } from 'react-icons/fi';
 
 const navLinks = [
   { to: '/admin', icon: <FiGrid />, label: 'Dashboard', exact: true },
   { to: '/admin/restaurants', icon: <FiShoppingBag />, label: 'Restaurants' },
+  { to: '/admin/stores', icon: <FiPackage />, label: 'Stores' },
   { to: '/admin/users', icon: <FiUsers />, label: 'Users' },
   { to: '/admin/orders', icon: <FiList />, label: 'All Orders' },
   { to: '/admin/bookings', icon: <FiCalendar />, label: 'Table Bookings' },

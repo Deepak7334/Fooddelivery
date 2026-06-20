@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['customer', 'restaurant', 'admin', 'delivery'],
+    enum: ['customer', 'restaurant', 'admin', 'delivery', 'store_owner'],
     default: 'customer',
   },
   phone: {
@@ -34,6 +34,11 @@ const userSchema = new mongoose.Schema({
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Restaurant',
+    default: null,
+  },
+  storeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Store',
     default: null,
   },
   isActive: {

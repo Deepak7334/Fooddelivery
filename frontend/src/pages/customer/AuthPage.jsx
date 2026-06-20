@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 export default function AuthPage() {
   const [mode, setMode] = useState('login');
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', address: '' });
   const [loading, setLoading] = useState(false);
   const { login, register, user } = useAuth();
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export default function AuthPage() {
   if (user) {
     if (user.role === 'admin') navigate('/admin', { replace: true });
     else if (user.role === 'restaurant') navigate('/restaurant', { replace: true });
+    else if (user.role === 'store_owner') navigate('/store-owner', { replace: true });
     else if (user.role === 'delivery') navigate('/delivery', { replace: true });
     else navigate('/', { replace: true });
     return null;
@@ -36,6 +37,7 @@ export default function AuthPage() {
         const role = res.user.role;
         if (role === 'admin') navigate('/admin');
         else if (role === 'restaurant') navigate('/restaurant');
+        else if (role === 'store_owner') navigate('/store-owner');
         else if (role === 'delivery') navigate('/delivery');
         else navigate('/');
       }
@@ -96,10 +98,16 @@ export default function AuthPage() {
               <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} />
             </div>
             {mode === 'register' && (
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input className="form-input" type="tel" placeholder="9876543210" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-              </div>
+              <>
+                <div className="form-group">
+                  <label className="form-label">Phone Number</label>
+                  <input className="form-input" type="tel" placeholder="9876543210" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Delivery Address</label>
+                  <textarea className="form-input" placeholder="Enter your full address" rows={2} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} style={{ resize: 'none' }} />
+                </div>
+              </>
             )}
 
             <button type="submit" disabled={loading} className="btn btn-primary btn-full btn-lg" style={{ marginTop: 8 }}>

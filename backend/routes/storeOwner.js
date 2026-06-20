@@ -1,0 +1,226 @@
+const express = require('express');
+const router = express.Router();
+const { protect, authorize } = require('../middleware/auth');
+const Store = require('../models/Store');
+const Product = require('../models/Product');
+const Order = require('../models/Order');
+
+// All store-owner routes require auth + store_owner role
+router.use(protect, authorize('store_owner'));
+
+// ── Dashboard Stats ────────────────────────────────────────────────────────────
+router.get('/dashboard', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    if (!store) return res.status(404).json({ success: false, message: 'No store linked to your account' });
+
+    const [totalProducts, totalOrders, pendingOrders] = await Promise.all([
+      Product.countDocuments({ storeId: store._id }),
+      Order.countDocuments({ storeId: store._id }),
+      Order.countDocuments({ storeId: store._id, status: 'pending' }),
+    ]);
+
+    const revenue = await Order.aggregate([
+      { $match: { storeId: store._id, paymentStatus: 'paid' } },
+      { $group: { _id: null, total: { $sum: '$finalAmount' } } },
+    ]);
+
+    res.json({
+      success: true,
+      store,
+      stats: {
+        totalProducts,
+        totalOrders,
+        pendingOrders,
+        totalRevenue: revenue[0]?.total || 0,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Products ───────────────────────────────────────────────────────────────────
+router.get('/products', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    if (!store) return res.status(404).json({ success: false, message: 'No store found' });
+
+    const products = await Product.find({ storeId: store._id }).sort({ category: 1, name: 1 });
+    res.json({ success: true, products, store });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/products', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    if (!store) return res.status(404).json({ success: false, message: 'No store found' });
+
+    const { name, description, price, discountedPrice, category, image, brand, unit, stock, isAvailable, isFeatured, tags } = req.body;
+    if (!name || !price || !category) return res.status(400).json({ success: false, message: 'name, price and category are required' });
+
+    const product = await Product.create({ name, description, price, discountedPrice, category, image, brand, unit, stock, isAvailable, isFeatured, tags, storeId: store._id });
+    res.status(201).json({ success: true, product });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/products/:id', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    if (!store) return res.status(404).json({ success: false, message: 'No store found' });
+
+    const product = await Product.findOneAndUpdate(
+      { _id: req.params.id, storeId: store._id },
+      req.body,
+      { new: true }
+    );
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.json({ success: true, product });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/products/:id', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    if (!store) return res.status(404).json({ success: false, message: 'No store found' });
+
+    const product = await Product.findOneAndDelete({ _id: req.params.id, storeId: store._id });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.json({ success: true, message: 'Product deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Orders ─────────────────────────────────────────────────────────────────────
+router.get('/orders', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    if (!store) return res.status(404).json({ success: false, message: 'No store found' });
+
+    const { status } = req.query;
+    const filter = { storeId: store._id };
+    if (status && status !== 'all') filter.status = status;
+
+    const orders = await Order.find(filter)
+      .populate('customerId', 'name email phone')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.patch('/orders/:id/status', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    const { status, otp } = req.body;
+    const valid = ['accepted', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'];
+    if (!valid.includes(status)) return res.status(400).json({ success: false, message: 'Invalid status' });
+
+    const order = await Order.findOne({ _id: req.params.id, storeId: store._id })
+      .populate('customerId', 'name email phone');
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    // Verify OTP if marking as delivered
+    if (status === 'delivered') {
+      if (!otp) return res.status(400).json({ success: false, message: 'OTP is required to mark as delivered' });
+      if (order.deliveryOTP !== otp.toString().trim()) {
+        return res.status(400).json({ success: false, message: 'Incorrect OTP' });
+      }
+      order.otpVerified = true;
+    }
+
+    order.status = status;
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({ status, timestamp: new Date() });
+
+    // Generate and send OTP if marking out for delivery
+    if (status === 'out_for_delivery') {
+      const crypto = require('crypto');
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      order.deliveryOTP = generatedOtp;
+
+      const customerEmail = order.customerEmail || order.customerId?.email;
+      if (customerEmail) {
+        const sendEmail = require('../utils/sendEmail');
+        await sendEmail({
+          to: customerEmail,
+          subject: 'JDmart — Your Delivery OTP (Store Order)',
+          html: `
+            <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+              <div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center">
+                <h1 style="color:#fff;margin:0;font-size:22px">JDmart</h1>
+                <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px">Your store order is on the way!</p>
+              </div>
+              <div style="padding:28px 24px">
+                <p style="font-size:15px;color:#333">Hi <strong>${order.customerId?.name || 'Customer'}</strong>,</p>
+                <p style="font-size:14px;color:#555">Your store delivery is arriving shortly. Share this OTP with the delivery agent to confirm:</p>
+                <div style="text-align:center;margin:24px 0">
+                  <div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px">
+                    <div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div>
+                    <div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${generatedOtp}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `
+        }).catch(err => console.error('Failed to send OTP email:', err));
+        console.log(`📦 OTP for Store Order ${order._id}: ${generatedOtp} → sent to ${customerEmail}`);
+      }
+    }
+
+    await order.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`order_${order._id}`).emit('order:status_update', {
+        orderId: order._id,
+        status: order.status,
+        statusHistory: order.statusHistory,
+      });
+    }
+
+    res.json({
+      success: true,
+      order,
+      ...(status === 'out_for_delivery' && process.env.NODE_ENV !== 'production' ? { devOtp: order.deliveryOTP } : {})
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Store Profile ───────────────────────────────────────────────────────────────
+router.get('/profile', async (req, res) => {
+  try {
+    const store = await Store.findOne({ ownerId: req.user.id });
+    if (!store) return res.status(404).json({ success: false, message: 'No store found' });
+    res.json({ success: true, store });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/profile', async (req, res) => {
+  try {
+    const store = await Store.findOneAndUpdate(
+      { ownerId: req.user.id },
+      req.body,
+      { new: true }
+    );
+    if (!store) return res.status(404).json({ success: false, message: 'No store found' });
+    res.json({ success: true, store });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+module.exports = router;

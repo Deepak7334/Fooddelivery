@@ -3,6 +3,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { FiMenu } from 'react-icons/fi';
 import TableBookingPage from './pages/customer/TableBookingPage';
+import StoresPage from './pages/customer/StoresPage';
+import StoreDetailPage from './pages/customer/StoreDetailPage';
+import StoreOwnerLayout from './pages/storeOwner/StoreOwnerLayout';
+import StoreOwnerDashboard from './pages/storeOwner/StoreOwnerDashboard';
+import StoreOwnerProducts from './pages/storeOwner/StoreOwnerProducts';
+import StoreOwnerOrders from './pages/storeOwner/StoreOwnerOrders';
+import AdminStores from './pages/admin/AdminStores';
 
 // Layouts
 import Navbar from './components/Navbar';
@@ -50,6 +57,7 @@ const PrivateRoute = ({ children, role }) => {
   if (role && user.role !== role) {
     if (user.role === 'admin') return <Navigate to="/admin" replace />;
     if (user.role === 'restaurant') return <Navigate to="/restaurant" replace />;
+    if (user.role === 'store_owner') return <Navigate to="/store-owner" replace />;
     if (user.role === 'delivery') return <Navigate to="/delivery" replace />;
     return <Navigate to="/" replace />;
   }
@@ -114,6 +122,8 @@ export default function App() {
       <Route path="/restaurants" element={<CustomerLayout><RestaurantsPage /></CustomerLayout>} />
       <Route path="/restaurants/:id" element={<CustomerLayout><RestaurantDetailPage /></CustomerLayout>} />
       <Route path="/booking/:restaurantId" element={<CustomerLayout><TableBookingPage /></CustomerLayout>} />
+      <Route path="/stores" element={<CustomerLayout><StoresPage /></CustomerLayout>} />
+      <Route path="/stores/:id" element={<CustomerLayout><StoreDetailPage /></CustomerLayout>} />
       <Route path="/cart" element={<CustomerLayout><CartPage /></CustomerLayout>} />
       <Route path="/login" element={<AuthPage />} />
       <Route path="/checkout" element={<PrivateRoute role="customer"><CustomerLayout><CheckoutPage /></CustomerLayout></PrivateRoute>} />
@@ -123,6 +133,7 @@ export default function App() {
 
       {/* Admin Routes */}
       <Route path="/admin" element={<PrivateRoute role="admin"><AdminLayout><AdminDashboard /></AdminLayout></PrivateRoute>} />
+      <Route path="/admin/stores" element={<PrivateRoute role="admin"><AdminLayout><AdminStores /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/restaurants" element={<PrivateRoute role="admin"><AdminLayout><AdminRestaurants /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/users" element={<PrivateRoute role="admin"><AdminLayout><AdminUsers /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/orders" element={<PrivateRoute role="admin"><AdminLayout><AdminOrders /></AdminLayout></PrivateRoute>} />
@@ -136,6 +147,11 @@ export default function App() {
       <Route path="/restaurant/orders" element={<PrivateRoute role="restaurant"><RestaurantLayout><RestaurantOrders /></RestaurantLayout></PrivateRoute>} />
       <Route path="/restaurant/tables" element={<PrivateRoute role="restaurant"><RestaurantLayout><RestaurantTables /></RestaurantLayout></PrivateRoute>} />
       <Route path="/restaurant/table-bookings" element={<PrivateRoute role="restaurant"><RestaurantLayout><RestaurantBookings /></RestaurantLayout></PrivateRoute>} />
+
+      {/* Store Owner Routes */}
+      <Route path="/store-owner" element={<PrivateRoute role="store_owner"><StoreOwnerLayout><StoreOwnerDashboard /></StoreOwnerLayout></PrivateRoute>} />
+      <Route path="/store-owner/products" element={<PrivateRoute role="store_owner"><StoreOwnerLayout><StoreOwnerProducts /></StoreOwnerLayout></PrivateRoute>} />
+      <Route path="/store-owner/orders" element={<PrivateRoute role="store_owner"><StoreOwnerLayout><StoreOwnerOrders /></StoreOwnerLayout></PrivateRoute>} />
 
       {/* Delivery Routes */}
       <Route path="/delivery" element={<PrivateRoute role="delivery"><DeliveryLayout><DeliveryDashboard /></DeliveryLayout></PrivateRoute>} />

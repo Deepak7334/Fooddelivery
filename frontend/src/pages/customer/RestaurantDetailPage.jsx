@@ -133,13 +133,10 @@ export default function RestaurantDetailPage() {
           ) : categories.map(cat => (
             <div key={cat} id={`cat-${cat}`} style={{ marginBottom: 40 }}>
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>{cat}</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
                 {menuGrouped[cat].map(food => (
                   <FoodCard key={food._id} food={food} qty={getItemQty(food._id)} onAdd={() => handleAdd(food)}
-                    onIncrease={() => handleAdd(food)}
-                    onDecrease={() => {
-                      if (!user) return;
-                    }} canDeliver={canDeliver} />
+                    onBuy={() => { handleAdd(food); navigate('/cart'); }} />
                 ))}
               </div>
             </div>
@@ -160,40 +157,54 @@ export default function RestaurantDetailPage() {
   );
 }
 
-function FoodCard({ food, qty, onAdd, canDeliver = true }) {
+function FoodCard({ food, qty, onAdd, onBuy }) {
+  const { updateQuantity } = useCart();
   return (
-    <div style={{ display: 'flex', gap: 16, padding: 16, background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', transition: 'var(--transition)' }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ fontSize: 10, border: `2px solid ${food.isVeg ? 'var(--success)' : 'var(--danger)'}`, width: 16, height: 16, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: food.isVeg ? 'var(--success)' : 'var(--danger)', display: 'block' }} />
-          </span>
-          {food.isBestseller && <span style={{ fontSize: 10, color: '#FF8F00', fontWeight: 700 }}>★ Bestseller</span>}
-        </div>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{food.name}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, lineHeight: 1.5 }}>{food.description}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {food.discountedPrice ? (
-            <>
-              <span style={{ fontWeight: 800, fontSize: 16 }}>₹{food.discountedPrice}</span>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{food.price}</span>
-            </>
-          ) : <span style={{ fontWeight: 800, fontSize: 16 }}>₹{food.price}</span>}
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', transition: 'var(--transition)' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,87,34,0.25)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+      {/* Image */}
+      <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
+        {food.image ? (
+          <img src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🍽️</div>
+        )}
+        <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: '#fff', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${food.isVeg ? '#4CAF50' : '#F44336'}` }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: food.isVeg ? '#4CAF50' : '#F44336' }}></div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', minWidth: 100 }}>
-        {food.image ? (
-          <img src={food.image} alt={food.name} style={{ width: 90, height: 80, objectFit: 'cover', borderRadius: 10 }} />
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{food.name}</div>
+      {food.description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{food.description}</div>}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontWeight: 800, fontSize: 16 }}>₹{food.discountedPrice || food.price}</span>
+        {food.discountedPrice && <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{food.price}</span>}
+      </div>
+
+      {/* Add / Qty stepper */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+        {qty > 0 ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, padding: '4px 8px', height: 36 }}>
+            <button onClick={() => updateQuantity(food._id, qty - 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>−</button>
+            <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
+            <button onClick={() => updateQuantity(food._id, qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
+          </div>
         ) : (
-          <div style={{ width: 90, height: 80, background: 'var(--bg-card2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🍽️</div>
+          <button
+            onClick={onAdd}
+            disabled={!food.isAvailable}
+            style={{ flex: 1, padding: '9px 0', background: food.isAvailable ? 'rgba(255,87,34,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${food.isAvailable ? 'rgba(255,87,34,0.3)' : 'var(--border)'}`, borderRadius: 8, color: food.isAvailable ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', height: 36 }}
+          >
+            {food.isAvailable ? '+ Cart' : 'Unavailable'}
+          </button>
         )}
-        <button onClick={onAdd} disabled={!food.isAvailable || !canDeliver}
-          style={{ width: '100%', padding: '6px 0', background: qty > 0 ? 'var(--primary)' : 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: qty > 0 ? 'white' : 'var(--primary)', fontWeight: 700, fontSize: 13, cursor: (!food.isAvailable || !canDeliver) ? 'not-allowed' : 'pointer', transition: 'var(--transition)', opacity: (!food.isAvailable || !canDeliver) ? 0.6 : 1 }}>
-          {!food.isAvailable ? 'Unavailable' : !canDeliver ? 'Too Far' : qty > 0 ? `+ ADD (${qty})` : '+ ADD'}
+        <button onClick={onBuy} disabled={!food.isAvailable}
+          style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5, height: 36 }}>
+          Buy Now
         </button>
       </div>
     </div>
   );
 }
-

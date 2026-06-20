@@ -4,7 +4,12 @@ const orderItemSchema = new mongoose.Schema({
   foodId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Food',
-    required: true,
+    default: null,           // null for store/product orders
+  },
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    default: null,           // null for food orders
   },
   name: String,
   price: Number,
@@ -14,6 +19,7 @@ const orderItemSchema = new mongoose.Schema({
     min: 1,
   },
   image: String,
+  unit: String,              // e.g. "500g", "1L" — for store products
 });
 
 const orderSchema = new mongoose.Schema({
@@ -25,9 +31,20 @@ const orderSchema = new mongoose.Schema({
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Restaurant',
-    required: true,
+    default: null,           // null for store orders
   },
   restaurantName: String,
+  storeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Store',
+    default: null,           // null for food orders
+  },
+  storeName: String,
+  orderType: {
+    type: String,
+    enum: ['food', 'product'],
+    default: 'food',
+  },
   items: [orderItemSchema],
   totalAmount: {
     type: Number,
@@ -98,6 +115,10 @@ const orderSchema = new mongoose.Schema({
     default: '30-45 mins',
   },
   customerPhone: {
+    type: String,
+    default: '',
+  },
+  alternatePhone: {
     type: String,
     default: '',
   },

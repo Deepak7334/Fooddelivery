@@ -302,18 +302,54 @@ select.form-input option {
   padding: 0 16px;
 }
 
+.search-input-field {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.search-submit-btn {
+  border-radius: 10px;
+  margin: 6px;
+  font-weight: 700;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 640px) {
   .search-form {
-    flex-direction: column;
+    flex-direction: row;
     border-radius: 12px;
   }
   .search-location {
-    border-right: none;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-right: 1px solid rgba(255,255,255,0.1);
+    border-bottom: none;
+    padding: 0 10px;
+    flex: 1 1 80px !important;
   }
-  .search-form .btn {
-    border-radius: 0 !important;
-    margin: 0 !important;
+  .search-input-wrap {
+    padding: 0 10px;
+    flex: 2 1 140px !important;
+  }
+  .search-input-field {
+    padding: 10px 0;
+    font-size: 12px;
+  }
+  .search-input-field::placeholder {
+    font-size: 11px;
+  }
+  .search-submit-btn {
+    border-radius: 8px;
+    margin: 4px;
+    padding: 0 14px;
+  }
+  .search-submit-text {
+    display: none;
   }
 }
 

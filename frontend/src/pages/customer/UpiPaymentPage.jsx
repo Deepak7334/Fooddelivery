@@ -116,7 +116,9 @@ function QRDisplay({ value }) {
 export default function UpiPaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orderId, amount } = location.state || {};
+  const orderId = location.state?.orderId;
+  const orderIds = location.state?.orderIds || [orderId];
+  const amount = location.state?.amount;
 
   const [tab, setTab] = useState('qr'); // 'qr' | 'upiid' | 'app'
   const [upiId, setUpiId] = useState('');
@@ -152,7 +154,7 @@ export default function UpiPaymentPage() {
 
     try {
       await api.post('/payment/verify', {
-        orderId,
+        orderIds,
         razorpayOrderId: 'upi_order_' + Date.now(),
         razorpayPaymentId: `upi_${method}_${Date.now()}`,
         razorpaySignature: 'mock',

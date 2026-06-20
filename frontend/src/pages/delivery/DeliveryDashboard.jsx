@@ -304,7 +304,8 @@ export default function DeliveryDashboard() {
                 <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}> Deliver To</div>
                 <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{activeOrder.customerId?.name}</div>
                 <div style={{ fontSize: 12, color: '#9CA3AF' }}>{activeOrder.deliveryAddress}</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF' }}>{activeOrder.customerId?.phone || activeOrder.customerPhone}</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>📞 {activeOrder.customerId?.phone || activeOrder.customerPhone || 'N/A'}</div>
+                {activeOrder.alternatePhone && <div style={{ fontSize: 12, color: '#9CA3AF' }}>📱 Alt: {activeOrder.alternatePhone}</div>}
               </div>
 
               {/* Items */}

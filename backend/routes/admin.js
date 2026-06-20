@@ -8,6 +8,8 @@ const Food = require('../models/Food');
 const Order = require('../models/Order');
 const Category = require('../models/Category');
 const Table = require('../models/Table');
+const Store = require('../models/Store');
+const Product = require('../models/Product');
 const generateOTP = require('../utils/generateOTP');
 const sendEmail = require('../utils/sendEmail');
 
@@ -54,7 +56,7 @@ router.post('/restaurants', async (req, res) => {
       const existing = await User.findOne({ email: ownerEmail });
       if (existing) return res.status(400).json({ success: false, message: 'Owner email already exists' });
       const hashed = await bcrypt.hash(ownerPassword, 10);
-      const owner = await User.create({ name: ownerName || name + ' Owner', email: ownerEmail, password: hashed, role: 'restaurant', phone: phone || '' });
+      const owner = await User.create({ name: ownerName || name + ' Owner', email: ownerEmail, password: hashed, role: 'restaurant', phone: phone || '', address: address || '' });
       ownerId = owner._id;
     }
     const restaurant = await Restaurant.create({ name, description, cuisine: cuisine || [], address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerId });
@@ -182,6 +184,21 @@ router.patch('/users/:id/toggle', async (req, res) => {
     user.isActive = !user.isActive;
     await user.save();
     res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    // Prevent deleting admin
+    if (user.role === 'admin') return res.status(403).json({ success: false, message: 'Cannot delete admin user' });
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'User deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -360,7 +377,8 @@ router.patch('/orders/:id/status', async (req, res) => {
 
     const io = req.app.get('io');
     io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: order.status, statusHistory: order.statusHistory });
-    if (order.restaurantId) io.to(`restaurant_${order.restaurantId._id}`).emit('order:updated', order);
+    if (order.restaurantId) io.to(`restaurant_${order.restaurantId._id || order.restaurantId}`).emit('order:updated', order);
+    if (order.storeId) io.to(`store_${order.storeId._id || order.storeId}`).emit('order:updated', order);
     
     // Notify delivery agent if assigned/dispatched
     if (status === 'out_for_delivery' && order.deliveryAgentId) {
@@ -495,6 +513,87 @@ router.put('/bookings/:id/:action', async (req, res) => {
     await booking.save();
     
     res.json({ success: true, booking });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ========== STORE MANAGEMENT (Admin) ==========
+
+router.get('/stores', async (req, res) => {
+  try {
+    const { type, search } = req.query;
+    const filter = {};
+    if (type && type !== 'all') filter.storeType = type;
+    if (search) filter.name = { $regex: search, $options: 'i' };
+    const stores = await Store.find(filter)
+      .populate('ownerId', 'name email')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, stores });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/stores', async (req, res) => {
+  try {
+    const { ownerEmail, ownerName, ownerPassword, ...storeData } = req.body;
+    let ownerId = null;
+
+    // Create store owner account if email provided
+    if (ownerEmail) {
+      let owner = await User.findOne({ email: ownerEmail });
+      if (!owner) {
+        if (!ownerName || !ownerPassword) {
+          return res.status(400).json({ success: false, message: 'ownerName and ownerPassword required to create new owner' });
+        }
+        const bcrypt = require('bcryptjs');
+        const hashed = await bcrypt.hash(ownerPassword, 10);
+        owner = await User.create({ name: ownerName, email: ownerEmail, password: hashed, role: 'store_owner', phone: storeData.phone || '', address: storeData.address || '' });
+      } else {
+        await User.findByIdAndUpdate(owner._id, { role: 'store_owner', phone: storeData.phone || owner.phone, address: storeData.address || owner.address });
+      }
+      ownerId = owner._id;
+    }
+
+    const store = await Store.create({ ...storeData, ownerId, ownerEmail: ownerEmail || '' });
+
+    // Link storeId back to owner
+    if (ownerId) await User.findByIdAndUpdate(ownerId, { storeId: store._id });
+
+    res.status(201).json({ success: true, store });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/stores/:id', async (req, res) => {
+  try {
+    const store = await Store.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
+    res.json({ success: true, store });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/stores/:id', async (req, res) => {
+  try {
+    await Store.findByIdAndDelete(req.params.id);
+    await Product.deleteMany({ storeId: req.params.id });
+    res.json({ success: true, message: 'Store and its products deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin: list all products (across all stores)
+router.get('/store-products', async (req, res) => {
+  try {
+    const { storeId } = req.query;
+    const filter = storeId ? { storeId } : {};
+    const products = await Product.find(filter).populate('storeId', 'name storeType').sort({ createdAt: -1 });
+    res.json({ success: true, products });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

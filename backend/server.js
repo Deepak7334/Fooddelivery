@@ -53,7 +53,7 @@ app.get('/api/health', (req, res) => {
 
 // Root route so users don't see "Cannot GET /"
 app.get('/', (req, res) => {
-  res.send('🍔 Foodhub API is running! Please visit the Vercel frontend URL to use the app.');
+  res.send('🛒 JDmart API is running! Please visit the Vercel frontend URL to use the app.');
 });
 
 // Routes
@@ -65,6 +65,8 @@ app.use('/api/delivery', require('./routes/delivery'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/booking', require('./routes/booking'));
+app.use('/api/store', require('./routes/store'));
+app.use('/api/store-owner', require('./routes/storeOwner'));
 
 // Socket.io
 io.on('connection', (socket) => {
