@@ -1,22 +1,34 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
+import api from '../../lib/api';
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, totalPrice, totalItems, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  const uniqueVendors = new Set();
-  cartItems.forEach(item => {
-    if (item.restaurantId) uniqueVendors.add(item.restaurantId);
-    if (item.storeId) uniqueVendors.add(item.storeId);
-  });
-  const fee = 30 * Math.max(1, uniqueVendors.size);
+  const [fee, setFee] = useState(0);
+  const [calculating, setCalculating] = useState(true);
+
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setCalculating(false);
+      return;
+    }
+    const isValidId = (id) => Boolean(id) && id !== 'null' && id !== 'undefined';
+    const restaurantIds = Array.from(new Set(cartItems.map(i => i.restaurantId).filter(isValidId)));
+    const storeIds = Array.from(new Set(cartItems.map(i => i.storeId).filter(isValidId)));
+
+    api.post('/customer/checkout-info', { restaurantIds, storeIds })
+      .then(res => setFee(res.data.deliveryFees || 0))
+      .catch(() => setFee(30)) // fallback
+      .finally(() => setCalculating(false));
+  }, [cartItems]);
   
-  const taxes = Math.round(totalPrice * 0.05);
-  const total = totalPrice + fee + taxes;
+  const total = totalPrice + fee;
 
   if (totalItems === 0) return (
     <div className="page-wrapper">
@@ -40,12 +52,21 @@ export default function CartPage() {
           <div>
             <div className="card" style={{ padding: 0 }}>
               {cartItems.map((item, i) => {
-                const id = item.foodId || item.productId || item._id;
+                const id = item.cartItemId || item.foodId || item.productId || item._id;
                 return (
                 <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderBottom: i < cartItems.length - 1 ? '1px solid var(--border)' : 'none' }}>
                   {item.image ? <img src={item.image} alt={item.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8 }} /> : <div style={{ width: 60, height: 60, background: 'var(--bg-card2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}></div>}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.name}</div>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                      {item.name}
+                      {item.variantName && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4, marginLeft: 8 }}>{item.variantName}</span>}
+                    </div>
+                    {item.spiceLevel && <div style={{ fontSize: 11, color: '#FF9800', marginBottom: 2 }}>🌶️ {item.spiceLevel}</div>}
+                    {item.addOns && item.addOns.length > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                        + {item.addOns.map(a => a.name).join(', ')}
+                      </div>
+                    )}
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>from {item.restaurantName || item.storeName || 'JDmart'}</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>₹{item.price}</div>
                   </div>
@@ -78,17 +99,14 @@ export default function CartPage() {
                 <span>Subtotal ({totalItems} items)</span><span>₹{totalPrice}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)' }}>
-                <span>Delivery Fee</span><span>₹{fee}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)' }}>
-                <span>Taxes (5%)</span><span>₹{taxes}</span>
+                <span>Delivery Fee</span><span>{calculating ? '...' : (fee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free</span> : `₹${fee}`)}</span>
               </div>
               <div className="divider" />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800 }}>
-                <span>Total</span><span style={{ color: 'var(--primary)' }}>₹{total}</span>
+                <span>Total</span><span style={{ color: 'var(--primary)' }}>₹{calculating ? '...' : total}</span>
               </div>
             </div>
-            <button onClick={() => { if (!user) navigate('/login'); else navigate('/checkout'); }} className="btn btn-primary btn-full btn-lg">
+            <button disabled={calculating} onClick={() => { if (!user) navigate('/login'); else navigate('/checkout'); }} className="btn btn-primary btn-full btn-lg">
               Proceed to Checkout →
             </button>
             <div style={{ marginTop: 16, padding: 12, background: 'rgba(76,175,80,0.08)', borderRadius: 8, border: '1px solid rgba(76,175,80,0.2)', fontSize: 12, color: 'var(--success)', textAlign: 'center' }}>

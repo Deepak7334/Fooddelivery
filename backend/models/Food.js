@@ -19,6 +19,10 @@ const foodSchema = new mongoose.Schema({
     type: Number,
     default: null,
   },
+  deliveryFee: {
+    type: Number,
+    default: 0,
+  },
   category: {
     type: String,
     required: true,
@@ -55,6 +59,24 @@ const foodSchema = new mongoose.Schema({
   tags: [{
     type: String,
   }],
+  // --- New Advanced PDP Fields ---
+  images: [{
+    type: String
+  }],
+  variants: [{
+    name: { type: String, required: true }, // e.g. "Half", "Full", "Family Pack"
+    price: { type: Number, required: true },
+    discountedPrice: { type: Number, default: null },
+    isAvailable: { type: Boolean, default: true },
+  }],
+  addOns: [{
+    name: { type: String, required: true }, // e.g. "Extra Cheese"
+    price: { type: Number, required: true },
+    isAvailable: { type: Boolean, default: true },
+  }],
+  spiceLevels: [{
+    type: String // e.g. "Mild", "Medium", "Spicy"
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Food', foodSchema);

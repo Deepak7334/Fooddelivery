@@ -1,19 +1,38 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../lib/api';
+import toast from 'react-hot-toast';
 import { FiShoppingBag, FiUsers, FiList, FiTrendingUp } from 'react-icons/fi';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
+  const [settings, setSettings] = useState({ globalTaxRate: 5 });
+  const [savingTax, setSavingTax] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/admin/stats').then(res => {
-      setStats(res.data.stats);
-      setRecentOrders(res.data.recentOrders || []);
+    Promise.all([
+      api.get('/admin/stats'),
+      api.get('/admin/settings')
+    ]).then(([statsRes, settingsRes]) => {
+      setStats(statsRes.data.stats);
+      setRecentOrders(statsRes.data.recentOrders || []);
+      if (settingsRes.data.settings) setSettings(settingsRes.data.settings);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
+
+  const handleSaveTax = async () => {
+    setSavingTax(true);
+    try {
+      const res = await api.put('/admin/settings', { globalTaxRate: settings.globalTaxRate });
+      toast.success('Settings updated!');
+    } catch (err) {
+      toast.error('Failed to update settings');
+    } finally {
+      setSavingTax(false);
+    }
+  };
 
   if (loading) return <div style={{ padding: 60, textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
 
@@ -57,6 +76,7 @@ export default function AdminDashboard() {
           <Link to="/admin/bookings" className="btn btn-primary" style={{ background: '#FF9800' }}>Manage Bookings</Link>
           <Link to="/admin/categories" className="btn btn-secondary"><span></span> Manage Categories</Link>
           <Link to="/admin/orders" className="btn btn-secondary"><FiList /> View All Orders</Link>
+          <Link to="/admin/items" className="btn btn-primary" style={{ background: '#9C27B0' }}>View All Items</Link>
         </div>
       </div>
 

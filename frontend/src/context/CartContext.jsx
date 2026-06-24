@@ -30,35 +30,82 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('foodhub_cart_type', cartType);
   }, [cartItems, restaurantId, restaurantName, storeId, storeName, cartType]);
 
+  const generateCartItemId = (baseId, config = {}) => {
+    let key = baseId;
+    if (config.variantName) key += `|v:${config.variantName}`;
+    if (config.addOns && config.addOns.length > 0) {
+      key += `|a:${config.addOns.map(a => a.name).sort().join(',')}`;
+    }
+    if (config.spiceLevel) key += `|s:${config.spiceLevel}`;
+    return key;
+  };
+
   // Add food item (existing restaurants)
-  const addToCart = (item, restId, restName) => {
+  const addToCart = (item, restId, restName, config = {}) => {
     setCartItems(prev => {
-      const key = item._id || item.foodId;
-      const exists = prev.find(i => (i._id === key || i.foodId === key) && i.type === 'food');
-      if (exists) return prev.map(i => ((i._id === key || i.foodId === key) && i.type === 'food') ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...item, foodId: key, type: 'food', restaurantId: restId, restaurantName: restName, quantity: 1 }];
+      const baseId = item._id || item.foodId;
+      const cartItemId = generateCartItemId(baseId, config);
+      // Legacy support: if item already in cart without cartItemId, match by foodId
+      const exists = prev.find(i => (i.cartItemId === cartItemId || (!i.cartItemId && i.foodId === baseId)) && i.type === 'food');
+      
+      const itemPrice = config.computedPrice || item.discountedPrice || item.price;
+      
+      if (exists) return prev.map(i => (i === exists) ? { ...i, quantity: i.quantity + 1 } : i);
+      
+      return [...prev, { 
+        ...item, 
+        foodId: baseId, 
+        cartItemId,
+        type: 'food', 
+        restaurantId: restId, 
+        restaurantName: restName, 
+        quantity: 1,
+        price: itemPrice,
+        basePrice: item.discountedPrice || item.price,
+        variantName: config.variantName,
+        addOns: config.addOns || [],
+        spiceLevel: config.spiceLevel,
+        specialInstructions: config.specialInstructions
+      }];
     });
     toast.success(`${item.name} added to cart!`);
   };
 
   // Add product item (stores)
-  const addProductToCart = (item, sId, sName) => {
+  const addProductToCart = (item, sId, sName, config = {}) => {
     setCartItems(prev => {
-      const key = item._id || item.productId;
-      const exists = prev.find(i => (i._id === key || i.productId === key) && i.type === 'product');
-      if (exists) return prev.map(i => ((i._id === key || i.productId === key) && i.type === 'product') ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...item, productId: key, type: 'product', storeId: sId, storeName: sName, quantity: 1 }];
+      const baseId = item._id || item.productId;
+      const cartItemId = generateCartItemId(baseId, config);
+      const exists = prev.find(i => (i.cartItemId === cartItemId || (!i.cartItemId && i.productId === baseId)) && i.type === 'product');
+      
+      const itemPrice = config.computedPrice || item.discountedPrice || item.price;
+
+      if (exists) return prev.map(i => (i === exists) ? { ...i, quantity: i.quantity + 1 } : i);
+      
+      return [...prev, { 
+        ...item, 
+        productId: baseId, 
+        cartItemId,
+        type: 'product', 
+        storeId: sId, 
+        storeName: sName, 
+        quantity: 1,
+        price: itemPrice,
+        basePrice: item.discountedPrice || item.price,
+        variantName: config.variantName
+      }];
     });
     toast.success(`${item.name} added to cart!`);
   };
 
   const removeFromCart = (id) => {
-    setCartItems(prev => prev.filter(i => (i.foodId !== id && i.productId !== id && i._id !== id)));
+    // id could be cartItemId, foodId, productId, or _id
+    setCartItems(prev => prev.filter(i => i.cartItemId !== id && i.foodId !== id && i.productId !== id && i._id !== id));
   };
 
   const updateQuantity = (id, quantity) => {
     if (quantity <= 0) { removeFromCart(id); return; }
-    setCartItems(prev => prev.map(i => (i.foodId === id || i.productId === id || i._id === id) ? { ...i, quantity } : i));
+    setCartItems(prev => prev.map(i => (i.cartItemId === id || i.foodId === id || i.productId === id || i._id === id) ? { ...i, quantity } : i));
   };
 
   const clearCart = () => {

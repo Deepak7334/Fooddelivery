@@ -165,7 +165,7 @@ export default function AdminRestaurants() {
           <div className="modal-box responsive-modal" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 className="modal-title">{editing ? ' Edit Restaurant' : ' Add New Restaurant'}</h2>
             <p className="modal-subtitle">{editing ? 'Update restaurant details below.' : 'Fill in details and owner credentials. Owner can login with these.'}</p>
-            <div className="responsive-grid-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0 16px' }}>
               <F label="Restaurant Name *" field="name" placeholder="e.g. Pizza Palace" {...fProps} />
               <F label="City" field="city" placeholder="Mumbai" {...fProps} />
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -189,7 +189,7 @@ export default function AdminRestaurants() {
                 <div style={{ padding: '12px 16px', background: 'rgba(255,87,34,0.08)', borderRadius: 10, border: '1px solid rgba(255,87,34,0.2)', marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
                   🔐 <strong>Owner Credentials</strong> — The restaurant owner will use these to login.
                 </div>
-                <div className="responsive-grid-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0 16px' }}>
                   <F label="Owner Name" field="ownerName" placeholder="John Doe" {...fProps} />
                   <F label="Owner Email *" field="ownerEmail" type="email" placeholder="owner@restaurant.com" {...fProps} />
                   <F label="Owner Password *" field="ownerPassword" type="password" placeholder="Min 6 characters" {...fProps} />
@@ -215,7 +215,7 @@ export default function AdminRestaurants() {
             
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, marginBottom: 24, border: '1px solid var(--border)' }}>
               <h3 style={{ fontSize: 16, marginBottom: 12 }}>{editingTable ? 'Edit Table' : 'Add New Table'}</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                 <div className="form-group">
                   <label className="form-label">Table Number</label>
                   <input type="number" className="form-input" value={tableForm.number} onChange={e => setTableForm({ ...tableForm, number: e.target.value })} placeholder="e.g. 1" />

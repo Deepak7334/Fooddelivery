@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 const STORE_TYPE_ICONS = {
   grocery: '🛒', pharmacy: '💊', electronics: '📱', beauty: '🧴',
@@ -175,7 +176,7 @@ export default function StoreDetailPage() {
             Object.entries(filteredGrouped).map(([cat, products]) => (
               <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} style={{ marginBottom: 36, scrollMarginTop: 160 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>{cat}</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+                <div className="items-grid-small">
                   {products.map(product => (
                     <ProductCard key={product._id} product={product} qty={getQty(product._id)} onAdd={() => handleAdd(product)} onBuy={() => { handleAdd(product); navigate('/cart'); }} onUpdate={(qty) => {
                       if (!user) { navigate('/login'); return; }
@@ -213,45 +214,76 @@ export default function StoreDetailPage() {
 
 function ProductCard({ product, qty, onAdd, onBuy }) {
   const { updateQuantity, cartType, storeId } = useCart();
-  const discount = product.discountedPrice && product.discountedPrice < product.price
-    ? Math.round((1 - product.discountedPrice / product.price) * 100)
+  const hasVariants = product.variants && product.variants.length > 0;
+
+  let pPrice = product.price;
+  let dPrice = product.discountedPrice;
+  let prefix = '';
+
+  if ((!pPrice || pPrice === 0) && hasVariants) {
+    const prices = product.variants.map(v => v.discountedPrice || v.price).filter(p => p > 0);
+    if (prices.length > 0) {
+      pPrice = Math.min(...prices);
+      dPrice = null;
+      prefix = 'Starts at ';
+    }
+  }
+
+  const discount = dPrice && dPrice < pPrice
+    ? Math.round((1 - dPrice / pPrice) * 100)
     : 0;
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', transition: 'var(--transition)' }}
+    <div className="item-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', transition: 'var(--transition)' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,87,34,0.25)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-      {/* Image */}
-      <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
-        {product.image ? (
-          <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📦</div>
-        )}
-        {discount > 0 && (
-          <div style={{ position: 'absolute', top: 6, right: 6, background: 'var(--primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6 }}>
-            -{discount}%
+      
+      <Link to={`/product/${product._id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
+        {/* Image */}
+        <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
+          {product.image ? (
+            <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📦</div>
+          )}
+          {discount > 0 && (
+            <div style={{ position: 'absolute', top: 6, right: 6, background: 'var(--primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6 }}>
+              -{discount}%
+            </div>
+          )}
+        </div>
+
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{product.name}</div>
+        {product.brand && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{product.brand}</div>}
+        {product.unit && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>{product.unit}</div>}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          {dPrice ? (
+            <>
+              <span style={{ fontWeight: 800, fontSize: 16 }}>{prefix}₹{dPrice}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{pPrice}</span>
+            </>
+          ) : <span style={{ fontWeight: 800, fontSize: 16 }}>{prefix}₹{pPrice}</span>}
+        </div>
+        {hasVariants && (
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Sizes: {product.variants.map(v => v.weight).join(', ')}
           </div>
         )}
-      </div>
-
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{product.name}</div>
-      {product.brand && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{product.brand}</div>}
-      {product.unit && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>{product.unit}</div>}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontWeight: 800, fontSize: 16 }}>₹{product.discountedPrice || product.price}</span>
-        {discount > 0 && <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{product.price}</span>}
-      </div>
+      </Link>
 
       {/* Add / Qty stepper */}
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-        {qty > 0 ? (
+        {qty > 0 && !hasVariants ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, padding: '4px 8px', height: 36 }}>
             <button onClick={() => updateQuantity(product._id, qty - 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>−</button>
             <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
             <button onClick={() => updateQuantity(product._id, qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
           </div>
+        ) : hasVariants ? (
+          <Link to={`/product/${product._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36 }}>
+            Choose Pack
+          </Link>
         ) : (
           <button
             onClick={onAdd}
@@ -261,10 +293,12 @@ function ProductCard({ product, qty, onAdd, onBuy }) {
             {product.isAvailable ? '+ Cart' : 'Unavailable'}
           </button>
         )}
-        <button onClick={onBuy} disabled={!product.isAvailable}
-          style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: product.isAvailable ? 'pointer' : 'not-allowed', opacity: product.isAvailable ? 1 : 0.5, height: 36 }}>
-          Buy Now
-        </button>
+        {!hasVariants && (
+          <button onClick={onBuy} disabled={!product.isAvailable}
+            style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: product.isAvailable ? 'pointer' : 'not-allowed', opacity: product.isAvailable ? 1 : 0.5, height: 36 }}>
+            Buy Now
+          </button>
+        )}
       </div>
     </div>
   );

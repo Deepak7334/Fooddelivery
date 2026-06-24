@@ -20,6 +20,15 @@ const orderItemSchema = new mongoose.Schema({
   },
   image: String,
   unit: String,              // e.g. "500g", "1L" — for store products
+  // --- New Advanced PDP Fields ---
+  basePrice: Number,         // The price of the base item or variant before addons
+  variantName: String,       // e.g. "Half Plate", "500g"
+  addOns: [{
+    name: String,
+    price: Number
+  }],
+  spiceLevel: String,
+  specialInstructions: String,
 });
 
 const orderSchema = new mongoose.Schema({

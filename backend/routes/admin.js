@@ -10,6 +10,7 @@ const Category = require('../models/Category');
 const Table = require('../models/Table');
 const Store = require('../models/Store');
 const Product = require('../models/Product');
+const Settings = require('../models/Settings');
 const generateOTP = require('../utils/generateOTP');
 const sendEmail = require('../utils/sendEmail');
 
@@ -33,6 +34,35 @@ router.get('/stats', async (req, res) => {
       .populate('restaurantId', 'name')
       .populate('deliveryAgentId', 'name phone');
     res.json({ success: true, stats: { totalUsers, totalRestaurants, totalOrders, totalRevenue: revenueAgg[0]?.total || 0, totalDeliveryAgents, totalBookings }, recentOrders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ========== SETTINGS ==========
+router.get('/settings', async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({ globalTaxRate: 5 });
+    }
+    res.json({ success: true, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/settings', async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+    }
+    if (req.body.globalTaxRate !== undefined) {
+      settings.globalTaxRate = req.body.globalTaxRate;
+    }
+    await settings.save();
+    res.json({ success: true, settings });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -587,16 +617,21 @@ router.delete('/stores/:id', async (req, res) => {
   }
 });
 
-// Admin: list all products (across all stores)
-router.get('/store-products', async (req, res) => {
+// Admin: Manage ALL Items (Foods & Products) for Delivery Fees
+router.get('/manage-items', async (req, res) => {
   try {
-    const { storeId } = req.query;
-    const filter = storeId ? { storeId } : {};
-    const products = await Product.find(filter).populate('storeId', 'name storeType').sort({ createdAt: -1 });
-    res.json({ success: true, products });
+    const foods = await Food.find().populate('restaurantId', 'name').lean();
+    const products = await Product.find().populate('storeId', 'name storeType').lean();
+    
+    const formattedFoods = foods.map(f => ({ ...f, itemType: 'food', vendorName: f.restaurantId?.name || 'Unknown' }));
+    const formattedProducts = products.map(p => ({ ...p, itemType: 'product', vendorName: p.storeId?.name || 'Unknown' }));
+    
+    res.json({ success: true, items: [...formattedFoods, ...formattedProducts].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+
 
 module.exports = router;

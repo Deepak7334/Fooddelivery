@@ -6,6 +6,7 @@ import { FiEdit2, FiTrash2, FiPlus, FiX } from 'react-icons/fi';
 const EMPTY_PRODUCT = {
   name: '', description: '', price: '', discountedPrice: '', category: '',
   image: '', brand: '', unit: '', stock: '-1', isAvailable: true, isFeatured: false, tags: '',
+  variants: [], ingredients: '', nutritionalInfo: '', storageInstructions: '', mfgDate: '', expiryDate: ''
 };
 
 export default function StoreOwnerProducts() {
@@ -138,7 +139,7 @@ export default function StoreOwnerProducts() {
                   <input className="form-input" type={f.type} required={f.required} placeholder={f.placeholder} value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} />
                 </div>
               ))}
-              <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 16, marginTop: 4, marginBottom: 20 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
                   <input type="checkbox" checked={form.isAvailable} onChange={e => setForm(x => ({ ...x, isAvailable: e.target.checked }))} />
                   Available
@@ -148,6 +149,54 @@ export default function StoreOwnerProducts() {
                   Featured
                 </label>
               </div>
+
+              {/* Advanced Metadata */}
+              <div style={{ marginBottom: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Detailed Information</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Ingredients</label>
+                    <textarea className="form-input" rows={2} value={form.ingredients || ''} onChange={e => setForm({ ...form, ingredients: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Nutritional Info</label>
+                    <textarea className="form-input" rows={2} value={form.nutritionalInfo || ''} onChange={e => setForm({ ...form, nutritionalInfo: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Storage Instructions</label>
+                    <input className="form-input" value={form.storageInstructions || ''} onChange={e => setForm({ ...form, storageInstructions: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Mfg Date</label>
+                    <input className="form-input" type="date" value={form.mfgDate ? new Date(form.mfgDate).toISOString().split('T')[0] : ''} onChange={e => setForm({ ...form, mfgDate: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Expiry Date</label>
+                    <input className="form-input" type="date" value={form.expiryDate ? new Date(form.expiryDate).toISOString().split('T')[0] : ''} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Variants */}
+              <div style={{ marginBottom: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>Variants (e.g. 500g, 1kg)</h3>
+                  <button type="button" onClick={() => setForm({ ...form, variants: [...(form.variants || []), { weight: '', price: '', discountedPrice: '', isAvailable: true, stock: -1 }] })} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: 12 }}>+ Add Variant</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(form.variants || []).map((v, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input className="form-input" placeholder="Weight/Pack" value={v.weight} onChange={e => { const nv = [...form.variants]; nv[i].weight = e.target.value; setForm({ ...form, variants: nv }) }} style={{ flex: 1, padding: '6px 10px', fontSize: 13, minWidth: 100 }} />
+                      <input className="form-input" type="number" placeholder="Price" value={v.price} onChange={e => { const nv = [...form.variants]; nv[i].price = e.target.value; setForm({ ...form, variants: nv }) }} style={{ width: 80, padding: '6px 10px', fontSize: 13 }} />
+                      <input className="form-input" type="number" placeholder="Disc." value={v.discountedPrice || ''} onChange={e => { const nv = [...form.variants]; nv[i].discountedPrice = e.target.value; setForm({ ...form, variants: nv }) }} style={{ width: 80, padding: '6px 10px', fontSize: 13 }} />
+                      <input className="form-input" type="number" placeholder="Stock" value={v.stock} onChange={e => { const nv = [...form.variants]; nv[i].stock = e.target.value; setForm({ ...form, variants: nv }) }} style={{ width: 70, padding: '6px 10px', fontSize: 13 }} />
+                      <button type="button" onClick={() => { const nv = [...form.variants]; nv.splice(i, 1); setForm({ ...form, variants: nv }); }} className="btn btn-danger btn-sm" style={{ padding: '6px', minWidth: 'auto' }}><FiTrash2 size={14} /></button>
+                    </div>
+                  ))}
+                  {(!form.variants || form.variants.length === 0) && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No variants added.</div>}
+                </div>
+              </div>
+
               <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                 <button type="button" onClick={() => setModal(null)} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
                 <button type="submit" disabled={saving} className="btn btn-primary" style={{ flex: 1 }}>

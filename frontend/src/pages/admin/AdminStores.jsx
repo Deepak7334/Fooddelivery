@@ -154,7 +154,7 @@ export default function AdminStores() {
               <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><FiX size={22} /></button>
             </div>
             <form onSubmit={handleSave}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14 }}>
                 {[
                   { label: 'Store Name *', key: 'name', col: 2, required: true },
                   { label: 'Store Type *', key: 'storeType', type: 'select', col: 1, required: true },
@@ -185,7 +185,7 @@ export default function AdminStores() {
               {modal === 'add' && (
                 <div style={{ marginTop: 16, padding: 16, background: 'rgba(33,150,243,0.08)', borderRadius: 12, border: '1px solid rgba(33,150,243,0.2)' }}>
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, color: '#2196F3' }}>👤 Store Owner Account (optional)</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
                     {[
                       { label: 'Owner Email', key: 'ownerEmail', col: 2 },
                       { label: 'Owner Name', key: 'ownerName', col: 1 },

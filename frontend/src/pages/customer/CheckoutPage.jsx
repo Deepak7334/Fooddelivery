@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -6,7 +6,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
-  const { cartItems, totalPrice, clearCart } = useCart();
+  const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [address, setAddress] = useState(user?.address || '');
@@ -15,6 +15,27 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [loading, setLoading] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
+
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [calculating, setCalculating] = useState(true);
+
+  useEffect(() => {
+    if (cartItems.length === 0) return;
+    const isValidId = (id) => Boolean(id) && id !== 'null' && id !== 'undefined';
+    const restaurantIds = Array.from(new Set(cartItems.map(i => i.restaurantId || ctxRestaurantId).filter(isValidId)));
+    const storeIds = Array.from(new Set(cartItems.map(i => i.storeId || ctxStoreId).filter(isValidId)));
+
+    api.post('/customer/checkout-info', { restaurantIds, storeIds })
+      .then(res => {
+        setDeliveryFee(res.data.deliveryFees || 0);
+      })
+      .catch(err => {
+        console.error('Error fetching checkout info:', err);
+        toast.error(`Checkout info error: ${err.response?.data?.message || err.message}`);
+        setDeliveryFee(30); // fallback
+      })
+      .finally(() => setCalculating(false));
+  }, [cartItems]);
 
   const handleSaveAddress = async () => {
     if (!address.trim()) return toast.error('Address cannot be empty');
@@ -30,15 +51,7 @@ export default function CheckoutPage() {
     }
   };
   
-  const uniqueVendors = new Set();
-  cartItems.forEach(item => {
-    if (item.restaurantId) uniqueVendors.add(item.restaurantId);
-    if (item.storeId) uniqueVendors.add(item.storeId);
-  });
-  const fee = 30 * Math.max(1, uniqueVendors.size);
-  
-  const taxes = Math.round(totalPrice * 0.05);
-  const total = totalPrice + fee + taxes;
+  const total = totalPrice + deliveryFee;
 
   const handlePlaceOrder = async () => {
     if (!address.trim()) { toast.error('Please enter delivery address'); return; }
@@ -203,18 +216,20 @@ export default function CheckoutPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8, color: 'var(--text-secondary)' }}>
               <span>Subtotal</span><span>₹{totalPrice}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8, color: 'var(--text-secondary)' }}>
-              <span>Delivery Fee</span><span>₹{fee}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, color: 'var(--text-secondary)' }}>
+              <span>Delivery Fee</span>
+              <span>{calculating ? '...' : deliveryFee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free Delivery</span> : `₹${deliveryFee}`}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 12, color: 'var(--text-secondary)' }}>
-              <span>Taxes</span><span>₹{taxes}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px dashed var(--border)', fontWeight: 800, fontSize: 18, marginBottom: 20 }}>
+              <span>Total</span>
+              <span style={{ color: 'var(--primary)' }}>₹{calculating ? '...' : total}</span>
             </div>
-            <div className="divider" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800, marginBottom: 20 }}>
-              <span>Total</span><span style={{ color: 'var(--primary)' }}>₹{total}</span>
-            </div>
-            <button onClick={handlePlaceOrder} disabled={loading} className="btn btn-primary btn-full btn-lg">
-              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? ' Place Order' : paymentMethod === 'upi' ? `Proceed to UPI Payment · ₹${total}` : ` Pay ₹${total}`}
+            <button 
+              className="btn btn-primary btn-lg btn-full" 
+              onClick={handlePlaceOrder}
+              disabled={loading || calculating || cartItems.length === 0}
+            >
+              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? ' Place Order' : paymentMethod === 'upi' ? `Proceed to UPI Payment · ₹${calculating ? '...' : total}` : ` Pay ₹${calculating ? '...' : total}`}
             </button>
           </div>
         </div>

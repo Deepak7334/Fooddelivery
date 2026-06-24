@@ -58,10 +58,10 @@ router.post('/products', async (req, res) => {
     const store = await Store.findOne({ ownerId: req.user.id });
     if (!store) return res.status(404).json({ success: false, message: 'No store found' });
 
-    const { name, description, price, discountedPrice, category, image, brand, unit, stock, isAvailable, isFeatured, tags } = req.body;
+    const { name, description, price, discountedPrice, category, image, brand, unit, stock, isAvailable, isFeatured, tags, variants, ingredients, nutritionalInfo, storageInstructions, mfgDate, expiryDate, images } = req.body;
     if (!name || !price || !category) return res.status(400).json({ success: false, message: 'name, price and category are required' });
 
-    const product = await Product.create({ name, description, price, discountedPrice, category, image, brand, unit, stock, isAvailable, isFeatured, tags, storeId: store._id });
+    const product = await Product.create({ name, description, price, discountedPrice, category, image, brand, unit, stock, isAvailable, isFeatured, tags, variants, ingredients, nutritionalInfo, storageInstructions, mfgDate, expiryDate, images, storeId: store._id });
     res.status(201).json({ success: true, product });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

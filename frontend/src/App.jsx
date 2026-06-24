@@ -21,6 +21,8 @@ import RestaurantSidebar from './components/RestaurantSidebar';
 import HomePage from './pages/customer/HomePage';
 import RestaurantsPage from './pages/customer/RestaurantsPage';
 import RestaurantDetailPage from './pages/customer/RestaurantDetailPage';
+import FoodDetailPage from './pages/customer/FoodDetailPage';
+import ProductDetailPage from './pages/customer/ProductDetailPage';
 import CartPage from './pages/customer/CartPage';
 import CheckoutPage from './pages/customer/CheckoutPage';
 import UpiPaymentPage from './pages/customer/UpiPaymentPage';
@@ -36,6 +38,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminDeliveryAgents from './pages/admin/AdminDeliveryAgents';
 import AdminBookings from './pages/admin/AdminBookings';
+import AdminItems from './pages/admin/AdminItems';
 
 // Restaurant Pages
 import RestaurantDashboard from './pages/restaurant/RestaurantDashboard';
@@ -121,6 +124,8 @@ export default function App() {
       <Route path="/" element={<CustomerLayout><HomePage /></CustomerLayout>} />
       <Route path="/restaurants" element={<CustomerLayout><RestaurantsPage /></CustomerLayout>} />
       <Route path="/restaurants/:id" element={<CustomerLayout><RestaurantDetailPage /></CustomerLayout>} />
+      <Route path="/food/:id" element={<CustomerLayout><FoodDetailPage /></CustomerLayout>} />
+      <Route path="/product/:id" element={<CustomerLayout><ProductDetailPage /></CustomerLayout>} />
       <Route path="/booking/:restaurantId" element={<CustomerLayout><TableBookingPage /></CustomerLayout>} />
       <Route path="/stores" element={<CustomerLayout><StoresPage /></CustomerLayout>} />
       <Route path="/stores/:id" element={<CustomerLayout><StoreDetailPage /></CustomerLayout>} />
@@ -140,6 +145,7 @@ export default function App() {
       <Route path="/admin/bookings" element={<PrivateRoute role="admin"><AdminLayout><AdminBookings /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/delivery-agents" element={<PrivateRoute role="admin"><AdminLayout><AdminDeliveryAgents /></AdminLayout></PrivateRoute>} />
       <Route path="/admin/categories" element={<PrivateRoute role="admin"><AdminLayout><AdminCategories /></AdminLayout></PrivateRoute>} />
+      <Route path="/admin/items" element={<PrivateRoute role="admin"><AdminLayout><AdminItems /></AdminLayout></PrivateRoute>} />
 
       {/* Restaurant Routes */}
       <Route path="/restaurant" element={<PrivateRoute role="restaurant"><RestaurantLayout><RestaurantDashboard /></RestaurantLayout></PrivateRoute>} />

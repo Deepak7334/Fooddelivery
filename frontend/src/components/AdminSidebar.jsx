@@ -11,6 +11,7 @@ const navLinks = [
   { to: '/admin/bookings', icon: <FiCalendar />, label: 'Table Bookings' },
   { to: '/admin/delivery-agents', icon: <FiTruck />, label: 'Delivery Agents' },
   { to: '/admin/categories', icon: <FiTag />, label: 'Categories' },
+  { to: '/admin/items', icon: <FiList />, label: 'Manage Items' },
 ];
 
 export default function AdminSidebar({ open, onClose }) {

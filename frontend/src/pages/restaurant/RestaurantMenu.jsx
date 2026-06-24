@@ -3,7 +3,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 
-const emptyForm = { name: '', description: '', category: '', price: '', discountedPrice: '', isVeg: false, isBestseller: false, isAvailable: true, image: '' };
+const emptyForm = { name: '', description: '', category: '', price: '', discountedPrice: '', isVeg: false, isBestseller: false, isAvailable: true, image: '', variants: [], addOns: [], spiceLevels: [] };
 
 export default function RestaurantMenu() {
   const [foods, setFoods] = useState([]);
@@ -142,6 +142,49 @@ export default function RestaurantMenu() {
                   {label}
                 </label>
               ))}
+            </div>
+
+            {/* Variants */}
+            <div style={{ marginBottom: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700 }}>Variants (e.g. Half/Full)</h3>
+                <button onClick={() => setForm({ ...form, variants: [...(form.variants || []), { name: '', price: '', discountedPrice: '', isAvailable: true }] })} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: 12 }}>+ Add Variant</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(form.variants || []).map((v, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input className="form-input" placeholder="Name (Half)" value={v.name} onChange={e => { const nv = [...form.variants]; nv[i].name = e.target.value; setForm({ ...form, variants: nv }) }} style={{ flex: 1, padding: '6px 10px', fontSize: 13 }} />
+                    <input className="form-input" type="number" placeholder="Price" value={v.price} onChange={e => { const nv = [...form.variants]; nv[i].price = e.target.value; setForm({ ...form, variants: nv }) }} style={{ width: 80, padding: '6px 10px', fontSize: 13 }} />
+                    <input className="form-input" type="number" placeholder="Disc." value={v.discountedPrice || ''} onChange={e => { const nv = [...form.variants]; nv[i].discountedPrice = e.target.value; setForm({ ...form, variants: nv }) }} style={{ width: 80, padding: '6px 10px', fontSize: 13 }} />
+                    <button onClick={() => { const nv = [...form.variants]; nv.splice(i, 1); setForm({ ...form, variants: nv }); }} className="btn btn-danger btn-sm" style={{ padding: '6px', minWidth: 'auto' }}><FiTrash2 size={14} /></button>
+                  </div>
+                ))}
+                {(!form.variants || form.variants.length === 0) && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No variants added.</div>}
+              </div>
+            </div>
+
+            {/* Add-ons */}
+            <div style={{ marginBottom: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700 }}>Add-ons (e.g. Extra Cheese)</h3>
+                <button onClick={() => setForm({ ...form, addOns: [...(form.addOns || []), { name: '', price: '', isAvailable: true }] })} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: 12 }}>+ Add Add-on</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(form.addOns || []).map((a, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input className="form-input" placeholder="Add-on Name" value={a.name} onChange={e => { const na = [...form.addOns]; na[i].name = e.target.value; setForm({ ...form, addOns: na }) }} style={{ flex: 1, padding: '6px 10px', fontSize: 13 }} />
+                    <input className="form-input" type="number" placeholder="Price" value={a.price} onChange={e => { const na = [...form.addOns]; na[i].price = e.target.value; setForm({ ...form, addOns: na }) }} style={{ width: 80, padding: '6px 10px', fontSize: 13 }} />
+                    <button onClick={() => { const na = [...form.addOns]; na.splice(i, 1); setForm({ ...form, addOns: na }); }} className="btn btn-danger btn-sm" style={{ padding: '6px', minWidth: 'auto' }}><FiTrash2 size={14} /></button>
+                  </div>
+                ))}
+                {(!form.addOns || form.addOns.length === 0) && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No add-ons added.</div>}
+              </div>
+            </div>
+
+            {/* Spice Levels */}
+            <div style={{ marginBottom: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Spice Levels (comma separated)</h3>
+              <input className="form-input" placeholder="e.g. Mild, Medium, Hot" value={(form.spiceLevels || []).join(', ')} onChange={e => setForm({ ...form, spiceLevels: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} style={{ fontSize: 13 }} />
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowModal(false)} className="btn btn-secondary">Cancel</button>

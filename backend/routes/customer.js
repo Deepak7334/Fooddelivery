@@ -6,6 +6,7 @@ const Food = require('../models/Food');
 const Order = require('../models/Order');
 const Category = require('../models/Category');
 const Store = require('../models/Store');
+const Settings = require('../models/Settings');
 
 // ========== PUBLIC ROUTES ==========
 // Get all categories
@@ -18,10 +19,45 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// Get checkout info (delivery fees & global taxes)
+router.post('/checkout-info', async (req, res) => {
+  try {
+    const { restaurantIds = [], storeIds = [] } = req.body;
+    let deliveryFees = 0;
+    
+    // Filter to ensure only valid 24-character hex strings (MongoDB ObjectIds) are queried
+    const validRestIds = restaurantIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+    const validStoreIds = storeIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+    
+    if (validRestIds.length > 0) {
+      const rests = await Restaurant.find({ _id: { $in: validRestIds } });
+      rests.forEach(r => deliveryFees += (r.deliveryFee || 0));
+    }
+    
+    if (validStoreIds.length > 0) {
+      const stores = await Store.find({ _id: { $in: validStoreIds } });
+      stores.forEach(s => deliveryFees += (s.deliveryFee || 0));
+    }
+
+    res.json({ success: true, deliveryFees, globalTaxRate: 0 }); // Taxes removed
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Get popular foods
 router.get('/foods', async (req, res) => {
   try {
-    const foods = await Food.find({ isAvailable: true }).limit(24).populate('restaurantId', 'name image address cuisine');
+    const { search } = req.query;
+    let filter = { isAvailable: true };
+    if (search) {
+      filter.$or = [
+        { name: new RegExp(search, 'i') },
+        { description: new RegExp(search, 'i') },
+        { category: new RegExp(search, 'i') }
+      ];
+    }
+    const foods = await Food.find(filter).limit(24).populate('restaurantId', 'name image address cuisine');
     res.json({ success: true, foods });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -104,20 +140,27 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
 
     for (const key of Object.keys(vendorGroups)) {
       const group = vendorGroups[key];
-      let deliveryFee = 30;
       let vendorName = 'JDmart';
-
       if (group.vendorType === 'restaurant' && group.vendorId) {
         const rest = await Restaurant.findById(group.vendorId);
-        if (rest) { deliveryFee = rest.deliveryFee || 30; vendorName = rest.name; }
+        if (rest) vendorName = rest.name;
       } else if (group.vendorType === 'store' && group.vendorId) {
         const store = await Store.findById(group.vendorId);
-        if (store) { deliveryFee = store.deliveryFee || 30; vendorName = store.name; }
+        if (store) vendorName = store.name;
+      }
+
+      // Calculate total delivery fee for this vendor group
+      let groupDeliveryFee = 0;
+      if (group.vendorType === 'restaurant' && group.vendorId) {
+        const rest = await Restaurant.findById(group.vendorId);
+        if (rest) groupDeliveryFee = rest.deliveryFee || 0;
+      } else if (group.vendorType === 'store' && group.vendorId) {
+        const store = await Store.findById(group.vendorId);
+        if (store) groupDeliveryFee = store.deliveryFee || 0;
       }
 
       const totalAmount = group.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const taxes = Math.round(totalAmount * 0.05); // Match frontend logic (5% tax)
-      const finalAmount = totalAmount + deliveryFee + taxes;
+      const finalAmount = totalAmount + groupDeliveryFee;
 
       const order = await Order.create({
         customerId: req.user._id,
@@ -128,7 +171,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
         orderType: group.vendorType === 'restaurant' ? 'food' : 'product',
         items: group.items,
         totalAmount,
-        deliveryFee,
+        deliveryFee: groupDeliveryFee,
         finalAmount,
         deliveryAddress,
         specialInstructions,
@@ -246,7 +289,7 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
       orderType: 'product',
       items,
       totalAmount,
-      deliveryFee: deliveryFee || store.deliveryFee,
+      deliveryFee, // Trusted from frontend or we could compute it
       finalAmount,
       deliveryAddress,
       paymentMethod: paymentMethod || 'cod',

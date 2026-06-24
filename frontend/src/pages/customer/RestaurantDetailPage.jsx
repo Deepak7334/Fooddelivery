@@ -5,7 +5,8 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { calculateDistance } from '../../utils/distance';
+// ... existing imports ...
+import { Link } from 'react-router-dom';
 
 export default function RestaurantDetailPage() {
   const { id } = useParams();
@@ -133,7 +134,7 @@ export default function RestaurantDetailPage() {
           ) : categories.map(cat => (
             <div key={cat} id={`cat-${cat}`} style={{ marginBottom: 40 }}>
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>{cat}</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+              <div className="items-grid-small">
                 {menuGrouped[cat].map(food => (
                   <FoodCard key={food._id} food={food} qty={getItemQty(food._id)} onAdd={() => handleAdd(food)}
                     onBuy={() => { handleAdd(food); navigate('/cart'); }} />
@@ -159,38 +160,47 @@ export default function RestaurantDetailPage() {
 
 function FoodCard({ food, qty, onAdd, onBuy }) {
   const { updateQuantity } = useCart();
+  const hasVariants = food.variants && food.variants.length > 0;
+
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', transition: 'var(--transition)' }}
+    <div className="item-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', transition: 'var(--transition)' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,87,34,0.25)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-      {/* Image */}
-      <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
-        {food.image ? (
-          <img src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🍽️</div>
-        )}
-        <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: '#fff', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${food.isVeg ? '#4CAF50' : '#F44336'}` }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: food.isVeg ? '#4CAF50' : '#F44336' }}></div>
+      
+      <Link to={`/food/${food._id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
+        {/* Image */}
+        <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
+          {food.image ? (
+            <img src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🍽️</div>
+          )}
+          <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: '#fff', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${food.isVeg ? '#4CAF50' : '#F44336'}` }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: food.isVeg ? '#4CAF50' : '#F44336' }}></div>
+          </div>
         </div>
-      </div>
 
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{food.name}</div>
-      {food.description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{food.description}</div>}
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{food.name}</div>
+        {food.description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{food.description}</div>}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontWeight: 800, fontSize: 16 }}>₹{food.discountedPrice || food.price}</span>
-        {food.discountedPrice && <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{food.price}</span>}
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontWeight: 800, fontSize: 16 }}>₹{food.discountedPrice || food.price}</span>
+          {food.discountedPrice && <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{food.price}</span>}
+        </div>
+      </Link>
 
       {/* Add / Qty stepper */}
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-        {qty > 0 ? (
+        {qty > 0 && !hasVariants ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, padding: '4px 8px', height: 36 }}>
             <button onClick={() => updateQuantity(food._id, qty - 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>−</button>
             <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
             <button onClick={() => updateQuantity(food._id, qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
           </div>
+        ) : hasVariants ? (
+          <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36 }}>
+            Customize
+          </Link>
         ) : (
           <button
             onClick={onAdd}

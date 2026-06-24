@@ -247,7 +247,28 @@ select.form-input option {
   color: var(--success);
 }
 
-/* === Layout === */
+.details-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 40%) 1fr;
+  gap: 16px;
+}
+
+.sticky-col {
+  position: sticky;
+  top: 90px;
+  height: max-content;
+}
+
+@media (max-width: 768px) {
+  .details-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .sticky-col {
+    position: relative !important;
+    top: 0 !important;
+  }
+}
+
 .container {
   max-width: 1280px;
   margin: 0 auto;
@@ -258,6 +279,77 @@ select.form-input option {
   min-height: calc(100vh - 70px);
   padding: 24px 0;
 }
+
+/* === Navbar & Responsive Elements === */
+.hamburger-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+}
+
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none !important;
+  }
+  .hamburger-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+
+/* === Grids === */
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.items-grid-small {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .vendor-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .items-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .items-grid-small {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  
+  /* Make horizontal item cards vertical on mobile so 2 can fit side-by-side */
+  .item-link {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+  }
+  .item-img {
+    width: 100% !important;
+    height: 110px !important;
+  }
+  .item-card > div:last-child {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+}
+
 
 /* === Cart / Checkout 2-col layout === */
 .cart-layout {
@@ -285,7 +377,7 @@ select.form-input option {
   background: rgba(255,255,255,0.06);
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.1);
-  overflow: hidden;
+  overflow: visible;
   backdrop-filter: blur(10px);
   align-items: stretch;
 }
