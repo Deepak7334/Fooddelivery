@@ -17,13 +17,17 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
 function originCheck(origin, callback) {
   // Allow requests with no origin (mobile apps, curl, etc.)
   if (!origin) return callback(null, true);
+  // Allow any Vercel domain or localhost automatically
+  if (origin.includes('vercel.app') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    return callback(null, true);
+  }
   if (allowedOrigins.includes(origin)) return callback(null, true);
   callback(new Error('Not allowed by CORS'));
 }
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: originCheck,
     methods: ['GET', 'POST'],
     credentials: true,
   },
