@@ -280,12 +280,15 @@ export default function DeliveryDashboard() {
 
             {pendingOrders.map(order => {
               const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
+              const vendorAddress = order.restaurantId?.address || order.storeId?.address || '—';
+              const vendorPhone   = order.restaurantId?.phone   || order.storeId?.phone   || '—';
               return (
                 <div key={order._id} className="dd-pending-card">
                   <div className="dd-pending-top">
                     <div>
                       <div className="dd-order-id">#{order._id.slice(-8).toUpperCase()}</div>
                       <div className="dd-vendor-name">{vendorName}</div>
+                      <div className="dd-delivery-addr">📦 {vendorAddress} (📞 {vendorPhone})</div>
                       <div className="dd-delivery-addr">📍 {order.deliveryAddress?.slice(0, 45)}…</div>
                     </div>
                     <div className="dd-earn-pill">

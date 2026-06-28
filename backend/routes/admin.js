@@ -441,7 +441,7 @@ router.patch('/orders/:id/assign-agent', async (req, res) => {
         agentAccepted: false
       },
       { new: true }
-    ).populate('customerId', 'name email phone').populate('restaurantId', 'name').populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
+    ).populate('customerId', 'name email phone').populate('restaurantId', 'name address phone').populate('storeId', 'name address phone').populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     
@@ -485,7 +485,7 @@ router.patch('/orders/bulk-assign', async (req, res) => {
           agentAccepted: false
         },
         { new: true }
-      ).populate('customerId', 'name email phone').populate('restaurantId', 'name').populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
+      ).populate('customerId', 'name email phone').populate('restaurantId', 'name address phone').populate('storeId', 'name address phone').populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
       
       if (order) {
         order.statusHistory.push({ status: 'assignment_pending', timestamp: new Date(), note: 'Admin assigned (Bulk). Waiting for agent.' });
