@@ -57,7 +57,7 @@ app.get('/api/health', (req, res) => {
 
 // Root route so users don't see "Cannot GET /"
 app.get('/', (req, res) => {
-  res.send('🛒 JDmart API is running! Please visit the Vercel frontend URL to use the app.');
+  res.send('🛒 JDkart API is running! Please visit the Vercel frontend URL to use the app.');
 });
 
 // Routes

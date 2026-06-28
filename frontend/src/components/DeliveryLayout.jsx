@@ -22,7 +22,7 @@ export default function DeliveryLayout({ children }) {
       {/* Sidebar (desktop) */}
       <aside className={`delivery-sidebar ${open ? 'open' : ''}`}>
         <div style={{ padding: '24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ fontWeight: 900, fontSize: 18, color: '#F97316' }}>JDmart</div>
+          <div style={{ fontWeight: 900, fontSize: 18, color: '#F97316' }}>JDkart</div>
           <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: 600 }}>Delivery Partner</div>
         </div>
         <nav style={{ padding: '16px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -55,18 +55,9 @@ export default function DeliveryLayout({ children }) {
           <div style={{ width: 36 }} />
         </div>
 
-        {/* Bottom Nav (mobile) */}
-        <nav className="bottom-nav">
-          {navLinks.map(link => (
-            <Link key={link.to} to={link.to}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, textDecoration: 'none', color: isActive(link.to, link.exact) ? '#F97316' : '#6B7280', flex: 1, padding: '8px 0' }}>
-              <span style={{ fontSize: 22 }}>{link.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 700 }}>{link.label}</span>
-            </Link>
-          ))}
-        </nav>
 
-        <main style={{ flex: 1, padding: '16px', overflowY: 'auto', paddingBottom: 72 }}>
+
+        <main style={{ flex: 1, padding: '16px', overflowY: 'auto' }}>
           {children}
         </main>
       </div>
@@ -79,12 +70,10 @@ const CSS = `
 * { box-sizing: border-box; }
 .delivery-sidebar { width: 220px; background: #161B22; border-right: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; flex-shrink: 0; z-index: 99; }
 .delivery-topbar { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: #161B22; border-bottom: 1px solid rgba(255,255,255,0.07); }
-.bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #161B22; border-top: 1px solid rgba(255,255,255,0.1); z-index: 99; }
 
 @media (max-width: 640px) {
   .delivery-sidebar { position: fixed; left: -220px; top: 0; height: 100%; transition: left 0.28s ease; z-index: 99; }
   .delivery-sidebar.open { left: 0; }
   .delivery-topbar { display: flex; }
-  .bottom-nav { display: flex; }
 }
 `;

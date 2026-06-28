@@ -45,7 +45,7 @@ export default function HomePage() {
   const [locationText, setLocationText] = useState('');
   // GPS coords stored separately from display text
   const [userCoords, setUserCoords]   = useState(() => {
-    try { return JSON.parse(localStorage.getItem('jdmart_coords') || 'null'); } catch { return null; }
+    try { return JSON.parse(localStorage.getItem('jdkart_coords') || 'null'); } catch { return null; }
   });
   const [locLoading, setLocLoading]   = useState(false);
   const [outOfRange, setOutOfRange]   = useState(false); // shown after GPS check
@@ -82,7 +82,7 @@ export default function HomePage() {
       pos => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserCoords(coords);
-        localStorage.setItem('jdmart_coords', JSON.stringify(coords));
+        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
         setLocationText('📍 Current Location');
         toast.success('Location detected!', { id: 'loc' });
         setLocLoading(false);
@@ -215,7 +215,7 @@ export default function HomePage() {
   const clearLocation = () => {
     setUserCoords(null);
     setLocationText('');
-    localStorage.removeItem('jdmart_coords');
+    localStorage.removeItem('jdkart_coords');
     setOutOfRange(false);
   };
 
@@ -267,7 +267,7 @@ export default function HomePage() {
                   onChange={e => {
                     setLocationText(e.target.value);
                     // If user edits manually, clear GPS coords so we don't filter by radius
-                    if (userCoords) { setUserCoords(null); localStorage.removeItem('jdmart_coords'); }
+                    if (userCoords) { setUserCoords(null); localStorage.removeItem('jdkart_coords'); }
                   }}
                 />
                 {(locationText || userCoords) && (
@@ -467,10 +467,10 @@ export default function HomePage() {
         </>
       )}
 
-      {/* WHY JDMART */}
+      {/* WHY JDKART */}
       <section style={{ padding: 'clamp(32px,5vw,48px) 0', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
         <div className="container">
-          <h2 className="section-title" style={{ textAlign: 'center', marginBottom: 36 }}>Why choose <span>JDmart?</span></h2>
+          <h2 className="section-title" style={{ textAlign: 'center', marginBottom: 36 }}>Why choose <span>JDkart?</span></h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
             {[
               { icon: '🚀', title: 'Lightning Fast',  desc: 'Average delivery in 30 mins' },

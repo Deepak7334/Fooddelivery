@@ -153,11 +153,11 @@ router.patch('/orders/:id/status', async (req, res) => {
         const sendEmail = require('../utils/sendEmail');
         await sendEmail({
           to: customerEmail,
-          subject: 'JDmart — Your Delivery OTP (Store Order)',
+          subject: 'JDkart — Your Delivery OTP (Store Order)',
           html: `
             <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
               <div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center">
-                <h1 style="color:#fff;margin:0;font-size:22px">JDmart</h1>
+                <h1 style="color:#fff;margin:0;font-size:22px">JDkart</h1>
                 <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px">Your store order is on the way!</p>
               </div>
               <div style="padding:28px 24px">

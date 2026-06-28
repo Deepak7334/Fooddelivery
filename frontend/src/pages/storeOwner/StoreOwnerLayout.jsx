@@ -21,7 +21,7 @@ function StoreOwnerSidebar({ open, onClose }) {
       <div className={`sidebar ${open ? 'sidebar-open' : ''}`}>
         <button className="sidebar-close-btn" onClick={onClose}><FiX size={16} /></button>
         <div className="sidebar-logo">
-          JD<span style={{ color: 'var(--text-primary)' }}>mart</span>
+          JD<span style={{ color: 'var(--text-primary)' }}>kart</span>
           <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400, display: 'block' }}>Store Panel</span>
         </div>
         <nav className="sidebar-nav">

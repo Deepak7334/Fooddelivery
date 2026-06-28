@@ -28,7 +28,7 @@ export default function RestaurantDetailPage() {
         if (cats.length) setActiveCategory(cats[0]);
         
         // Calculate distance if location available
-        const locStr = localStorage.getItem('jdmart_coords');
+        const locStr = localStorage.getItem('jdkart_coords');
         if (locStr && res.data.restaurant?.location?.lat && res.data.restaurant?.location?.lng) {
           try {
             const loc = JSON.parse(locStr);

@@ -186,7 +186,7 @@ export default function ProductDetailPage() {
             <div style={{ marginTop: 24, display: 'flex', alignItems: 'baseline', gap: 24 }}>
               <div style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, width: 80 }}>Seller</div>
               <div style={{ fontSize: 14 }}>
-                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{product.storeId?.name || 'JDmart Premium Store'}</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{product.storeId?.name || 'JDkart Premium Store'}</span>
                 <ul style={{ margin: 0, paddingLeft: 16, marginTop: 8, color: 'var(--text-primary)', lineHeight: 1.6 }}>
                   <li>GST invoice available</li>
                 </ul>

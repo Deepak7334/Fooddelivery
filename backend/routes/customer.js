@@ -140,7 +140,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
 
     for (const key of Object.keys(vendorGroups)) {
       const group = vendorGroups[key];
-      let vendorName = 'JDmart';
+      let vendorName = 'JDkart';
       if (group.vendorType === 'restaurant' && group.vendorId) {
         const rest = await Restaurant.findById(group.vendorId);
         if (rest) vendorName = rest.name;

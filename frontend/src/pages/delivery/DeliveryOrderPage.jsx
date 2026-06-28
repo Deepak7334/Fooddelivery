@@ -156,7 +156,7 @@ export default function DeliveryOrderPage() {
     <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Order not found.</div>
   );
 
-  const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart';
+  const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
   const vendorAddress = order.restaurantId?.address || order.storeId?.address || '—';
   const vendorPhone = order.restaurantId?.phone || order.storeId?.phone || '—';
 

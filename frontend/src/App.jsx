@@ -87,7 +87,7 @@ const AdminLayout = ({ children }) => {
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
             <FiMenu size={20} />
           </button>
-          <span className="panel-topbar-title">🛒 JDmart Admin</span>
+          <span className="panel-topbar-title">🛒 JDkart Admin</span>
         </div>
         <div style={{ padding: '24px' }}>
           {children}

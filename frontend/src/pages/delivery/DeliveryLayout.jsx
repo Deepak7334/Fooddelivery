@@ -28,7 +28,7 @@ export default function DeliveryLayout({ children }) {
         <div className="dl-sidebar-brand">
           <div className="dl-brand-logo">🚴</div>
           <div>
-            <div className="dl-brand-name">JDmart</div>
+            <div className="dl-brand-name">JDkart</div>
             <div className="dl-brand-sub">Delivery Partner</div>
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function DeliveryLayout({ children }) {
           >
             ☰
           </button>
-          <div className="dl-topbar-brand">🚴 JDmart</div>
+          <div className="dl-topbar-brand">🚴 JDkart</div>
           <div style={{ width: 36 }} />
         </header>
 
@@ -88,19 +88,6 @@ export default function DeliveryLayout({ children }) {
           {children}
         </main>
 
-        {/* Mobile bottom nav */}
-        <nav className="dl-bottom-nav">
-          {navLinks.map(link => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`dl-bottom-link${isActive(link.to, link.exact) ? ' active' : ''}`}
-            >
-              <span className="dl-bottom-icon">{link.icon}</span>
-              <span className="dl-bottom-label">{link.label}</span>
-            </Link>
-          ))}
-        </nav>
       </div>
     </div>
   );
@@ -275,30 +262,7 @@ const CSS = `
   padding-bottom: 0;
 }
 
-/* ── Bottom nav (mobile only) ── */
-.dl-bottom-nav {
-  display: none;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: #111827;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  z-index: 150;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-.dl-bottom-link {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 9px 0 8px;
-  text-decoration: none;
-  color: #4B5563;
-  transition: color 0.15s;
-}
-.dl-bottom-link.active { color: #F97316; }
-.dl-bottom-icon  { font-size: 22px; line-height: 1; }
-.dl-bottom-label { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+
 
 /* ── Mobile breakpoint ── */
 @media (max-width: 640px) {
@@ -313,8 +277,6 @@ const CSS = `
     transform: translateX(0);
   }
   .dl-topbar     { display: flex; }
-  .dl-bottom-nav { display: flex; }
-  .dl-content    { padding-bottom: 70px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

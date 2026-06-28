@@ -129,7 +129,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
             { label: 'Phone', value: order.customerId?.phone || order.customerPhone || '—' },
             { label: 'Email', value: order.customerId?.email || order.customerEmail || '—', span: true },
             { label: 'Address', value: order.deliveryAddress || '—', span: true },
-            { label: 'Vendor', value: order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart' },
+            { label: 'Vendor', value: order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart' },
             { label: 'Status', value: <StatusBadge status={order.status} /> },
             { label: 'Placed At', value: new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), span: true },
             ...(order.deliveredAt ? [{ label: 'Delivered At', value: new Date(order.deliveredAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), span: true }] : []),
@@ -422,7 +422,7 @@ export default function AdminOrders() {
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{o.customerId?.name}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{o.customerId?.phone}</div>
                       </td>
-                      <td style={{ fontSize: 13 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDmart'}</td>
+                      <td style={{ fontSize: 13 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDkart'}</td>
                       <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 140 }}>{o.items?.map(i => i.name).join(', ')}</td>
                       <td style={{ fontWeight: 700, color: 'var(--success)' }}>₹{o.finalAmount}</td>
                       <td><span className={`badge badge-${o.paymentStatus}`}>{o.paymentStatus}</span></td>
@@ -465,7 +465,7 @@ export default function AdminOrders() {
                   <StatusBadge status={o.status} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{o.customerId?.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDmart'} · {o.items?.map(i => i.name).join(', ')}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDkart'} · {o.items?.map(i => i.name).join(', ')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, color: 'var(--success)', fontSize: 15 }}>₹{o.finalAmount}</span>
                   <span style={{ fontSize: 12, color: o.deliveryAgentId ? '#06B6D4' : 'var(--text-muted)' }}>

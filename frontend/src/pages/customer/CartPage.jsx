@@ -67,7 +67,7 @@ export default function CartPage() {
                         + {item.addOns.map(a => a.name).join(', ')}
                       </div>
                     )}
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>from {item.restaurantName || item.storeName || 'JDmart'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>from {item.restaurantName || item.storeName || 'JDkart'}</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>₹{item.price}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

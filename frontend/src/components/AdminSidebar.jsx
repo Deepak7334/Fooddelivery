@@ -36,7 +36,7 @@ export default function AdminSidebar({ open, onClose }) {
         </button>
 
         <div className="sidebar-logo">
-          JD<span style={{ color: 'var(--text-primary)' }}>mart</span>
+          JD<span style={{ color: 'var(--text-primary)' }}>kart</span>
           <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400, display: 'block' }}>Admin Panel</span>
         </div>
         <nav className="sidebar-nav">

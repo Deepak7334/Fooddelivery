@@ -279,7 +279,7 @@ export default function DeliveryDashboard() {
             </div>
 
             {pendingOrders.map(order => {
-              const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart';
+              const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
               return (
                 <div key={order._id} className="dd-pending-card">
                   <div className="dd-pending-top">
@@ -335,7 +335,7 @@ export default function DeliveryDashboard() {
             </div>
           ) : (
             activeOrders.map(order => {
-              const vendorName    = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart';
+              const vendorName    = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
               const vendorAddress = order.restaurantId?.address || order.storeId?.address || '—';
               const vendorPhone   = order.restaurantId?.phone   || order.storeId?.phone   || '—';
               const cfg           = STATUS_CFG[order.status] || {};

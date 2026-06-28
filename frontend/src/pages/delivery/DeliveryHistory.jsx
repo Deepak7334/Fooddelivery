@@ -127,7 +127,7 @@ export default function DeliveryHistory() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <div>
                   <div style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 12 }}>#{o._id.slice(-8).toUpperCase()}</div>
-                  <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 15, marginTop: 2 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDmart'}</div>
+                  <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 15, marginTop: 2 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDkart'}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <StatusBadge status={o.status} />

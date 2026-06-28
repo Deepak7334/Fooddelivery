@@ -129,7 +129,7 @@ export default function OrderHistoryPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-                          <div style={{ fontWeight: 700, fontSize: 16 }}>{order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart Order'}</div>
+                          <div style={{ fontWeight: 700, fontSize: 16 }}>{order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart Order'}</div>
                           <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', background: st.bg, color: st.color }}>
                             {order.status?.replace(/_/g, ' ')}
                           </span>

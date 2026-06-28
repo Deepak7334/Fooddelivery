@@ -35,7 +35,7 @@ export default function Navbar() {
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 22, color: 'var(--primary)', textDecoration: 'none' }}>
-            <span>JD<span style={{ color: 'var(--text-primary)' }}>mart</span></span>
+            <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span>
           </Link>
 
           {/* Desktop Nav */}

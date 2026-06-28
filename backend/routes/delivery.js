@@ -91,8 +91,8 @@ router.patch('/orders/:id/accept', async (req, res) => {
       try {
         await sendEmail({
           to: customerEmail,
-          subject: '🚴 JDmart — Your Delivery Agent is Assigned',
-          html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDmart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Delivery Partner Assigned!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p><strong>${req.user.name}</strong> has been assigned to your order and is heading out.</p><p>Share this OTP with them to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
+          subject: '🚴 JDkart — Your Delivery Agent is Assigned',
+          html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDkart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Delivery Partner Assigned!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p><strong>${req.user.name}</strong> has been assigned to your order and is heading out.</p><p>Share this OTP with them to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
         });
       } catch (err) {
         console.error('Failed to send OTP email on agent accept', err);
@@ -182,12 +182,12 @@ router.patch('/orders/:id/status', async (req, res) => {
               <span style="font-size: 32px; font-weight: 800; background: #f3f4f6; padding: 10px 24px; border-radius: 8px; letter-spacing: 4px; color: #111827;">${otp}</span>
             </div>
             <p style="color: #6b7280; font-size: 14px;">Do not share this OTP with anyone else. The agent needs it to mark your order as delivered.</p>
-            <p style="margin-top: 30px;">Thank you for choosing us!<br><strong>The JDmart Team</strong></p>
+            <p style="margin-top: 30px;">Thank you for choosing us!<br><strong>The JDkart Team</strong></p>
           </div>
         `;
         sendEmail({
           to: order.customerId.email,
-          subject: 'Your Delivery OTP - JDmart',
+          subject: 'Your Delivery OTP - JDkart',
           html
         }).catch(err => console.error('Failed to send OTP email:', err));
       }
