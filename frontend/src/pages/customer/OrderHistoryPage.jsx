@@ -125,7 +125,7 @@ export default function OrderHistoryPage() {
               {orders.map(order => {
                 const st = ORDER_STATUS[order.status] || ORDER_STATUS.pending;
                 return (
-                  <div key={order._id} className="card" style={{ padding: 20 }}>
+                  <div key={order._id} className="card" style={{ padding: 20, cursor: 'pointer', transition: 'transform 0.2s' }} onClick={() => navigate(`/orders/${order._id}/track`)} onMouseEnter={e => e.currentTarget.style.transform='scale(1.01)'} onMouseLeave={e => e.currentTarget.style.transform='none'}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
@@ -143,8 +143,10 @@ export default function OrderHistoryPage() {
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--primary)', marginBottom: 10 }}>₹{order.finalAmount}</div>
-                        {['pending', 'accepted', 'preparing', 'out_for_delivery'].includes(order.status) && (
-                          <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm">Track →</Link>
+                        {order.status === 'delivered' || order.status === 'cancelled' ? (
+                          <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Details</Link>
+                        ) : (
+                          <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Track →</Link>
                         )}
                       </div>
                     </div>
