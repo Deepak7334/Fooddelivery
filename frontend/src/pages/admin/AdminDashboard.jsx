@@ -97,7 +97,7 @@ export default function AdminDashboard() {
                 <tr key={order._id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 12 }}>#{order._id.slice(-8).toUpperCase()}</td>
                   <td>{order.customerId?.name || 'N/A'}</td>
-                  <td>{order.restaurantId?.name || order.restaurantName}</td>
+                  <td>{order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart'}</td>
                   <td style={{ fontWeight: 700, color: 'var(--primary)' }}>₹{order.finalAmount}</td>
                   <td><span className={`badge badge-${order.status}`}>{order.status?.replace(/_/g, ' ')}</span></td>
                   <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(order.createdAt).toLocaleDateString('en-IN')}</td>

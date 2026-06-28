@@ -3,7 +3,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 
-const emptyForm = { name: '', description: '', cuisine: '', address: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '' };
+const emptyForm = { name: '', description: '', cuisine: '', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '' };
 
 // ✅ Moved OUTSIDE the parent component
 const F = ({ label, field, type = 'text', placeholder, form, setForm }) => (
@@ -42,15 +42,16 @@ export default function AdminRestaurants() {
 
   const openAdd = () => { setForm(emptyForm); setEditing(null); setShowModal(true); };
   const openEdit = (r) => {
-    setForm({ ...r, cuisine: r.cuisine?.join(', ') || '' });
+    setForm({ ...r, cuisine: r.cuisine?.join(', ') || '', addrHouse: r.address || '', addrArea: '', addrLandmark: '', addrPincode: '' });
     setEditing(r._id); setShowModal(true);
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.address) { toast.error('Name and address are required'); return; }
+    const fullAddress = [form.addrHouse, form.addrArea, form.addrLandmark ? `Near ${form.addrLandmark}` : '', form.addrPincode].filter(Boolean).join(', ') || form.address;
+    if (!form.name || !fullAddress) { toast.error('Name and address are required'); return; }
     setSaving(true);
     try {
-      const payload = { ...form, cuisine: form.cuisine.split(',').map(s => s.trim()).filter(Boolean) };
+      const payload = { ...form, address: fullAddress, cuisine: form.cuisine.split(',').map(s => s.trim()).filter(Boolean) };
       if (editing) {
         await api.put(`/admin/restaurants/${editing}`, payload);
         toast.success('Restaurant updated!');
@@ -175,8 +176,13 @@ export default function AdminRestaurants() {
               <F label="Cuisine (comma separated)" field="cuisine" placeholder="Pizza, Pasta, Italian" {...fProps} />
               <F label="Phone" field="phone" placeholder="9876543210" {...fProps} />
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">Address *</label>
-                <input className="form-input" value={form.address || ''} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Full restaurant address" />
+                <label className="form-label" style={{ marginBottom: 12 }}>Restaurant Address *</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                  <input className="form-input" value={form.addrHouse || ''} onChange={e => setForm({ ...form, addrHouse: e.target.value })} placeholder="Shop / Building No." />
+                  <input className="form-input" value={form.addrArea || ''} onChange={e => setForm({ ...form, addrArea: e.target.value })} placeholder="Area / Locality / Street" />
+                  <input className="form-input" value={form.addrLandmark || ''} onChange={e => setForm({ ...form, addrLandmark: e.target.value })} placeholder="Nearby Landmark" />
+                  <input className="form-input" value={form.addrPincode || ''} onChange={e => setForm({ ...form, addrPincode: e.target.value })} placeholder="Pincode" />
+                </div>
               </div>
               <F label="Image URL" field="image" placeholder="https://..." {...fProps} />
               <F label="Delivery Time" field="deliveryTime" placeholder="30-40 mins" {...fProps} />

@@ -210,7 +210,8 @@ router.get('/orders/:id', protect, authorize('customer'), async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, customerId: req.user._id })
       .populate('restaurantId', 'name image address phone')
-      .populate('storeId', 'name image address phone');
+      .populate('storeId', 'name image address phone')
+      .populate('deliveryAgentId', 'name phone vehicleNumber');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     res.json({ success: true, order });
   } catch (err) {

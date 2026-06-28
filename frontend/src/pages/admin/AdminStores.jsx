@@ -7,7 +7,7 @@ const STORE_TYPES = ['grocery', 'pharmacy', 'electronics', 'beauty', 'pets', 'ba
 const TYPE_ICONS = { grocery: '🛒', pharmacy: '💊', electronics: '📱', beauty: '🧴', pets: '🐾', bakery: '🥐', supermarket: '🏪', stationery: '📚', sports: '⚽', other: '🏬' };
 
 const EMPTY = {
-  name: '', description: '', storeType: 'grocery', address: '', city: '',
+  name: '', description: '', storeType: 'grocery', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '',
   image: '', coverImage: '', phone: '', deliveryTime: '30-45 mins', deliveryFee: '30',
   minOrder: '100', isActive: true, isOpen: true, offers: '',
   ownerEmail: '', ownerName: '', ownerPassword: '',
@@ -37,7 +37,7 @@ export default function AdminStores() {
 
   const openAdd = () => { setForm(EMPTY); setModal('add'); };
   const openEdit = (s) => {
-    setForm({ ...EMPTY, ...s, deliveryFee: String(s.deliveryFee), minOrder: String(s.minOrder), offers: (s.offers || []).join(', '), ownerEmail: '', ownerName: '', ownerPassword: '' });
+    setForm({ ...EMPTY, ...s, deliveryFee: String(s.deliveryFee), minOrder: String(s.minOrder), offers: (s.offers || []).join(', '), ownerEmail: '', ownerName: '', ownerPassword: '', addrHouse: s.address || '' });
     setModal('edit');
   };
 
@@ -45,8 +45,11 @@ export default function AdminStores() {
     e.preventDefault();
     setSaving(true);
     try {
+      const fullAddress = [form.addrHouse, form.addrArea, form.addrLandmark ? `Near ${form.addrLandmark}` : '', form.addrPincode].filter(Boolean).join(', ') || form.address;
+      if (!fullAddress) return toast.error('Address is required');
       const payload = {
         ...form,
+        address: fullAddress,
         deliveryFee: Number(form.deliveryFee),
         minOrder: Number(form.minOrder),
         offers: form.offers ? form.offers.split(',').map(o => o.trim()).filter(Boolean) : [],
@@ -87,7 +90,7 @@ export default function AdminStores() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800 }}>🏪 Stores</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 800 }}> Stores Management</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Manage grocery, pharmacy, electronics & more</p>
         </div>
         <button className="btn btn-primary" onClick={openAdd}><FiPlus /> Add Store</button>
@@ -159,7 +162,10 @@ export default function AdminStores() {
                   { label: 'Store Name *', key: 'name', col: 2, required: true },
                   { label: 'Store Type *', key: 'storeType', type: 'select', col: 1, required: true },
                   { label: 'City', key: 'city', col: 1 },
-                  { label: 'Address *', key: 'address', col: 2, required: true },
+                  { label: 'House / Building No. *', key: 'addrHouse', col: 1, required: true },
+                  { label: 'Area / Street', key: 'addrArea', col: 1 },
+                  { label: 'Nearby Landmark', key: 'addrLandmark', col: 1 },
+                  { label: 'Pincode', key: 'addrPincode', col: 1 },
                   { label: 'Phone', key: 'phone', col: 1 },
                   { label: 'Delivery Time', key: 'deliveryTime', col: 1, placeholder: '30-45 mins' },
                   { label: 'Delivery Fee (₹)', key: 'deliveryFee', type: 'number', col: 1 },

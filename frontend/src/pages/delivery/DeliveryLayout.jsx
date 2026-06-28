@@ -1,79 +1,323 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
 const navLinks = [
-    { to: '/delivery', icon: '🚴', label: 'Dashboard', exact: true },
-    { to: '/delivery/history', icon: '📊', label: 'Earnings & History' },
+  { to: '/delivery',         icon: '🚴', label: 'Dashboard', exact: true },
+  { to: '/delivery/history', icon: '📊', label: 'Earnings & History' },
 ];
+
 export default function DeliveryLayout({ children }) {
-    const location = useLocation();
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    const [open, setOpen] = useState(false);
-    const isActive = (to, exact) => exact ? location.pathname === to : location.pathname.startsWith(to);
-    return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: '#0F1117', fontFamily: "'DM Sans',sans-serif", color: '#E5E7EB' }}>
-            <style>{CSS}</style>
-            {/* Sidebar (desktop) */}
-            <aside className={`delivery-sidebar ${open ? 'open' : ''}`}>
-                <div style={{ padding: '24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    <div style={{ fontWeight: 900, fontSize: 18, color: '#F97316' }}>JDmart</div>
-                    <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: 600 }}>Delivery Partner</div>
-                </div>
-                <nav style={{ padding: '16px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {navLinks.map(link => (
-                        <Link key={link.to} to={link.to} onClick={() => setOpen(false)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, textDecoration: 'none', fontSize: 14, fontWeight: 600, color: isActive(link.to, link.exact) ? '#F97316' : '#9CA3AF', background: isActive(link.to, link.exact) ? 'rgba(249,115,22,0.1)' : 'transparent', border: isActive(link.to, link.exact) ? '1px solid rgba(249,115,22,0.2)' : '1px solid transparent', transition: 'all 0.2s' }}>
-                            <span style={{ fontSize: 18 }}>{link.icon}</span> {link.label}
-                        </Link>
-                    ))}
-                </nav>
-                <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#E5E7EB', marginBottom: 4 }}>{user?.name}</div>
-                    <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>{user?.phone}</div>
-                    <button onClick={() => { logout(); navigate('/login'); }}
-                        style={{ width: '100%', padding: '9px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        Logout
-                    </button>
-                </div>
-            </aside>
-            {/* Mobile overlay */}
-            {open && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 98 }} onClick={() => setOpen(false)} />}
-            {/* Main Content */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                {/* Mobile topbar */}
-                <div className="delivery-topbar">
-                    <button onClick={() => setOpen(true)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#E5E7EB', width: 36, height: 36, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}>🚴 Delivery App</div>
-                    <div style={{ width: 36 }} />
-                </div>
-                {/* Bottom Nav (mobile) */}
-                <nav className="bottom-nav">
-                    {navLinks.map(link => (
-                        <Link key={link.to} to={link.to}
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, textDecoration: 'none', color: isActive(link.to, link.exact) ? '#F97316' : '#6B7280', flex: 1, padding: '8px 0' }}>
-                            <span style={{ fontSize: 22 }}>{link.icon}</span>
-                            <span style={{ fontSize: 10, fontWeight: 700 }}>{link.label}</span>
-                        </Link>
-                    ))}
-                </nav>
-                <main style={{ flex: 1, padding: '16px', overflowY: 'auto', paddingBottom: 72 }}>
-                    {children}
-                </main>
-            </div>
+  const location = useLocation();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const isActive = (to, exact) =>
+    exact ? location.pathname === to : location.pathname.startsWith(to);
+
+  const handleLogout = () => { logout(); navigate('/login'); };
+
+  return (
+    <div className="dl-root">
+      <style>{CSS}</style>
+
+      {/* ── Sidebar (desktop) ── */}
+      <aside className={`dl-sidebar${open ? ' open' : ''}`}>
+        {/* Brand */}
+        <div className="dl-sidebar-brand">
+          <div className="dl-brand-logo">🚴</div>
+          <div>
+            <div className="dl-brand-name">JDmart</div>
+            <div className="dl-brand-sub">Delivery Partner</div>
+          </div>
         </div>
-    );
+
+        {/* Nav */}
+        <nav className="dl-sidebar-nav">
+          {navLinks.map(link => (
+            <Link
+              key={link.to}
+              to={link.to}
+              onClick={() => setOpen(false)}
+              className={`dl-nav-link${isActive(link.to, link.exact) ? ' active' : ''}`}
+            >
+              <span className="dl-nav-icon">{link.icon}</span>
+              <span>{link.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="dl-sidebar-footer">
+          <div className="dl-user-info">
+            <div className="dl-user-avatar">{user?.name?.[0]?.toUpperCase() || '?'}</div>
+            <div>
+              <div className="dl-user-name">{user?.name}</div>
+              <div className="dl-user-phone">{user?.phone}</div>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="dl-logout-btn">
+            ↩ Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Mobile overlay ── */}
+      {open && (
+        <div className="dl-overlay" onClick={() => setOpen(false)} />
+      )}
+
+      {/* ── Main ── */}
+      <div className="dl-main">
+        {/* Mobile topbar */}
+        <header className="dl-topbar">
+          <button
+            className="dl-hamburger"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
+          <div className="dl-topbar-brand">🚴 JDmart</div>
+          <div style={{ width: 36 }} />
+        </header>
+
+        {/* Page content */}
+        <main className="dl-content">
+          {children}
+        </main>
+
+        {/* Mobile bottom nav */}
+        <nav className="dl-bottom-nav">
+          {navLinks.map(link => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`dl-bottom-link${isActive(link.to, link.exact) ? ' active' : ''}`}
+            >
+              <span className="dl-bottom-icon">{link.icon}</span>
+              <span className="dl-bottom-label">{link.label}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
 }
+
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
-* { box-sizing: border-box; }
-.delivery-sidebar { width: 220px; background: #161B22; border-right: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; flex-shrink: 0; z-index: 99; }
-.delivery-topbar { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: #161B22; border-bottom: 1px solid rgba(255,255,255,0.07); }
-.bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #161B22; border-top: 1px solid rgba(255,255,255,0.1); z-index: 99; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Root ── */
+.dl-root {
+  display: flex;
+  min-height: 100vh;
+  background: #080C14;
+  font-family: 'Inter', sans-serif;
+  color: #E5E7EB;
+}
+
+/* ── Sidebar ── */
+.dl-sidebar {
+  width: 230px;
+  flex-shrink: 0;
+  background: #111827;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 200;
+  transition: transform 0.25s ease;
+}
+
+/* Brand block */
+.dl-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 22px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.dl-brand-logo {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #F97316, #EF4444);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.dl-brand-name { font-size: 16px; font-weight: 900; color: #F97316; line-height: 1; }
+.dl-brand-sub  { font-size: 11px; color: #6B7280; font-weight: 600; margin-top: 2px; }
+
+/* Nav links */
+.dl-sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 10px;
+  overflow-y: auto;
+}
+.dl-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6B7280;
+  border: 1px solid transparent;
+  transition: all 0.18s;
+}
+.dl-nav-link:hover {
+  color: #E5E7EB;
+  background: rgba(255,255,255,0.05);
+}
+.dl-nav-link.active {
+  color: #F97316;
+  background: rgba(249,115,22,0.1);
+  border-color: rgba(249,115,22,0.2);
+}
+.dl-nav-icon { font-size: 18px; line-height: 1; }
+
+/* Footer */
+.dl-sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dl-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dl-user-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #F97316, #EF4444);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; color: #fff;
+  flex-shrink: 0;
+}
+.dl-user-name  { font-size: 13px; font-weight: 700; color: #E5E7EB; }
+.dl-user-phone { font-size: 11px; color: #6B7280; margin-top: 1px; }
+.dl-logout-btn {
+  width: 100%;
+  padding: 9px;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 10px;
+  color: #EF4444;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.15s;
+}
+.dl-logout-btn:hover { background: rgba(239,68,68,0.16); }
+
+/* ── Overlay (mobile) ── */
+.dl-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(3px);
+  z-index: 199;
+}
+
+/* ── Main column ── */
+.dl-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+/* Mobile topbar (hidden on desktop) */
+.dl-topbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  background: #111827;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.dl-hamburger {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9px;
+  color: #E5E7EB;
+  font-size: 17px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.dl-hamburger:hover { background: rgba(255,255,255,0.12); }
+.dl-topbar-brand { font-size: 16px; font-weight: 800; color: #F97316; }
+
+/* Page content */
+.dl-content {
+  flex: 1;
+  overflow-y: auto;
+  /* bottom padding leaves room for the bottom nav on mobile */
+  padding-bottom: 0;
+}
+
+/* ── Bottom nav (mobile only) ── */
+.dl-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #111827;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  z-index: 150;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.dl-bottom-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 0 8px;
+  text-decoration: none;
+  color: #4B5563;
+  transition: color 0.15s;
+}
+.dl-bottom-link.active { color: #F97316; }
+.dl-bottom-icon  { font-size: 22px; line-height: 1; }
+.dl-bottom-label { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+
+/* ── Mobile breakpoint ── */
 @media (max-width: 640px) {
-  .delivery-sidebar { position: fixed; left: -220px; top: 0; height: 100%; transition: left 0.28s ease; z-index: 99; }
-  .delivery-sidebar.open { left: 0; }
-  .delivery-topbar { display: flex; }
-  .bottom-nav { display: flex; }
+  .dl-sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 100%;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 30px rgba(0,0,0,0.5);
+  }
+  .dl-sidebar.open {
+    transform: translateX(0);
+  }
+  .dl-topbar     { display: flex; }
+  .dl-bottom-nav { display: flex; }
+  .dl-content    { padding-bottom: 70px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dl-sidebar { transition: none; }
 }
 `;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 
 const STATUS_LABEL = {
@@ -35,6 +36,7 @@ function StatusBadge({ status }) {
 }
 
 export default function DeliveryHistory() {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -115,12 +117,17 @@ export default function DeliveryHistory() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filtered.map(o => (
-            <div key={o._id} className="hist-card">
+          {filtered.map(o => {
+            return (
+            <div 
+              key={o._id} 
+              className="hist-card active-clickable"
+              onClick={() => navigate(`/delivery/orders/${o._id}`, { state: { order: o } })}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <div>
                   <div style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 12 }}>#{o._id.slice(-8).toUpperCase()}</div>
-                  <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 15, marginTop: 2 }}>{o.restaurantId?.name || o.restaurantName}</div>
+                  <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 15, marginTop: 2 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDmart'}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <StatusBadge status={o.status} />
@@ -138,7 +145,7 @@ export default function DeliveryHistory() {
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>
@@ -148,8 +155,10 @@ export default function DeliveryHistory() {
 const CSS = `
 .earn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .earn-card { background: #161B22; border: 1px solid rgba(255,255,255,0.07); border-radius: 13px; padding: 16px; position: relative; overflow: hidden; }
-.hist-card { background: #161B22; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 14px; transition: border-color 0.2s; }
+.hist-card { background: #161B22; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 14px; transition: all 0.2s; }
 .hist-card:hover { border-color: rgba(249,115,22,0.3); }
+.active-clickable { cursor: pointer; border-color: rgba(249,115,22,0.4); box-shadow: 0 0 10px rgba(249,115,22,0.1); }
+.active-clickable:hover { background: #1c222b; transform: translateY(-2px); }
 .filt-btn { padding: 7px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #9CA3AF; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
 .filt-btn.active { background: rgba(249,115,22,0.15); border-color: rgba(249,115,22,0.4); color: #F97316; }
 .spinner { width: 32px; height: 32px; border-radius: 50%; border: 3px solid; animation: spin 0.8s linear infinite; }

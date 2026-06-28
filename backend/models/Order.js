@@ -144,6 +144,10 @@ const orderSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now },
     note: String,
   }],
+  deliveredAt: {
+    type: Date,
+    default: null
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

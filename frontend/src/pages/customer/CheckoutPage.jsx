@@ -9,7 +9,12 @@ export default function CheckoutPage() {
   const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [address, setAddress] = useState(user?.address || '');
+  const [addrHouse, setAddrHouse] = useState(user?.address || '');
+  const [addrArea, setAddrArea] = useState('');
+  const [addrLandmark, setAddrLandmark] = useState('');
+  const [addrPincode, setAddrPincode] = useState('');
+  
+  const address = [addrHouse, addrArea, addrLandmark ? `Near ${addrLandmark}` : '', addrPincode].filter(Boolean).join(', ');
   const [alternatePhone, setAlternatePhone] = useState('');
   const [instructions, setInstructions] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
@@ -165,9 +170,28 @@ export default function CheckoutPage() {
                   </button>
                 )}
               </div>
-              <textarea className="form-input" rows={3} placeholder="Enter your full delivery address..." value={address} onChange={e => setAddress(e.target.value)} style={{ resize: 'vertical' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>House / Flat / Block No.</label>
+                  <input type="text" className="form-input" placeholder="e.g. Flat 101, Galaxy Apts" value={addrHouse} onChange={e => setAddrHouse(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Area / Sector / Locality</label>
+                  <input type="text" className="form-input" placeholder="e.g. Koramangala 4th Block" value={addrArea} onChange={e => setAddrArea(e.target.value)} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Nearby Landmark</label>
+                    <input type="text" className="form-input" placeholder="e.g. Opp. Apollo Hospital" value={addrLandmark} onChange={e => setAddrLandmark(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Pincode</label>
+                    <input type="text" className="form-input" placeholder="e.g. 560034" value={addrPincode} onChange={e => setAddrPincode(e.target.value)} />
+                  </div>
+                </div>
+              </div>
               
-              <div style={{ marginTop: 16 }}>
+              <div style={{ marginTop: 24 }}>
                 <h3 style={{ fontWeight: 700, marginBottom: 8, fontSize: 14, color: 'var(--text-secondary)' }}>Alternate Phone Number (Optional)</h3>
                 <input type="tel" className="form-input" placeholder="e.g. +91 9876543210" value={alternatePhone} onChange={e => setAlternatePhone(e.target.value)} />
               </div>

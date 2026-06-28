@@ -78,7 +78,7 @@ export default function StoreDetailPage() {
 
   if (!store) return null;
 
-  const icon = STORE_TYPE_ICONS[store.storeType] || '🏬';
+  const icon = STORE_TYPE_ICONS[store.storeType];
 
   return (
     <div style={{ paddingTop: 70, minHeight: '100vh' }}>

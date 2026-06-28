@@ -129,8 +129,10 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
             { label: 'Phone', value: order.customerId?.phone || order.customerPhone || '—' },
             { label: 'Email', value: order.customerId?.email || order.customerEmail || '—', span: true },
             { label: 'Address', value: order.deliveryAddress || '—', span: true },
-            { label: 'Restaurant', value: typeof order.restaurantId === 'object' ? order.restaurantId?.name : order.restaurantName },
+            { label: 'Vendor', value: order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart' },
             { label: 'Status', value: <StatusBadge status={order.status} /> },
+            { label: 'Placed At', value: new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), span: true },
+            ...(order.deliveredAt ? [{ label: 'Delivered At', value: new Date(order.deliveredAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), span: true }] : []),
           ].map(({ label, value, span }) => (
             <div key={label} style={{ ...(span ? { gridColumn: '1/-1' } : {}), background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
@@ -276,6 +278,8 @@ export default function AdminOrders() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
+  const [bulkAgentId, setBulkAgentId] = useState('');
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -320,11 +324,39 @@ export default function AdminOrders() {
     finally { setActionLoading(false); }
   };
 
+  const handleBulkAssign = async () => {
+    if (selectedOrderIds.size === 0) return toast.error('Select orders first');
+    if (!bulkAgentId) return toast.error('Select an agent');
+    
+    setActionLoading(true);
+    try {
+      const res = await api.patch('/admin/orders/bulk-assign', {
+        orderIds: Array.from(selectedOrderIds),
+        agentId: bulkAgentId
+      });
+      toast.success(res.data.message);
+      setSelectedOrderIds(new Set());
+      fetchOrders();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to bulk assign');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const filtered = orders.filter(o => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return o._id.includes(q) || (o.customerId?.name || '').toLowerCase().includes(q) || (o.restaurantId?.name || o.restaurantName || '').toLowerCase().includes(q);
+    const vendorName = (o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || '').toLowerCase();
+    return o._id.includes(q) || (o.customerId?.name || '').toLowerCase().includes(q) || vendorName.includes(q);
   });
+
+  const toggleSelectOrder = (id) => {
+    const newSet = new Set(selectedOrderIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedOrderIds(newSet);
+  };
 
   return (
     <div>
@@ -343,6 +375,21 @@ export default function AdminOrders() {
         </div>
       </div>
 
+      {selectedOrderIds.size > 0 && (
+        <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid #F97316', padding: '12px 16px', borderRadius: 12, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ fontWeight: 700, color: '#F97316' }}>{selectedOrderIds.size} orders selected</div>
+          <select className="ao-select" value={bulkAgentId} onChange={e => setBulkAgentId(e.target.value)} style={{ minWidth: 200 }}>
+            <option value="">-- Select Delivery Agent --</option>
+            {agents.filter(a => a.isActive).map(a => (
+              <option key={a._id} value={a._id}>{a.name} ({a.deliveryStatus})</option>
+            ))}
+          </select>
+          <button className="ao-btn" onClick={handleBulkAssign} disabled={actionLoading} style={{ background: '#F97316', color: '#fff', border: 'none' }}>
+            {actionLoading ? 'Assigning...' : 'Assign Selected'}
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
       ) : (
@@ -352,7 +399,11 @@ export default function AdminOrders() {
             <table>
               <thead>
                 <tr>
-                  <th>Order ID</th><th>Customer</th><th>Restaurant</th><th>Items</th><th>Amount</th>
+                  <th style={{ width: 40 }}><input type="checkbox" checked={filtered.length > 0 && selectedOrderIds.size === filtered.length} onChange={e => {
+                    if (e.target.checked) setSelectedOrderIds(new Set(filtered.map(o => o._id)));
+                    else setSelectedOrderIds(new Set());
+                  }} /></th>
+                  <th>Order ID</th><th>Customer</th><th>Vendor</th><th>Items</th><th>Amount</th>
                   <th>Payment</th><th>Status</th><th>Delivery Agent</th><th>Date</th><th>Actions</th>
                 </tr>
               </thead>
@@ -362,13 +413,16 @@ export default function AdminOrders() {
                 ) : filtered.map(o => {
                   const nextStatuses = ADMIN_NEXT[o.status] || [];
                   return (
-                    <tr key={o._id} style={{ cursor: 'pointer' }} onClick={() => setSelectedOrder(o)}>
+                    <tr key={o._id} style={{ cursor: 'pointer', background: selectedOrderIds.has(o._id) ? 'rgba(249,115,22,0.05)' : 'transparent' }} onClick={() => setSelectedOrder(o)}>
+                      <td onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedOrderIds.has(o._id)} onChange={() => toggleSelectOrder(o._id)} />
+                      </td>
                       <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>#{o._id.slice(-8).toUpperCase()}</td>
                       <td>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{o.customerId?.name}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{o.customerId?.phone}</div>
                       </td>
-                      <td style={{ fontSize: 13 }}>{o.restaurantId?.name || o.restaurantName}</td>
+                      <td style={{ fontSize: 13 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDmart'}</td>
                       <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 140 }}>{o.items?.map(i => i.name).join(', ')}</td>
                       <td style={{ fontWeight: 700, color: 'var(--success)' }}>₹{o.finalAmount}</td>
                       <td><span className={`badge badge-${o.paymentStatus}`}>{o.paymentStatus}</span></td>
@@ -381,7 +435,10 @@ export default function AdminOrders() {
                           </div>
                         ) : <span style={{ color: 'var(--text-muted)' }}>Not assigned</span>}
                       </td>
-                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        <div title="Placed At">{new Date(o.createdAt).toLocaleDateString('en-IN')}</div>
+                        {o.deliveredAt && <div style={{ color: 'var(--success)', marginTop: 4 }} title="Delivered At">✓ {new Date(o.deliveredAt).toLocaleDateString('en-IN')}</div>}
+                      </td>
                       <td onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           <button className="ao-btn" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setSelectedOrder(o)}>View</button>
@@ -408,7 +465,7 @@ export default function AdminOrders() {
                   <StatusBadge status={o.status} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{o.customerId?.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{o.restaurantId?.name || o.restaurantName} · {o.items?.map(i => i.name).join(', ')}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDmart'} · {o.items?.map(i => i.name).join(', ')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, color: 'var(--success)', fontSize: 15 }}>₹{o.finalAmount}</span>
                   <span style={{ fontSize: 12, color: o.deliveryAgentId ? '#06B6D4' : 'var(--text-muted)' }}>

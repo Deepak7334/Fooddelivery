@@ -19,7 +19,8 @@ router.get('/orders', async (req, res) => {
     const orders = await Order.find(filter)
       .sort({ updatedAt: -1 })
       .populate('customerId', 'name phone email')
-      .populate('restaurantId', 'name address phone');
+      .populate('restaurantId', 'name address phone')
+      .populate('storeId', 'name address phone');
 
     res.json({ success: true, orders });
   } catch (err) {
@@ -27,15 +28,37 @@ router.get('/orders', async (req, res) => {
   }
 });
 
-// ── Get Active (current) order for delivery boy ───────────────────────────────
+// ── Get Active (current) orders for delivery boy ───────────────────────────────
 router.get('/orders/active', async (req, res) => {
   try {
-    const order = await Order.findOne({
+    const orders = await Order.find({
       deliveryAgentId: req.user._id,
       status: { $in: ['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'] },
     })
       .populate('customerId', 'name phone email')
-      .populate('restaurantId', 'name address phone');
+      .populate('restaurantId', 'name address phone')
+      .populate('storeId', 'name address phone');
+
+    res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Get Single Order for delivery boy ───────────────────────────────────────
+router.get('/order/:id', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('customerId', 'name phone email')
+      .populate('restaurantId', 'name address phone')
+      .populate('storeId', 'name address phone');
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found in database' });
+    
+    // Check if the agent is authorized to view this order
+    if (order.deliveryAgentId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to view this order' });
+    }
 
     res.json({ success: true, order });
   } catch (err) {
@@ -50,7 +73,7 @@ router.patch('/orders/:id/accept', async (req, res) => {
       _id: req.params.id,
       deliveryAgentId: req.user._id,
       status: { $in: ['assignment_pending', 'out_for_delivery'] },
-    }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone');
+    }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone').populate('storeId', 'name address phone');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or not assigned to you' });
 
@@ -78,7 +101,7 @@ router.patch('/orders/:id/accept', async (req, res) => {
 
     await order.save();
 
-    // Mark agent as busy
+    // Mark agent as busy (they can still accept more, but they are technically busy delivering)
     await User.findByIdAndUpdate(req.user._id, { deliveryStatus: 'busy' });
 
     const io = req.app.get('io');
@@ -138,9 +161,37 @@ router.patch('/orders/:id/status', async (req, res) => {
       _id: req.params.id,
       deliveryAgentId: req.user._id,
       status: { $in: ['accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'] }
-    }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone');
+    }).populate('customerId', 'name phone email').populate('restaurantId', 'name address phone').populate('storeId', 'name address phone');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or wrong state' });
+
+    if (status === 'reached_customer' && order.status !== 'reached_customer') {
+      // Generate OTP
+      const otp = generateOTP();
+      order.deliveryOTP = otp;
+
+      // Send Email (do not await so it doesn't block response)
+      if (order.customerId && order.customerId.email) {
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #F97316; text-align: center;">Delivery Arrived! 🚴</h2>
+            <p>Hi ${order.customerId.name || 'Customer'},</p>
+            <p>Your delivery agent <strong>${req.user.name}</strong> has reached your location with your order.</p>
+            <p>Please provide the following OTP to the agent to securely receive your order:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <span style="font-size: 32px; font-weight: 800; background: #f3f4f6; padding: 10px 24px; border-radius: 8px; letter-spacing: 4px; color: #111827;">${otp}</span>
+            </div>
+            <p style="color: #6b7280; font-size: 14px;">Do not share this OTP with anyone else. The agent needs it to mark your order as delivered.</p>
+            <p style="margin-top: 30px;">Thank you for choosing us!<br><strong>The JDmart Team</strong></p>
+          </div>
+        `;
+        sendEmail({
+          to: order.customerId.email,
+          subject: 'Your Delivery OTP - JDmart',
+          html
+        }).catch(err => console.error('Failed to send OTP email:', err));
+      }
+    }
 
     order.status = status;
     order.statusHistory.push({ status, timestamp: new Date(), note: `Delivery agent: ${status}` });
@@ -172,11 +223,20 @@ router.post('/orders/:id/verify-otp', async (req, res) => {
 
     order.status = 'delivered';
     order.otpVerified = true;
-    order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: 'OTP verified by delivery agent' });
+    order.deliveredAt = new Date();
+    order.statusHistory.push({ status: 'delivered', timestamp: order.deliveredAt, note: 'OTP verified by delivery agent' });
     await order.save();
 
-    // Set agent back to available
-    await User.findByIdAndUpdate(req.user._id, { deliveryStatus: 'available' });
+    // Check if agent has other active orders
+    const otherActiveOrders = await Order.countDocuments({
+      deliveryAgentId: req.user._id,
+      status: { $in: ['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'] }
+    });
+
+    if (otherActiveOrders === 0) {
+      // Set agent back to available only if no other active deliveries
+      await User.findByIdAndUpdate(req.user._id, { deliveryStatus: 'available' });
+    }
 
     const io = req.app.get('io');
     io.to(`order_${order._id}`).emit('order:status_update', { orderId: order._id, status: 'delivered', statusHistory: order.statusHistory });

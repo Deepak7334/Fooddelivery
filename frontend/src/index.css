@@ -1294,3 +1294,27 @@ tbody tr:last-child td {
     font-size: 13px;
   }
 }
+
+/* === Responsive UI Enhancements === */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+}
+
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px; /* Force minimum width to trigger scroll on mobile */
+}
+
+/* Base Inputs and Buttons Touch Target Optimization */
+@media (max-width: 768px) {
+  .btn, input, select {
+    min-height: 44px; /* Apple/Android recommended minimum touch target */
+  }
+}

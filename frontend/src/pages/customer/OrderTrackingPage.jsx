@@ -93,8 +93,19 @@ export default function OrderTrackingPage() {
           </div>
         )}
 
-
-
+        {/* Delivery Agent Info */}
+        {order.deliveryAgentName && !isCancelled && order.status !== 'delivered' && (
+          <div className="card" style={{ padding: 20, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🚴</div>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontWeight: 800, margin: 0, fontSize: 16 }}>{order.deliveryAgentName}</h3>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: 13 }}>{order.deliveryAgentId?.vehicleNumber || 'Your Delivery Partner'}</p>
+            </div>
+            {order.deliveryAgentId?.phone && (
+              <a href={`tel:${order.deliveryAgentId.phone}`} className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>Call Agent</a>
+            )}
+          </div>
+        )}
         {/* Delivery confirmed */}
         {order.status === 'delivered' && (
           <div className="card" style={{ padding: 28, marginBottom: 20, background: 'rgba(76,175,80,0.05)', border: '1px solid rgba(76,175,80,0.2)', textAlign: 'center' }}>
@@ -108,7 +119,7 @@ export default function OrderTrackingPage() {
         <div className="card" style={{ padding: 24 }}>
           <h3 style={{ fontWeight: 700, marginBottom: 16 }}> Order Details</h3>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
-            {order.restaurantName} ·  {order.deliveryAddress}
+            {order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDmart'} ·  {order.deliveryAddress}
           </div>
           {order.items?.map((item, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>

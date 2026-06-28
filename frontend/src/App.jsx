@@ -51,6 +51,7 @@ import RestaurantBookings from './pages/restaurant/RestaurantBookings';
 import DeliveryLayout from './components/DeliveryLayout';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
 import DeliveryHistory from './pages/delivery/DeliveryHistory';
+import DeliveryOrderPage from './pages/delivery/DeliveryOrderPage';
 
 // Guards
 const PrivateRoute = ({ children, role }) => {
@@ -162,6 +163,7 @@ export default function App() {
       {/* Delivery Routes */}
       <Route path="/delivery" element={<PrivateRoute role="delivery"><DeliveryLayout><DeliveryDashboard /></DeliveryLayout></PrivateRoute>} />
       <Route path="/delivery/history" element={<PrivateRoute role="delivery"><DeliveryLayout><DeliveryHistory /></DeliveryLayout></PrivateRoute>} />
+      <Route path="/delivery/orders/:id" element={<PrivateRoute role="delivery"><DeliveryLayout><DeliveryOrderPage /></DeliveryLayout></PrivateRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
