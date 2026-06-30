@@ -5,16 +5,31 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
+// ==========================================
+// 📍 DELIVERY AREA SETTINGS
+// ==========================================
+// Add your specific village areas here (e.g. ['Area 1', 'Area 2'])
+// If this list has items, the Area field becomes a dropdown.
+const ALLOWED_AREAS = ['Tilokhar', 'Panduka','Parchha','Padariya',]; 
+
+// Add your allowed pincodes here (e.g. ['123456'])
+// If this list has items, we check the user's pincode against it.
+const ALLOWED_PINCODES = ['821304'];
+const ALLOWED_DISTRIC = ['Rohtas'];
+const ALLOWED_STATE = ['Bihar']; 
+// ==========================================
+
 export default function CheckoutPage() {
   const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [addrHouse, setAddrHouse] = useState(user?.address || '');
   const [addrArea, setAddrArea] = useState('');
-  const [addrLandmark, setAddrLandmark] = useState('');
+  const [addrDistrict, setAddrDistrict] = useState('');
+  const [addrState, setAddrState] = useState('');
   const [addrPincode, setAddrPincode] = useState('');
   
-  const address = [addrHouse, addrArea, addrLandmark ? `Near ${addrLandmark}` : '', addrPincode].filter(Boolean).join(', ');
+  const address = [addrHouse, addrArea, addrDistrict, addrState, addrPincode].filter(Boolean).join(', ');
   const [alternatePhone, setAlternatePhone] = useState('');
   const [instructions, setInstructions] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('upi');
@@ -48,7 +63,6 @@ export default function CheckoutPage() {
     try {
       await api.put('/auth/profile', { address });
       toast.success('Address saved to profile!');
-      // Update local context user object if possible, but a toast is good enough
     } catch (err) {
       toast.error('Failed to save address');
     } finally {
@@ -59,7 +73,35 @@ export default function CheckoutPage() {
   const total = totalPrice + deliveryFee;
 
   const handlePlaceOrder = async () => {
+    // --- EXPLICIT FIELD VALIDATION ---
+    if (!addrHouse.trim()) { toast.error('Please enter your House/Flat/Block number'); return; }
+    if (!addrArea.trim()) { toast.error('Please select or enter your Area/Locality'); return; }
+    if (!addrDistrict.trim()) { toast.error('Please select or enter your District'); return; }
+    if (!addrState.trim()) { toast.error('Please select or enter your State'); return; }
+    if (!addrPincode.trim()) { toast.error('Please enter your Pincode'); return; }
     if (!address.trim()) { toast.error('Please enter delivery address'); return; }
+
+    // --- LOCATION RESTRICTION CHECK ---
+    if (ALLOWED_PINCODES.length > 0 && !ALLOWED_PINCODES.includes(addrPincode.trim())) {
+      toast.error(
+        "Sorry, currently our service is not available in your selected area.\n\nमाफ़ कीजिए, अभी हमारी सेवा आपके चुने गए क्षेत्र में उपलब्ध नहीं है।"
+      );
+      return;
+    }
+    if (ALLOWED_AREAS.length > 0 && !ALLOWED_AREAS.includes(addrArea.trim())) {
+      toast.error('Sorry, currently our service is not available in your selected area.');
+      return;
+    }
+    if (ALLOWED_DISTRIC.length > 0 && !ALLOWED_DISTRIC.includes(addrDistrict.trim())) {
+      toast.error('Sorry, currently our service is not available in your selected district.');
+      return;
+    }
+    if (ALLOWED_STATE.length > 0 && !ALLOWED_STATE.includes(addrState.trim())) {
+      toast.error('Sorry, currently our service is not available in your selected state.');
+      return;
+    }
+    // ----------------------------------
+
     if (cartItems.length === 0) { toast.error('Cart is empty'); return; }
     setLoading(true);
     try {
@@ -82,12 +124,10 @@ export default function CheckoutPage() {
         paymentMethod: paymentMethod === 'upi' ? 'razorpay' : paymentMethod,
       });
 
-      // Automatically update profile address if changed and not empty
       if (address.trim() && address !== user?.address) {
         api.put('/auth/profile', { address }).catch(() => {});
       }
-      // The backend now returns an array of orders or a single order object.
-      // For tracking redirection, we use the first order or a combined success page.
+      
       const order = Array.isArray(orderRes.data.orders) ? orderRes.data.orders[0] : orderRes.data.order;
 
       if (paymentMethod === 'cod') {
@@ -98,7 +138,6 @@ export default function CheckoutPage() {
       }
 
       if (paymentMethod === 'upi') {
-        // Navigate to dedicated UPI payment page (we just pass the first orderId for tracking later)
         navigate('/payment/upi', { state: { orderId: order._id, orderIds: orderRes.data.orders?.map(o => o._id), amount: total } });
         return;
       }
@@ -177,17 +216,52 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Area / Sector / Locality</label>
-                  <input type="text" className="form-input" placeholder="e.g. Koramangala 4th Block" value={addrArea} onChange={e => setAddrArea(e.target.value)} />
+                  {ALLOWED_AREAS.length > 0 ? (
+                    <select className="form-input" value={addrArea} onChange={e => setAddrArea(e.target.value)}>
+                      <option value="">Select your area...</option>
+                      {ALLOWED_AREAS.map(area => (
+                        <option key={area} value={area}>{area}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input type="text" className="form-input" placeholder="e.g. Koramangala 4th Block" value={addrArea} onChange={e => setAddrArea(e.target.value)} />
+                  )}
                 </div>
+                
+                {/* District & State Row */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Nearby Landmark</label>
-                    <input type="text" className="form-input" placeholder="e.g. Opp. Apollo Hospital" value={addrLandmark} onChange={e => setAddrLandmark(e.target.value)} />
+                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>District</label>
+                    {ALLOWED_DISTRIC.length > 0 ? (
+                      <select className="form-input" value={addrDistrict} onChange={e => setAddrDistrict(e.target.value)}>
+                        <option value="">Select district...</option>
+                        {ALLOWED_DISTRIC.map(dist => (
+                          <option key={dist} value={dist}>{dist}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" className="form-input" placeholder="e.g. Rohtas" value={addrDistrict} onChange={e => setAddrDistrict(e.target.value)} />
+                    )}
                   </div>
                   <div>
-                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Pincode</label>
-                    <input type="text" className="form-input" placeholder="e.g. 560034" value={addrPincode} onChange={e => setAddrPincode(e.target.value)} />
+                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>State</label>
+                    {ALLOWED_STATE.length > 0 ? (
+                      <select className="form-input" value={addrState} onChange={e => setAddrState(e.target.value)}>
+                        <option value="">Select state...</option>
+                        {ALLOWED_STATE.map(st => (
+                          <option key={st} value={st}>{st}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" className="form-input" placeholder="e.g. Bihar" value={addrState} onChange={e => setAddrState(e.target.value)} />
+                    )}
                   </div>
+                </div>
+
+                {/* Pincode Row */}
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Pincode</label>
+                  <input type="text" className="form-input" placeholder="e.g. 821304" value={addrPincode} onChange={e => setAddrPincode(e.target.value)} />
                 </div>
               </div>
               

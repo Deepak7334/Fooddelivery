@@ -19,6 +19,10 @@ const foodSchema = new mongoose.Schema({
     type: Number,
     default: null,
   },
+  offer: {
+    type: String,
+    default: '',
+  },
   deliveryFee: {
     type: Number,
     default: 0,

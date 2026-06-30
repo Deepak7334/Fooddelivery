@@ -111,7 +111,7 @@ export default function OrderTrackingPage() {
           <div className="card" style={{ padding: 28, marginBottom: 20, background: 'rgba(76,175,80,0.05)', border: '1px solid rgba(76,175,80,0.2)', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}></div>
             <h3 style={{ fontWeight: 800, fontSize: 20, color: 'var(--success)', marginBottom: 8 }}>Delivery Confirmed!</h3>
-            <p style={{ color: 'var(--text-secondary)' }}>Enjoy your meal! Rate your experience.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Enjoy your meal! / Grocery And Rate your experience.</p>
           </div>
         )}
 
@@ -138,7 +138,7 @@ export default function OrderTrackingPage() {
           <div className="card" style={{ padding: 28, marginTop: 20, border: '1px solid rgba(255,87,34,0.3)', background: 'rgba(255,87,34,0.05)', textAlign: 'center', animation: 'glow 2s infinite' }}>
             <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: 'var(--primary)' }}>Delivery Agent has Arrived!</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
-              Please share this Delivery PIN with your agent to receive your food.
+              Please share this Delivery PIN with your DeliveryBoy to receive your food and Grocery.
             </p>
             <div style={{ fontSize: 48, fontWeight: 900, color: 'var(--primary)', letterSpacing: 16, fontFamily: 'monospace', paddingLeft: 16 }}>
               {order.deliveryOTP || '----'}

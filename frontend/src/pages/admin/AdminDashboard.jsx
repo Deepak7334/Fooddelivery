@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiShoppingBag, FiUsers, FiList, FiTrendingUp } from 'react-icons/fi';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [settings, setSettings] = useState({ globalTaxRate: 5 });
@@ -82,29 +83,66 @@ export default function AdminDashboard() {
 
       {/* Recent Orders */}
       <div>
-        <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Recent Orders</h2>
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Order ID</th><th>Customer</th><th>Restaurant</th><th>Amount</th><th>Status</th><th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No orders yet</td></tr>
-              ) : recentOrders.map(order => (
-                <tr key={order._id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>#{order._id.slice(-8).toUpperCase()}</td>
-                  <td>{order.customerId?.name || 'N/A'}</td>
-                  <td>{order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart'}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--primary)' }}>₹{order.finalAmount}</td>
-                  <td><span className={`badge badge-${order.status}`}>{order.status?.replace(/_/g, ' ')}</span></td>
-                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(order.createdAt).toLocaleDateString('en-IN')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontWeight: 800, fontSize: 20 }}>Recent Orders</h2>
+          <Link to="/admin/orders" style={{ fontSize: 14, color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>View All →</Link>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {recentOrders.length === 0 ? (
+            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
+              <h3 style={{ fontSize: 16, fontWeight: 600 }}>No orders yet</h3>
+            </div>
+          ) : recentOrders.map(order => {
+            const stColors = {
+              pending: { bg: 'rgba(255,152,0,0.15)', color: '#FF9800' },
+              accepted: { bg: 'rgba(0,188,212,0.15)', color: '#00BCD4' },
+              out_for_delivery: { bg: 'rgba(33,150,243,0.15)', color: '#2196F3' },
+              delivered: { bg: 'rgba(76,175,80,0.15)', color: '#4CAF50' },
+              cancelled: { bg: 'rgba(244,67,54,0.15)', color: '#F44336' }
+            };
+            const st = stColors[order.status] || { bg: 'rgba(158,158,158,0.15)', color: '#9E9E9E' };
+            const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
+
+            return (
+              <div key={order._id} className="card" onClick={() => navigate('/admin/orders')} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, transition: 'transform 0.2s', cursor: 'pointer' }} onMouseEnter={e => e.currentTarget.style.transform='translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform='none'}>
+                {/* Top Section */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,107,107,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                      🍽️
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{vendorName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Order #{order._id.slice(-8).toUpperCase()}</div>
+                    </div>
+                  </div>
+                  <span style={{ padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', background: st.bg, color: st.color, letterSpacing: '0.5px' }}>
+                    {order.status?.replace(/_/g, ' ')}
+                  </span>
+                </div>
+
+                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+
+                {/* Middle Section */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <div style={{ marginBottom: 4 }}><strong style={{ color: 'var(--text-primary)' }}>Customer:</strong> {order.customerId?.name || 'N/A'}</div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span>{new Date(order.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>·</span>
+                      <span>{order.items?.length || 0} items</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: 4 }}>Total Paid</div>
+                    <div style={{ fontWeight: 800, fontSize: 20, color: 'var(--primary)' }}>₹{order.finalAmount}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

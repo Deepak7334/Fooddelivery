@@ -117,7 +117,7 @@ export default function OrderHistoryPage() {
             <div className="empty-state">
               <div className="empty-state-icon">📦</div>
               <h3>No orders yet!</h3>
-              <p>Start exploring restaurants and place your first order.</p>
+              <p>Start exploring restaurants/Stores and place your first order.</p>
               <Link to="/restaurants" className="btn btn-primary" style={{ marginTop: 24 }}>Browse Restaurants</Link>
             </div>
           ) : (
@@ -180,7 +180,7 @@ export default function OrderHistoryPage() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {/* Restaurant name */}
                         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
-                          🏪 {b.restaurantId?.name || 'Restaurant'}
+                           {b.restaurantId?.name || 'Restaurant'}
                         </div>
                         {/* Booking details */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>

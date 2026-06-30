@@ -5,6 +5,7 @@ const productSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   price: { type: Number, required: true, min: 0 },
   discountedPrice: { type: Number, default: null },
+  offer: { type: String, default: '' },
   deliveryFee: { type: Number, default: 0 },
   category: { type: String, required: true },   // e.g. "Fruits & Veggies", "Dairy", "Snacks"
   image: { type: String, default: '' },

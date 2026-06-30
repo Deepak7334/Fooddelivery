@@ -675,6 +675,60 @@ router.get('/manage-items', async (req, res) => {
   }
 });
 
+// Admin: Update Item (Food or Product)
+router.patch('/manage-items/:id', async (req, res) => {
+  try {
+    const { itemType, price, discountedPrice, offer, description, isAvailable } = req.body;
+    
+    if (!itemType || !['food', 'product'].includes(itemType)) {
+      return res.status(400).json({ success: false, message: 'Invalid or missing itemType' });
+    }
 
+    const updateData = {};
+    
+    // Safely parse price
+    if (price !== undefined && price !== null && price !== '') {
+      const p = Number(price);
+      if (!isNaN(p)) updateData.price = p;
+    }
+
+    // Safely parse discountedPrice
+    if (discountedPrice !== undefined && discountedPrice !== null && discountedPrice !== '') {
+      const dp = Number(discountedPrice);
+      if (!isNaN(dp)) updateData.discountedPrice = dp;
+    } else if (discountedPrice === '' || discountedPrice === null) {
+      updateData.discountedPrice = null;
+    }
+
+    // Safely parse offer
+    if (offer !== undefined) {
+      updateData.offer = offer;
+    }
+
+    // Safely parse description
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+
+    // Safely parse isAvailable
+    if (typeof isAvailable !== 'undefined') {
+      updateData.isAvailable = Boolean(isAvailable);
+    }
+
+    let updatedItem;
+    if (itemType === 'food') {
+      updatedItem = await Food.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true, runValidators: true });
+    } else if (itemType === 'product') {
+      updatedItem = await Product.findByIdAndUpdate(req.params.id, { $set: updateData }, { new: true, runValidators: true });
+    }
+
+    if (!updatedItem) return res.status(404).json({ success: false, message: 'Item not found in database' });
+    
+    res.json({ success: true, item: { ...updatedItem.toObject(), itemType } });
+  } catch (err) {
+    console.error('Update item error:', err);
+    res.status(500).json({ success: false, message: 'Backend error: ' + err.message });
+  }
+});
 
 module.exports = router;

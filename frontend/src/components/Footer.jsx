@@ -34,7 +34,7 @@ export default function Footer() {
         </div>
         <div className="divider" />
         <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-          © 2026 JDkart. Made with ❤️ for food lovers.
+          © 2026 JDkart. Made with ❤️ for Villagers to order Anything Easily.
         </div>
       </div>
     </footer>
