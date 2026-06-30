@@ -232,16 +232,7 @@ export default function FoodDetailPage() {
               </div>
             </div>
             
-            {/* Special Instructions */}
-            <div style={{ marginTop: 24, display: 'flex', alignItems: 'flex-start', gap: 24 }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, width: 80, paddingTop: 8 }}>Requests</div>
-              <textarea 
-                value={specialInstructions} 
-                onChange={e => setSpecialInstructions(e.target.value)}
-                placeholder="e.g. Please don't add onion or garlic..."
-                style={{ flex: 1, height: 80, padding: 12, borderRadius: 2, border: '1px solid var(--border)', fontSize: 14, resize: 'vertical', fontFamily: 'inherit' }}
-              ></textarea>
-            </div>
+           
 
             {/* Description */}
             <div style={{ marginTop: 32, border: '1px solid var(--border)', borderRadius: 2 }}>
