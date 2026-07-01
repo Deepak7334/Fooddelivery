@@ -332,7 +332,7 @@ export default function DeliveryDashboard() {
 
           {activeOrders.length === 0 ? (
             <div className="dd-empty-state">
-              <div className="dd-empty-icon">🛵</div>
+              <div className="dd-empty-icon"></div>
               <div className="dd-empty-title">No active delivery</div>
               <div className="dd-empty-sub">Accept an assignment to get started</div>
             </div>
@@ -399,7 +399,7 @@ export default function DeliveryDashboard() {
                     <div className="dd-info-name">{order.customerId?.name}</div>
                     <div className="dd-info-detail">{order.deliveryAddress}</div>
                     <div className="dd-info-detail">📞 {order.customerId?.phone || order.customerPhone || 'N/A'}</div>
-                    {order.alternatePhone && <div className="dd-info-detail">📱 Alt: {order.alternatePhone}</div>}
+                    {order.alternatePhone && <div className="dd-info-detail"> Alt: {order.alternatePhone}</div>}
                   </div>
 
                   {/* Order Items */}
@@ -420,10 +420,10 @@ export default function DeliveryDashboard() {
                   {/* Map Buttons */}
                   <div className="dd-map-row">
                     <button className="dd-map-btn blue" onClick={() => openMaps(vendorAddress)}>
-                      🗺️ Vendor Map
+                      Vendor Map
                     </button>
                     <button className="dd-map-btn green" onClick={() => openMaps(order.deliveryAddress)}>
-                      📍 Customer Map
+                      Customer Map
                     </button>
                   </div>
 
@@ -431,22 +431,22 @@ export default function DeliveryDashboard() {
                   <div className="dd-action-row">
                     {order.status === 'accepted_by_driver' && (
                       <button className="dd-action-btn teal" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'reached_restaurant')}>
-                        🏪 Reached Vendor
+                        Reached Vendor
                       </button>
                     )}
                     {order.status === 'reached_restaurant' && (
                       <button className="dd-action-btn purple" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'picked_up')}>
-                        📦 Confirm Pickup
+                        Confirm Pickup
                       </button>
                     )}
                     {order.status === 'picked_up' && (
                       <button className="dd-action-btn cyan" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'on_the_way')}>
-                        🛣️ Start for Customer
+                        Start for Customer
                       </button>
                     )}
                     {order.status === 'on_the_way' && (
                       <button className="dd-action-btn amber" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'reached_customer')}>
-                        🚪 Reached Customer
+                         Reached Customer
                       </button>
                     )}
                     {order.status === 'reached_customer' && (
