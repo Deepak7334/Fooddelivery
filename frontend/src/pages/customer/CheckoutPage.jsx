@@ -84,9 +84,10 @@ export default function CheckoutPage() {
     // --- LOCATION RESTRICTION CHECK ---
     if (ALLOWED_PINCODES.length > 0 && !ALLOWED_PINCODES.includes(addrPincode.trim())) {
       toast.error(
-       "Sorry, currently our service is not available in your Entered Pincode.\n\n माफ़ कीजिए, अभी हमारी सेवा आपके दर्ज किए गए पिनकोड में उपलब्ध नहीं है"
+        "Sorry, currently our service is not available in your Entered Pincode.\n\n माफ़ कीजिए, अभी हमारी सेवा आपके दर्ज किए गए पिनकोड में उपलब्ध नहीं है"
       );
       return;
+
     }
     if (ALLOWED_AREAS.length > 0 && !ALLOWED_AREAS.includes(addrArea.trim())) {
       toast.error('Sorry, currently our service is not available in your selected area.');

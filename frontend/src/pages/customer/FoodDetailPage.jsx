@@ -232,8 +232,6 @@ export default function FoodDetailPage() {
               </div>
             </div>
             
-           
-
             {/* Description */}
             <div style={{ marginTop: 32, border: '1px solid var(--border)', borderRadius: 2 }}>
               <div style={{ padding: '24px' }}>

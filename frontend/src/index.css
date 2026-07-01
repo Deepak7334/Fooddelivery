@@ -1318,3 +1318,114 @@ tbody tr:last-child td {
     min-height: 44px; /* Apple/Android recommended minimum touch target */
   }
 }
+
+/* ===================================================================
+   PERFORMANCE & RESPONSIVENESS — Global Additions
+   =================================================================== */
+
+/* Remove 300ms tap delay on all interactive elements (mobile browsers) */
+a, button, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* Hint browser to use GPU compositing for animated/transitioning elements */
+.card,
+.sidebar,
+.modal-box,
+.modal-overlay,
+.fade-in {
+  will-change: transform;
+}
+
+/* Default lazy image behaviour — prevents CLS (Cumulative Layout Shift) */
+img {
+  max-width: 100%;
+  display: block;
+  height: auto;
+  content-visibility: auto; /* skips rendering off-screen images */
+}
+
+/* ── Extra-small phones (< 380px e.g. iPhone SE, Galaxy A01) ── */
+@media (max-width: 380px) {
+  .container {
+    padding: 0 12px;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  /* Vendor/item grids: single column on tiny phones */
+  .vendor-grid,
+  .items-grid,
+  .items-grid-small {
+    grid-template-columns: 1fr !important;
+  }
+
+  .btn-lg {
+    padding: 10px 18px;
+    font-size: 13px;
+  }
+
+  .modal-box {
+    padding: 16px 12px;
+    margin: 8px;
+  }
+}
+
+/* ── Admin / Dashboard panels on mobile ── */
+@media (max-width: 768px) {
+  /* Give panel content breathing room */
+  .main-with-sidebar > div:last-child {
+    padding: 16px !important;
+  }
+
+  /* Stat cards: 2-column grid on tablets, 1-column on phones */
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Notched phone safe-area support (iPhone X+, Android punch-hole) ── */
+body {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Smooth scrolling only for users who haven't requested reduced motion ── */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Fix navbar body offset on very small phones ── */
+@media (max-width: 380px) {
+  body {
+    padding-top: 64px;
+  }
+}

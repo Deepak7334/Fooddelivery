@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -55,6 +55,22 @@ export default function HomePage() {
   const locationInputRef = useRef(null);
 
   useEffect(() => {
+    // Use sessionStorage to cache homepage data for 5 minutes
+    const CACHE_KEY = 'jdkart_home_cache';
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+      if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+        setCategories(cached.categories);
+        setRestaurants(cached.restaurants);
+        setFoods(cached.foods);
+        setProducts(cached.products);
+        setStores(cached.stores);
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
     Promise.all([
       api.get('/customer/categories').catch(() => ({ data: { categories: [] } })),
       api.get('/customer/restaurants').catch(() => ({ data: { restaurants: [] } })),
@@ -62,11 +78,19 @@ export default function HomePage() {
       api.get('/store/products').catch(() => ({ data: { products: [] } })),
       api.get('/store/stores').catch(() => ({ data: { stores: [] } }))
     ]).then(([catRes, restRes, foodRes, prodRes, storeRes]) => {
-      setCategories(catRes.data.categories || []);
-      setRestaurants(restRes.data.restaurants || []);
-      setFoods(foodRes.data.foods || []);
-      setProducts(prodRes.data.products || []);
-      setStores(storeRes.data.stores || []);
+      const cats  = catRes.data.categories   || [];
+      const rests = restRes.data.restaurants || [];
+      const fds   = foodRes.data.foods       || [];
+      const prods = prodRes.data.products    || [];
+      const sts   = storeRes.data.stores     || [];
+      setCategories(cats);
+      setRestaurants(rests);
+      setFoods(fds);
+      setProducts(prods);
+      setStores(sts);
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), categories: cats, restaurants: rests, foods: fds, products: prods, stores: sts }));
+      } catch {}
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -97,51 +121,56 @@ export default function HomePage() {
   };
 
   // ----- Filter restaurants by proximity (only when GPS coords available) -----
-  const visibleRestaurants = (() => {
-    if (!userCoords) return restaurants; // no GPS → show all
-    const near = restaurants.filter(r => {
+  const visibleRestaurants = useMemo(() => {
+    if (!userCoords) return restaurants;
+    return restaurants.filter(r => {
       const d = getDistanceKm(userCoords.lat, userCoords.lng, r.location?.lat, r.location?.lng);
-      return d === null || d <= DELIVERY_RADIUS_KM; // if restaurant has no coords, still show it
+      return d === null || d <= DELIVERY_RADIUS_KM;
     });
-    return near;
-  })();
+  }, [restaurants, userCoords]);
 
   // Determine if we're "out of range" only when the user explicitly used GPS
   const isOutOfRange = userCoords && restaurants.length > 0 && visibleRestaurants.length === 0;
 
-  const visibleStores = stores.map(s => ({ ...s, isStore: true }));
+  const mixedVendors = useMemo(() => {
+    const allVendors = [
+      ...visibleRestaurants.map(r => ({ ...r, isStore: false })),
+      ...stores.map(s => ({ ...s, isStore: true })),
+    ];
+    const searchLower = search.toLowerCase();
+    return allVendors
+      .filter(v => {
+        if (search && !v.name.toLowerCase().includes(searchLower)) return false;
+        if (!activeCategory) return true;
+        return v.isStore ? v.storeType === activeCategory : v.cuisine?.includes(activeCategory);
+      })
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  }, [visibleRestaurants, stores, search, activeCategory]);
 
-  const mixedVendors = [
-    ...visibleRestaurants.map(r => ({ ...r, isStore: false })),
-    ...visibleStores
-  ]
-    .filter(v => {
-      if (search && !v.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (!activeCategory) return true;
-      if (v.isStore) return v.storeType === activeCategory;
-      else return v.cuisine?.includes(activeCategory);
-    })
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-  const mixedItems = [
-    ...foods.map(f => ({ ...f, isProduct: false })),
-    ...products.map(p => ({ ...p, isProduct: true }))
-  ]
-    .filter(item => {
-      if (search) {
-        const q = search.toLowerCase();
-        if (!item.name.toLowerCase().includes(q) && 
-            !item.category?.toLowerCase().includes(q) && 
-            !item.restaurantId?.name?.toLowerCase().includes(q) && 
-            !item.storeId?.name?.toLowerCase().includes(q)) {
-          return false;
+  const mixedItems = useMemo(() => {
+    const allItems = [
+      ...foods.map(f => ({ ...f, isProduct: false })),
+      ...products.map(p => ({ ...p, isProduct: true })),
+    ];
+    const searchLower = search.toLowerCase();
+    return allItems
+      .filter(item => {
+        if (search) {
+          if (
+            !item.name.toLowerCase().includes(searchLower) &&
+            !item.category?.toLowerCase().includes(searchLower) &&
+            !item.restaurantId?.name?.toLowerCase().includes(searchLower) &&
+            !item.storeId?.name?.toLowerCase().includes(searchLower)
+          ) return false;
         }
-      }
-      if (!activeCategory) return true;
-      if (item.isProduct) return item.storeId?.storeType === activeCategory || item.category === activeCategory;
-      else return item.category === activeCategory || item.restaurantId?.cuisine?.includes(activeCategory);
-    })
-    .sort(() => Math.random() - 0.5); // Simple shuffle for a "mixed" feel
+        if (!activeCategory) return true;
+        return item.isProduct
+          ? item.storeId?.storeType === activeCategory || item.category === activeCategory
+          : item.category === activeCategory || item.restaurantId?.cuisine?.includes(activeCategory);
+      })
+      // Use a stable shuffle seeded once, not on every render
+      .sort((a, b) => a._id > b._id ? 1 : -1);
+  }, [foods, products, search, activeCategory]);
 
   const handleAddToCart = (food) => {
     if (!user) { navigate('/login'); return; }
@@ -170,12 +199,13 @@ export default function HomePage() {
     return cartItems.find(i => i.productId === productId)?.quantity || 0;
   };
 
-  const searchSuggestions = search.trim() ? [
+  const searchSuggestions = useMemo(() => search.trim() ? [
     ...foods.filter(f => f.name.toLowerCase().includes(search.toLowerCase())).map(f => ({ ...f, itemType: 'food' })),
     ...products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => ({ ...p, itemType: 'product' })),
     ...restaurants.filter(r => r.name.toLowerCase().includes(search.toLowerCase())).map(r => ({ ...r, itemType: 'restaurant' })),
     ...stores.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map(s => ({ ...s, itemType: 'store' }))
-  ].slice(0, 6) : [];
+  ].slice(0, 6) : [], [search, foods, products, restaurants, stores]);
+
 
   const handleSearch = (e) => {
     e.preventDefault();

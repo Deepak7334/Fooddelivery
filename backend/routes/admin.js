@@ -340,7 +340,8 @@ router.get('/orders', async (req, res) => {
       .limit(parseInt(limit))
       .populate('customerId', 'name email phone')
       .populate('restaurantId', 'name')
-      .populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
+      .populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus')
+      .lean();
     const total = await Order.countDocuments(filter);
     res.json({ success: true, orders, total, pages: Math.ceil(total / limit) });
   } catch (err) {
@@ -353,7 +354,8 @@ router.get('/orders/:id', async (req, res) => {
     const order = await Order.findById(req.params.id)
       .populate('customerId', 'name email phone')
       .populate('restaurantId', 'name address phone')
-      .populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
+      .populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus')
+      .lean();
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     res.json({ success: true, order });
   } catch (err) {
