@@ -22,24 +22,10 @@ router.get('/categories', async (req, res) => {
 // Get checkout info (delivery fees & global taxes)
 router.post('/checkout-info', async (req, res) => {
   try {
-    const { restaurantIds = [], storeIds = [] } = req.body;
-    let deliveryFees = 0;
-    
-    // Filter to ensure only valid 24-character hex strings (MongoDB ObjectIds) are queried
-    const validRestIds = restaurantIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
-    const validStoreIds = storeIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
-    
-    if (validRestIds.length > 0) {
-      const rests = await Restaurant.find({ _id: { $in: validRestIds } });
-      rests.forEach(r => deliveryFees += (r.deliveryFee || 0));
-    }
-    
-    if (validStoreIds.length > 0) {
-      const stores = await Store.find({ _id: { $in: validStoreIds } });
-      stores.forEach(s => deliveryFees += (s.deliveryFee || 0));
-    }
-
-    res.json({ success: true, deliveryFees, globalTaxRate: 0 }); // Taxes removed
+    const { totalAmount = 0 } = req.body;
+    // Delivery fee rule: < ₹100 → ₹5, ≥ ₹100 → ₹10
+    const deliveryFees = Number(totalAmount) < 100 ? 5 : 10;
+    res.json({ success: true, deliveryFees, globalTaxRate: 0 });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -150,16 +136,10 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       }
 
       // Calculate total delivery fee for this vendor group
-      let groupDeliveryFee = 0;
-      if (group.vendorType === 'restaurant' && group.vendorId) {
-        const rest = await Restaurant.findById(group.vendorId);
-        if (rest) groupDeliveryFee = rest.deliveryFee || 0;
-      } else if (group.vendorType === 'store' && group.vendorId) {
-        const store = await Store.findById(group.vendorId);
-        if (store) groupDeliveryFee = store.deliveryFee || 0;
-      }
-
+   
       const totalAmount = group.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      // Delivery fee based on order amount
+      const groupDeliveryFee = totalAmount > 100 ? 10 : 5;
       const finalAmount = totalAmount + groupDeliveryFee;
 
       const order = await Order.create({
@@ -277,11 +257,15 @@ router.patch('/orders/:id/cancel', protect, authorize('customer'), async (req, r
 // ========== STORE ORDER PLACEMENT ==========
 router.post('/store-orders', protect, authorize('customer'), async (req, res) => {
   try {
-    const { storeId, items, deliveryAddress, paymentMethod, totalAmount, deliveryFee, finalAmount, specialInstructions } = req.body;
+    const { storeId, items, deliveryAddress, paymentMethod, totalAmount, specialInstructions } = req.body;
     if (!storeId || !items?.length) return res.status(400).json({ success: false, message: 'storeId and items are required' });
 
     const store = await Store.findById(storeId);
     if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
+
+    // Delivery fee rule: < ₹100 → ₹5, ≥ ₹100 → ₹10
+    const deliveryFee = Number(totalAmount) < 100 ? 5 : 10;
+    const finalAmount = Number(totalAmount) + deliveryFee;
 
     const order = await Order.create({
       customerId: req.user.id,
@@ -290,11 +274,11 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
       orderType: 'product',
       items,
       totalAmount,
-      deliveryFee, // Trusted from frontend or we could compute it
+      deliveryFee,
       finalAmount,
       deliveryAddress,
       paymentMethod: paymentMethod || 'cod',
-      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'pending',
+      paymentStatus: 'pending',
       specialInstructions: specialInstructions || '',
       customerPhone: req.user.phone || '',
       customerEmail: req.user.email || '',

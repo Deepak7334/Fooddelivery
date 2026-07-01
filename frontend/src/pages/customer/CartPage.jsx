@@ -10,23 +10,10 @@ export default function CartPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  const [fee, setFee] = useState(0);
-  const [calculating, setCalculating] = useState(true);
 
-  useEffect(() => {
-    if (cartItems.length === 0) {
-      setCalculating(false);
-      return;
-    }
-    const isValidId = (id) => Boolean(id) && id !== 'null' && id !== 'undefined';
-    const restaurantIds = Array.from(new Set(cartItems.map(i => i.restaurantId).filter(isValidId)));
-    const storeIds = Array.from(new Set(cartItems.map(i => i.storeId).filter(isValidId)));
 
-    api.post('/customer/checkout-info', { restaurantIds, storeIds })
-      .then(res => setFee(res.data.deliveryFees || 0))
-      .catch(() => setFee(30)) // fallback
-      .finally(() => setCalculating(false));
-  }, [cartItems]);
+  // Delivery fee: < ₹100 → ₹5, ≥ ₹100 → ₹10
+  const fee = totalPrice < 100 ? 5 : 10;
   
   const total = totalPrice + fee;
 
@@ -99,14 +86,14 @@ export default function CartPage() {
                 <span>Subtotal ({totalItems} items)</span><span>₹{totalPrice}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)' }}>
-                <span>Delivery Fee</span><span>{calculating ? '...' : (fee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free</span> : `₹${fee}`)}</span>
+                <span>Delivery Fee</span><span>{fee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free</span> : `₹${fee}`}</span>
               </div>
               <div className="divider" />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800 }}>
-                <span>Total</span><span style={{ color: 'var(--primary)' }}>₹{calculating ? '...' : total}</span>
+                <span>Total</span><span style={{ color: 'var(--primary)' }}>₹{total}</span>
               </div>
             </div>
-            <button disabled={calculating} onClick={() => { if (!user) navigate('/login'); else navigate('/checkout'); }} className="btn btn-primary btn-full btn-lg">
+            <button onClick={() => { if (!user) navigate('/login'); else navigate('/checkout'); }} className="btn btn-primary btn-full btn-lg">
               Proceed to Checkout →
             </button>
             <div style={{ marginTop: 16, padding: 12, background: 'rgba(76,175,80,0.08)', borderRadius: 8, border: '1px solid rgba(76,175,80,0.2)', fontSize: 12, color: 'var(--success)', textAlign: 'center' }}>
