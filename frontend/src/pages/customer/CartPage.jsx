@@ -12,8 +12,8 @@ export default function CartPage() {
   
 
 
-  // Delivery fee: < ₹100 → ₹5, ≥ ₹100 → ₹10
-  const fee = totalPrice < 100 ? 5 : 10;
+  // Delivery fee: < ₹30 → ₹5, ≥ ₹31 → ₹10
+  const fee = totalPrice < 30 ? 5 : 10;
   
   const total = totalPrice + fee;
 
