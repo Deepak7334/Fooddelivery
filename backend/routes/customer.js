@@ -138,8 +138,8 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       // Calculate total delivery fee for this vendor group
    
       const totalAmount = group.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      // Delivery fee based on order amount
-      const groupDeliveryFee = totalAmount < 30 ? 5 : 10;
+      // Delivery fee based on order amount (consistent rule)
+      const groupDeliveryFee = Number(totalAmount) < 30 ? 5 : 10;
       const finalAmount = totalAmount + groupDeliveryFee;
 
       const order = await Order.create({
@@ -263,8 +263,8 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
     const store = await Store.findById(storeId);
     if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
 
-    // Delivery fee rule: < ₹100 → ₹5, ≥ ₹100 → ₹10
-    const deliveryFee = Number(totalAmount) < 100 ? 5 : 10;
+    // Delivery fee rule: < ₹30 → ₹5, ≥ ₹30 → ₹10
+    const deliveryFee = Number(totalAmount) < 30 ? 5 : 10;
     const finalAmount = Number(totalAmount) + deliveryFee;
 
     const order = await Order.create({

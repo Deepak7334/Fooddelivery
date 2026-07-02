@@ -36,8 +36,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
 
-  // Delivery fee: < ₹100 → ₹5, ≥ ₹100 → ₹10 (matches backend rule exactly)
-  const deliveryFee = totalPrice < 100 ? 5 : 10;
+  // Delivery fee: < ₹30 → ₹5, ≥ ₹30 → ₹10 (matches backend rule exactly)
+  const deliveryFee = totalPrice < 30 ? 5 : 10;
 
 
   const handleSaveAddress = async () => {
