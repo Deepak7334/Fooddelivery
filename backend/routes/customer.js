@@ -23,7 +23,7 @@ router.get('/categories', async (req, res) => {
 router.post('/checkout-info', async (req, res) => {
   try {
     const { totalAmount = 0 } = req.body;
-    // Delivery fee rule: < ₹30 → ₹5, ≥ ₹31 → ₹10
+    // Delivery fee rule: < ₹30 → ₹5, ≥ ₹30 → ₹10
     const deliveryFees = Number(totalAmount) < 30 ? 5 : 10;
     res.json({ success: true, deliveryFees, globalTaxRate: 0 });
   } catch (err) {
@@ -139,7 +139,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
    
       const totalAmount = group.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
       // Delivery fee based on order amount
-      const groupDeliveryFee = totalAmount > 100 ? 10 : 5;
+      const groupDeliveryFee = totalAmount < 30 ? 5 : 10;
       const finalAmount = totalAmount + groupDeliveryFee;
 
       const order = await Order.create({
