@@ -16,7 +16,7 @@ export default function RestaurantTables() {
   const fetchTables = () => { 
     api.get('/booking/restaurant/tables')
       .then(res => setTables(res.data || []))
-      .catch(err => toast.error('Failed to load tables'))
+      .catch(() => toast.error('Failed to load tables'))
       .finally(() => setLoading(false)); 
   };
   

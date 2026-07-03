@@ -18,7 +18,7 @@ export default function FoodDetailPage() {
   const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [spiceLevel, setSpiceLevel] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [specialInstructions, setSpecialInstructions] = useState('');
+
   const [activeImage, setActiveImage] = useState('');
 
   useEffect(() => {
@@ -46,9 +46,16 @@ export default function FoodDetailPage() {
   if (loading) return <div className="page-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}><div className="loading-spinner"></div></div>;
   if (!food) return <div className="page-wrapper"><div className="container" style={{ textAlign: 'center', marginTop: 100 }}><h2>Food not found</h2><button className="btn btn-primary" onClick={() => navigate(-1)}>Go Back</button></div></div>;
 
-  const basePrice = selectedVariant ? (selectedVariant.discountedPrice || selectedVariant.price) : (food.discountedPrice || food.price);
-  const originalPrice = selectedVariant ? selectedVariant.price : food.price;
-  const discountPercent = Math.round(((originalPrice - basePrice) / originalPrice) * 100);
+  let pPrice = food.price;
+  let dPrice = food.discountedPrice;
+  if ((!pPrice || pPrice === 0) && selectedVariant) {
+    pPrice = selectedVariant.price;
+    dPrice = selectedVariant.discountedPrice;
+  }
+
+  const basePrice = dPrice || pPrice;
+  const originalPrice = pPrice;
+  const discountPercent = (originalPrice > basePrice) ? Math.round(((originalPrice - basePrice) / originalPrice) * 100) : 0;
   
   const addOnsPrice = selectedAddOns.reduce((sum, a) => sum + a.price, 0);
   const finalPrice = basePrice + addOnsPrice;
@@ -67,7 +74,6 @@ export default function FoodDetailPage() {
         variantName: selectedVariant?.name,
         addOns: selectedAddOns,
         spiceLevel,
-        specialInstructions,
         computedPrice: finalPrice
       });
     }
@@ -146,14 +152,16 @@ export default function FoodDetailPage() {
 
             <div style={{ marginTop: 16 }}>
               <div style={{ color: 'var(--success)', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Price for {selectedVariant ? selectedVariant.name : '1 item'}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                <span style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)' }}>₹{basePrice}</span>
-                {discountPercent > 0 && (
-                  <>
-                    <span style={{ fontSize: 16, color: 'var(--text-secondary)', textDecoration: 'line-through' }}>₹{originalPrice}</span>
-                    <span style={{ color: 'var(--success)', fontSize: 16, fontWeight: 600 }}>{discountPercent}% off</span>
-                  </>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)' }}>₹{basePrice}</span>
+                {(originalPrice > basePrice) && (
+                  <span style={{ fontSize: 16, color: '#878787', textDecoration: 'line-through' }}>₹{originalPrice}</span>
                 )}
+                {food.offer ? (
+                  <span style={{ background: '#388E3C', color: '#fff', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🏷️ {food.offer}</span>
+                ) : discountPercent > 0 ? (
+                  <span style={{ color: '#388E3C', fontSize: 16, fontWeight: 600 }}>{discountPercent}% off</span>
+                ) : null}
               </div>
             </div>
 
@@ -161,7 +169,7 @@ export default function FoodDetailPage() {
             <div style={{ display: 'flex', gap: 32, marginTop: 24, fontSize: 14, color: 'var(--text-primary)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ background: 'var(--bg-card2)', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: 18 }}>⏱️</div>
-                <div><div style={{ fontWeight: 600 }}>Fast Delivery</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>30-45 mins</div></div>
+                <div><div style={{ fontWeight: 600 }}>{ (finalPrice * quantity) < 30 ? 'Delivery: ₹5' : 'Delivery: ₹10' }</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>30-45 mins</div></div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ background: 'var(--bg-card2)', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: 18 }}>🍽️</div>
@@ -229,6 +237,17 @@ export default function FoodDetailPage() {
                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>−</button>
                 <input type="text" value={quantity} readOnly style={{ width: 48, height: 32, border: '1px solid var(--border)', textAlign: 'center', fontWeight: 600, fontSize: 14, outline: 'none' }} />
                 <button onClick={() => setQuantity(quantity + 1)} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>+</button>
+              </div>
+            </div>
+            
+            {/* Seller */}
+            <div style={{ marginTop: 24, display: 'flex', alignItems: 'baseline', gap: 24 }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, width: 80 }}>Seller</div>
+              <div style={{ fontSize: 14 }}>
+                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{food.restaurantId?.name || 'Restaurant'}</span>
+                <ul style={{ margin: 0, paddingLeft: 16, marginTop: 8, color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                  <li>Fresh and hygienic preparation</li>
+                </ul>
               </div>
             </div>
             

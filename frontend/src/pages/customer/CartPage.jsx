@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
-import api from '../../lib/api';
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, totalPrice, totalItems, clearCart } = useCart();

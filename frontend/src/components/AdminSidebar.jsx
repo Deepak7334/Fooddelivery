@@ -46,7 +46,7 @@ export default function AdminSidebar({ open, onClose }) {
             </Link>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid var(--border)', marginTop: 40 }}>
+        <div style={{ paddingTop: 24, borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
           <button onClick={() => { logout(); navigate('/login'); onClose?.(); }} className="sidebar-link" style={{ width: '100%', background: 'transparent', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
             <FiLogOut /> Logout
           </button>

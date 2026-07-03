@@ -1,39 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import toast from 'react-hot-toast';
+
 import { FiShoppingBag, FiUsers, FiList, FiTrendingUp } from 'react-icons/fi';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
-  const [settings, setSettings] = useState({ globalTaxRate: 5 });
-  const [savingTax, setSavingTax] = useState(false);
+
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.get('/admin/stats'),
       api.get('/admin/settings')
-    ]).then(([statsRes, settingsRes]) => {
+    ]).then(([statsRes]) => {
       setStats(statsRes.data.stats);
       setRecentOrders(statsRes.data.recentOrders || []);
-      if (settingsRes.data.settings) setSettings(settingsRes.data.settings);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  const handleSaveTax = async () => {
-    setSavingTax(true);
-    try {
-      const res = await api.put('/admin/settings', { globalTaxRate: settings.globalTaxRate });
-      toast.success('Settings updated!');
-    } catch (err) {
-      toast.error('Failed to update settings');
-    } finally {
-      setSavingTax(false);
-    }
-  };
 
   if (loading) return <div style={{ padding: 60, textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
 

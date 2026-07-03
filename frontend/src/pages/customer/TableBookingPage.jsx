@@ -43,7 +43,7 @@ const TableBookingPage = () => {
         setLoading(true);
         const { data } = await api.get(`/booking/availability/${restaurantId}/${date}`);
         setAvailableTables(data.tables || []);
-      } catch (error) {
+      } catch {
         toast.error('Failed to load table availability');
       } finally {
         setLoading(false);

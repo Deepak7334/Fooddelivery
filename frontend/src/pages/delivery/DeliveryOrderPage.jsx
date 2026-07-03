@@ -96,7 +96,8 @@ export default function DeliveryOrderPage() {
         toast.error(`Failed to load order: ${details}`);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+     
+  }, [id, orderFromState]);
 
   const handleStatusUpdate = async (status) => {
     setActionLoading(true);

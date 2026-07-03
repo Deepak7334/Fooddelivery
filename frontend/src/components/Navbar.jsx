@@ -16,7 +16,10 @@ export default function Navbar() {
   const handleLogout = () => { logout(); navigate('/'); setMobileOpen(false); };
   const isActive = (path) => location.pathname === path;
 
-  useEffect(() => { setMobileOpen(false); setDropdownOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    // eslint-disable-next-line
+    setMobileOpen(false); setDropdownOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };

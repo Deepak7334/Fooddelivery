@@ -15,7 +15,7 @@ export default function StoreDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addProductToCart, cartItems, storeId: cartStoreId, cartType } = useCart();
+  const { addProductToCart, cartItems, cartType, storeId: cartStoreId, updateQuantity } = useCart();
 
   const [store, setStore] = useState(null);
   const [grouped, setGrouped] = useState({});
@@ -181,7 +181,9 @@ export default function StoreDetailPage() {
                     <ProductCard key={product._id} product={product} qty={getQty(product._id)} onAdd={() => handleAdd(product)} onBuy={() => { handleAdd(product); navigate('/cart'); }} onUpdate={(qty) => {
                       if (!user) { navigate('/login'); return; }
                       if (qty <= 0) {
-                        const { removeFromCart } = require('../../context/CartContext');
+                        updateQuantity(product._id, 0);
+                      } else {
+                        updateQuantity(product._id, qty);
                       }
                     }} />
                   ))}
@@ -213,7 +215,7 @@ export default function StoreDetailPage() {
 }
 
 function ProductCard({ product, qty, onAdd, onBuy }) {
-  const { updateQuantity, cartType, storeId } = useCart();
+  const { updateQuantity } = useCart();
   const hasVariants = product.variants && product.variants.length > 0;
 
   let pPrice = product.price;
@@ -246,24 +248,32 @@ function ProductCard({ product, qty, onAdd, onBuy }) {
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📦</div>
           )}
-          {discount > 0 && (
-            <div style={{ position: 'absolute', top: 6, right: 6, background: 'var(--primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6 }}>
-              -{discount}%
-            </div>
-          )}
+          <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+            {product.offer ? (
+              <div style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                🏷️ {product.offer}
+              </div>
+            ) : discount > 0 ? (
+              <div style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4 }}>
+                {discount}% off
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{product.name}</div>
         {product.brand && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{product.brand}</div>}
         {product.unit && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>{product.unit}</div>}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 10 }}>
           {dPrice ? (
             <>
-              <span style={{ fontWeight: 800, fontSize: 16 }}>{prefix}₹{dPrice}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{pPrice}</span>
+              <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{prefix}₹{dPrice}</span>
+              <span style={{ fontSize: 12, color: '#878787', textDecoration: 'line-through' }}>₹{pPrice}</span>
             </>
-          ) : <span style={{ fontWeight: 800, fontSize: 16 }}>{prefix}₹{pPrice}</span>}
+          ) : (
+            <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{prefix}₹{pPrice}</span>
+          )}
         </div>
         {hasVariants && (
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>
@@ -282,7 +292,7 @@ function ProductCard({ product, qty, onAdd, onBuy }) {
           </div>
         ) : hasVariants ? (
           <Link to={`/product/${product._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36 }}>
-            Choose Pack
+            Buy
           </Link>
         ) : (
           <button

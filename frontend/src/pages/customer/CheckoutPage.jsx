@@ -20,7 +20,7 @@ const ALLOWED_STATE = ['Bihar'];
 // ==========================================
 
 export default function CheckoutPage() {
-  const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId } = useCart();
+  const { cartItems, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [addrHouse, setAddrHouse] = useState(user?.address || '');
@@ -46,7 +46,7 @@ export default function CheckoutPage() {
     try {
       await api.put('/auth/profile', { address });
       toast.success('Address saved to profile!');
-    } catch (err) {
+    } catch {
       toast.error('Failed to save address');
     } finally {
       setSavingAddress(false);

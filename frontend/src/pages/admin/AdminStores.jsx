@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiX, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import ImageCropperModal from '../../components/ImageCropperModal';
 
 const STORE_TYPES = ['grocery', 'pharmacy', 'electronics', 'beauty', 'pets', 'bakery', 'supermarket', 'stationery', 'sports', 'other'];
 const TYPE_ICONS = { grocery: '🛒', pharmacy: '💊', electronics: '📱', beauty: '🧴', pets: '🐾', bakery: '🥐', supermarket: '🏪', stationery: '📚', sports: '⚽', other: '🏬' };
@@ -21,6 +22,8 @@ export default function AdminStores() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [cropConfig, setCropConfig] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -33,12 +36,51 @@ export default function AdminStores() {
       .finally(() => setLoading(false));
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [typeFilter, search]);
 
   const openAdd = () => { setForm(EMPTY); setModal('add'); };
   const openEdit = (s) => {
     setForm({ ...EMPTY, ...s, deliveryFee: String(s.deliveryFee), minOrder: String(s.minOrder), offers: (s.offers || []).join(', '), ownerEmail: '', ownerName: '', ownerPassword: '', addrHouse: s.address || '' });
     setModal('edit');
+  };
+
+  const handleImageUpload = (e, fieldKey) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Read file for cropping
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropConfig({
+        imageSrc: reader.result.toString(),
+        fieldKey,
+        aspect: fieldKey === 'coverImage' ? 16 / 9 : 4 / 3
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // Reset input
+  };
+
+  const handleCropDone = async (croppedFile) => {
+    if (!cropConfig || !croppedFile) return;
+    const { fieldKey } = cropConfig;
+    setCropConfig(null);
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('image', croppedFile);
+    try {
+      const res = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setForm(prev => ({ ...prev, [fieldKey]: res.data.imageUrl }));
+      toast.success('Image cropped and uploaded!');
+    } catch (err) {
+      toast.error('Failed to upload image');
+      console.error(err);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSave = async (e) => {
@@ -59,6 +101,7 @@ export default function AdminStores() {
         setStores(prev => [res.data.store, ...prev]);
         toast.success('Store created!');
       } else {
+        // eslint-disable-next-line no-unused-vars
         const { ownerEmail, ownerName, ownerPassword, ...updatePayload } = payload;
         const res = await api.put(`/admin/stores/${form._id}`, updatePayload);
         setStores(prev => prev.map(s => s._id === form._id ? res.data.store : s));
@@ -181,6 +224,14 @@ export default function AdminStores() {
                       <select className="form-input" value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))}>
                         {STORE_TYPES.map(t => <option key={t} value={t}>{TYPE_ICONS[t]} {t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                       </select>
+                    ) : f.key === 'image' || f.key === 'coverImage' ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input className="form-input" type="text" placeholder={`Paste ${f.label} or upload`} value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} style={{ flex: 1 }} />
+                        <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px' }}>
+                          Upload
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, f.key)} disabled={uploadingImage} />
+                        </label>
+                      </div>
                     ) : (
                       <input className="form-input" type={f.type || 'text'} required={f.required} placeholder={f.placeholder} value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} />
                     )}
@@ -224,6 +275,15 @@ export default function AdminStores() {
             </form>
           </div>
         </div>
+      )}
+
+      {cropConfig && (
+        <ImageCropperModal
+          imageSrc={cropConfig.imageSrc}
+          aspect={cropConfig.aspect}
+          onCancel={() => setCropConfig(null)}
+          onCropDone={handleCropDone}
+        />
       )}
     </div>
   );

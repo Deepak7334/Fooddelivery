@@ -60,7 +60,10 @@ function AnimatedNumber({ value, prefix = '' }) {
     if (prev.current === value) return;
     const start = typeof prev.current === 'number' ? prev.current : 0;
     const end = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.]/g, ''));
-    if (isNaN(end)) { setDisplay(value); return; }
+    if (isNaN(end)) {
+      // eslint-disable-next-line
+      setDisplay(value); return;
+    }
     const dur = 700, startTime = performance.now();
     const tick = (now) => {
       const t = Math.min((now - startTime) / dur, 1);

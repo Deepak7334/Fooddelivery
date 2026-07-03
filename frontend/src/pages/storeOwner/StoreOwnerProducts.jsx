@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { FiEdit2, FiTrash2, FiPlus, FiX } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiX, FiUpload } from 'react-icons/fi';
+import ImageCropperModal from '../../components/ImageCropperModal';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', price: '', discountedPrice: '', category: '',
@@ -16,6 +17,35 @@ export default function StoreOwnerProducts() {
   const [form, setForm] = useState(EMPTY_PRODUCT);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [cropImageSrc, setCropImageSrc] = useState(null);
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setCropImageSrc(reader.result?.toString() || ''));
+      reader.readAsDataURL(file);
+    }
+    e.target.value = null; // reset input
+  };
+
+  const handleCropDone = async (croppedFile) => {
+    setCropImageSrc(null);
+    const formData = new FormData();
+    formData.append('image', croppedFile);
+    
+    const tid = toast.loading('Uploading image...');
+    try {
+      const res = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setForm(prev => ({ ...prev, image: res.data.imageUrl }));
+      toast.success('Image uploaded!', { id: tid });
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload image', { id: tid });
+    }
+  };
 
   const load = () => {
     api.get('/store-owner/products')
@@ -130,7 +160,25 @@ export default function StoreOwnerProducts() {
                 { label: 'Brand', key: 'brand', type: 'text' },
                 { label: 'Unit', key: 'unit', type: 'text', placeholder: 'e.g. 500g, 1L, Pack of 6' },
                 { label: 'Stock (-1 = unlimited)', key: 'stock', type: 'number' },
-                { label: 'Image URL', key: 'image', type: 'text' },
+              ].map(f => (
+                <div className="form-group" key={f.key}>
+                  <label className="form-label">{f.label}</label>
+                  <input className="form-input" type={f.type} required={f.required} placeholder={f.placeholder} value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} />
+                </div>
+              ))}
+              
+              <div className="form-group">
+                <label className="form-label">Image URL or Upload</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="form-input" style={{ flex: 1 }} type="text" placeholder="https://..." value={form.image} onChange={e => setForm({ ...form, image: e.target.value })} />
+                  <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FiUpload /> Upload
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+                  </label>
+                </div>
+              </div>
+
+              {[
                 { label: 'Description', key: 'description', type: 'text' },
                 { label: 'Tags (comma separated)', key: 'tags', type: 'text' },
               ].map(f => (
@@ -206,6 +254,15 @@ export default function StoreOwnerProducts() {
             </form>
           </div>
         </div>
+      )}
+
+      {cropImageSrc && (
+        <ImageCropperModal
+          imageSrc={cropImageSrc}
+          aspect={1}
+          onCancel={() => setCropImageSrc(null)}
+          onCropDone={handleCropDone}
+        />
       )}
     </div>
   );

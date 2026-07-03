@@ -31,7 +31,7 @@ function StoreOwnerSidebar({ open, onClose }) {
             </Link>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: '1px solid var(--border)', marginTop: 40 }}>
+        <div style={{ paddingTop: 24, borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
           <div style={{ padding: '8px 16px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
             <FiUser size={12} style={{ marginRight: 6 }} />{user?.name}
           </div>

@@ -8,7 +8,7 @@ export default function RestaurantsPage() {
   const [restaurants, setRestaurants] = useState([]);
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [sort, setSort] = useState('');
   const [cuisine, setCuisine] = useState(searchParams.get('cuisine') || '');
@@ -17,6 +17,7 @@ export default function RestaurantsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // eslint-disable-next-line
     if (!restaurants.length && !foods.length) setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set('search', search);
@@ -33,13 +34,8 @@ export default function RestaurantsPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    // eslint-disable-next-line
   }, [search, sort, cuisine]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const val = e.target.elements.search.value;
-    setSearch(val);
-  };
 
   const handleAddFood = (food) => {
     addToCart(food, food.restaurantId?._id);

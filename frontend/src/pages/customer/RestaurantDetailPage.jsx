@@ -5,6 +5,13 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const p = 0.017453292519943295;
+  const c = Math.cos;
+  const a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
 // ... existing imports ...
 import { Link } from 'react-router-dom';
 
@@ -34,7 +41,9 @@ export default function RestaurantDetailPage() {
             const loc = JSON.parse(locStr);
             const d = calculateDistance(loc.lat, loc.lng, res.data.restaurant.location.lat, res.data.restaurant.location.lng);
             setDistance(d);
-          } catch(e) {}
+          } catch {
+            // ignore
+          }
         }
       }).catch(() => toast.error('Restaurant not found'))
       .finally(() => setLoading(false));
@@ -65,7 +74,7 @@ export default function RestaurantDetailPage() {
   if (!restaurant) return <div className="empty-state" style={{ paddingTop: 120 }}><div className="empty-state-icon">❌</div><h3>Restaurant not found</h3></div>;
 
   const categories = Object.keys(menuGrouped);
-  const cartCount = cartItems.filter(i => restaurantId === restaurant._id).reduce((s, i) => s + i.quantity, 0);
+  const cartCount = cartItems.filter(() => restaurantId === restaurant._id).reduce((s, item) => s + item.quantity, 0);
 
   return (
     <div>
@@ -162,6 +171,23 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
   const { updateQuantity } = useCart();
   const hasVariants = food.variants && food.variants.length > 0;
 
+  let pPrice = food.price;
+  let dPrice = food.discountedPrice;
+  let prefix = '';
+
+  if ((!pPrice || pPrice === 0) && hasVariants) {
+    const prices = food.variants.map(v => v.discountedPrice || v.price).filter(p => p > 0);
+    if (prices.length > 0) {
+      pPrice = Math.min(...prices);
+      dPrice = null;
+      prefix = 'Starts at ';
+    }
+  }
+
+  const discount = dPrice && dPrice < pPrice
+    ? Math.round((1 - dPrice / pPrice) * 100)
+    : 0;
+
   return (
     <div className="item-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', transition: 'var(--transition)' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,87,34,0.25)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
@@ -178,14 +204,27 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
           <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: '#fff', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${food.isVeg ? '#4CAF50' : '#F44336'}` }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: food.isVeg ? '#4CAF50' : '#F44336' }}></div>
           </div>
+          <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+            {food.offer ? (
+              <span style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🏷️ {food.offer}</span>
+            ) : discount > 0 ? (
+              <span style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4 }}>{discount}% off</span>
+            ) : null}
+          </div>
         </div>
 
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{food.name}</div>
         {food.description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{food.description}</div>}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span style={{ fontWeight: 800, fontSize: 16 }}>₹{food.discountedPrice || food.price}</span>
-          {food.discountedPrice && <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{food.price}</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 10 }}>
+          {dPrice ? (
+            <>
+              <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{prefix}₹{dPrice}</span>
+              <span style={{ fontSize: 12, color: '#878787', textDecoration: 'line-through' }}>₹{pPrice}</span>
+            </>
+          ) : (
+            <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{prefix}₹{pPrice}</span>
+          )}
         </div>
       </Link>
 
@@ -199,7 +238,7 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
           </div>
         ) : hasVariants ? (
           <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36 }}>
-            Customize
+            Order
           </Link>
         ) : (
           <button

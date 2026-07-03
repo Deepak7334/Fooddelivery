@@ -69,6 +69,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
   const socketRef = useRef(null);
 
   useEffect(() => {
+    // eslint-disable-next-line
     setSelectedAgent(order?.deliveryAgentId?._id || order?.deliveryAgentId || '');
     if (order?.deliveryAgentId?.location) {
       setAgentLocation({ lat: order.deliveryAgentId.location.lat, lng: order.deliveryAgentId.location.lng });

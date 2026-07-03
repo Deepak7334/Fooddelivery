@@ -6,21 +6,21 @@ import toast from 'react-hot-toast';
 
 // ── Status Config ─────────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  assignment_pending:  { label: 'New Assignment',          color: '#F59E0B', icon: '📋' },
-  out_for_delivery:    { label: 'Assigned',                color: '#F97316', icon: '📦' },
-  accepted_by_driver:  { label: 'Go to Restaurant',        color: '#14B8A6', icon: '🏍️' },
-  reached_restaurant:  { label: 'At Restaurant',           color: '#8B5CF6', icon: '🏪' },
+  assignment_pending:  { label: 'New Assignment',          color: '#F59E0B', icon: '✅ ' },
+  out_for_delivery:    { label: 'Assigned',                color: '#F97316', icon: '✅ ' },
+  accepted_by_driver:  { label: 'Go to Restaurant',        color: '#14B8A6', icon: '✅ ' },
+  reached_restaurant:  { label: 'At Restaurant',           color: '#8B5CF6', icon: '✅ ' },
   picked_up:           { label: 'Order Picked Up',         color: '#3B82F6', icon: '✅' },
-  on_the_way:          { label: 'Heading to Customer',     color: '#06B6D4', icon: '🛣️' },
-  reached_customer:    { label: 'At Customer Door',        color: '#EAB308', icon: '🚪' },
+  on_the_way:          { label: 'Heading to Customer',     color: '#06B6D4', icon: '✅ ' },
+  reached_customer:    { label: 'At Customer Door',        color: '#EAB308', icon: '✅ ' },
   delivered:           { label: 'Delivered',               color: '#22C55E', icon: '🎉' },
 };
 
 const PROGRESS_STEPS = [
-  { key: 'accepted_by_driver', label: 'Go',      icon: '🏍️' },
-  { key: 'reached_restaurant', label: 'Arrived', icon: '🏪' },
-  { key: 'picked_up',          label: 'Picked',  icon: '📦' },
-  { key: 'reached_customer',   label: 'Door',    icon: '🚪' },
+  { key: 'accepted_by_driver', label: 'Go',      icon: '✅ ' },
+  { key: 'reached_restaurant', label: 'Arrived', icon: '✅ ' },
+  { key: 'picked_up',          label: 'Picked',  icon: '✅ ' },
+  { key: 'reached_customer',   label: 'Door',    icon: '✅ ' },
 ];
 
 const STATUS_ORDER = ['assignment_pending','out_for_delivery','accepted_by_driver','reached_restaurant','picked_up','on_the_way','reached_customer','delivered'];
@@ -149,6 +149,7 @@ export default function DeliveryDashboard() {
       );
     }
     return () => { if (watchId) navigator.geolocation.clearWatch(watchId); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.deliveryStatus, user?._id]);
 
   const handleAccept = async (orderId) => {
@@ -200,7 +201,7 @@ export default function DeliveryDashboard() {
       const res = await api.patch('/delivery/availability', { deliveryStatus: newStatus });
       setProfile(res.data.user);
       toast.success(`You are now ${newStatus}`);
-    } catch (e) { toast.error('Failed to update availability'); }
+    } catch { toast.error('Failed to update availability'); }
   };
 
   const openMaps = (address) => {

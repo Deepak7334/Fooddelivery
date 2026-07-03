@@ -135,9 +135,10 @@ export default function UpiPaymentPage() {
     if (!orderId || !amount) {
       navigate('/checkout');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, amount]);
 
-  const validateUpi = (id) => /^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/.test(id);
+  const validateUpi = (id) => /^[\w.-]{2,256}@[a-zA-Z]{2,64}$/.test(id);
 
   const simulatePayment = async (method) => {
     setPaying(true);

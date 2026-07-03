@@ -17,7 +17,6 @@ export default function ProductDetailPage() {
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState('');
-  const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -40,16 +39,24 @@ export default function ProductDetailPage() {
   if (loading) return <div className="page-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}><div className="loading-spinner"></div></div>;
   if (!product) return <div className="page-wrapper"><div className="container" style={{ textAlign: 'center', marginTop: 100 }}><h2>Product not found</h2><button className="btn btn-primary" onClick={() => navigate(-1)}>Go Back</button></div></div>;
 
-  const basePrice = selectedVariant ? (selectedVariant.discountedPrice || selectedVariant.price) : (product.discountedPrice || product.price);
+  let pPrice = product.price;
+  let dPrice = product.discountedPrice;
+  if ((!pPrice || pPrice === 0) && selectedVariant) {
+    pPrice = selectedVariant.price;
+    dPrice = selectedVariant.discountedPrice;
+  }
+
+  const basePrice = dPrice || pPrice;
+  const originalPrice = pPrice;
+  const discountPercent = (originalPrice > basePrice) ? Math.round(((originalPrice - basePrice) / originalPrice) * 100) : 0;
+  
   const finalPrice = basePrice;
-  const originalPrice = selectedVariant ? selectedVariant.price : product.price;
-  const discountPercent = Math.round(((originalPrice - finalPrice) / originalPrice) * 100);
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
       addProductToCart(product, product.storeId?._id, product.storeId?.name, {
         variantName: selectedVariant?.weight || product.unit,
-        computedPrice: finalPrice
+        computedPrice: basePrice
       });
     }
   };
@@ -119,14 +126,16 @@ export default function ProductDetailPage() {
 
             <div style={{ marginTop: 16 }}>
               <div style={{ color: 'var(--success)', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Price for {selectedVariant ? selectedVariant.weight : (product.unit || '1 item')}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                <span style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)' }}>₹{finalPrice}</span>
-                {discountPercent > 0 && (
-                  <>
-                    <span style={{ fontSize: 16, color: 'var(--text-secondary)', textDecoration: 'line-through' }}>₹{originalPrice}</span>
-                    <span style={{ color: 'var(--success)', fontSize: 16, fontWeight: 600 }}>{discountPercent}% off</span>
-                  </>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)' }}>₹{finalPrice}</span>
+                {(originalPrice > finalPrice) && (
+                  <span style={{ fontSize: 16, color: '#878787', textDecoration: 'line-through' }}>₹{originalPrice}</span>
                 )}
+                {product.offer ? (
+                  <span style={{ background: '#388E3C', color: '#fff', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🏷️ {product.offer}</span>
+                ) : discountPercent > 0 ? (
+                  <span style={{ color: '#388E3C', fontSize: 16, fontWeight: 600 }}>{discountPercent}% off</span>
+                ) : null}
               </div>
             </div>
 
@@ -149,7 +158,7 @@ export default function ProductDetailPage() {
             <div style={{ display: 'flex', gap: 32, marginTop: 24, fontSize: 14, color: 'var(--text-primary)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ background: 'var(--bg-card2)', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>📦</div>
-                <div><div style={{ fontWeight: 600 }}>Free Delivery</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Available on all orders</div></div>
+                <div><div style={{ fontWeight: 600 }}>{ (finalPrice * quantity) < 30 ? 'Delivery: ₹5' : 'Delivery: ₹10' }</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Available on all orders</div></div>
               </div>
             </div>
 

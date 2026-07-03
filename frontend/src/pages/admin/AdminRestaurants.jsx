@@ -2,20 +2,37 @@ import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import ImageCropperModal from '../../components/ImageCropperModal';
 
 const emptyForm = { name: '', description: '', cuisine: '', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '' };
 
-// ✅ Moved OUTSIDE the parent component
-const F = ({ label, field, type = 'text', placeholder, form, setForm }) => (
+const F = ({ label, field, type = 'text', placeholder, form, setForm, onUpload, uploading }) => (
   <div className="form-group">
     <label className="form-label">{label}</label>
-    <input
-      className="form-input"
-      type={type}
-      placeholder={placeholder}
-      value={form[field] || ''}
-      onChange={e => setForm({ ...form, [field]: e.target.value })}
-    />
+    {type === 'image-upload' ? (
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="form-input"
+          type="text"
+          placeholder={placeholder || 'Paste URL or upload'}
+          value={form[field] || ''}
+          onChange={e => setForm({ ...form, [field]: e.target.value })}
+          style={{ flex: 1 }}
+        />
+        <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px' }}>
+          Upload
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => onUpload(e, field)} disabled={uploading} />
+        </label>
+      </div>
+    ) : (
+      <input
+        className="form-input"
+        type={type}
+        placeholder={placeholder}
+        value={form[field] || ''}
+        onChange={e => setForm({ ...form, [field]: e.target.value })}
+      />
+    )}
   </div>
 );
 
@@ -26,6 +43,8 @@ export default function AdminRestaurants() {
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [cropConfig, setCropConfig] = useState(null);
 
   // Table Management State
   const [tablesModal, setTablesModal] = useState(false);
@@ -44,6 +63,43 @@ export default function AdminRestaurants() {
   const openEdit = (r) => {
     setForm({ ...r, cuisine: r.cuisine?.join(', ') || '', addrHouse: r.address || '', addrArea: '', addrLandmark: '', addrPincode: '' });
     setEditing(r._id); setShowModal(true);
+  };
+
+  const handleImageUpload = (e, fieldKey) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropConfig({
+        imageSrc: reader.result.toString(),
+        fieldKey,
+        aspect: 4 / 3
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCropDone = async (croppedFile) => {
+    if (!cropConfig || !croppedFile) return;
+    const { fieldKey } = cropConfig;
+    setCropConfig(null);
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('image', croppedFile);
+    try {
+      const res = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setForm(prev => ({ ...prev, [fieldKey]: res.data.imageUrl }));
+      toast.success('Image cropped and uploaded!');
+    } catch (err) {
+      toast.error('Failed to upload image');
+      console.error(err);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSave = async () => {
@@ -184,7 +240,7 @@ export default function AdminRestaurants() {
                   <input className="form-input" value={form.addrPincode || ''} onChange={e => setForm({ ...form, addrPincode: e.target.value })} placeholder="Pincode" />
                 </div>
               </div>
-              <F label="Image URL" field="image" placeholder="https://..." {...fProps} />
+              <F label="Image URL" field="image" type="image-upload" onUpload={handleImageUpload} uploading={uploadingImage} placeholder="https://..." {...fProps} />
               <F label="Delivery Time" field="deliveryTime" placeholder="30-40 mins" {...fProps} />
               <F label="Delivery Fee (₹)" field="deliveryFee" type="number" {...fProps} />
               <F label="Minimum Order (₹)" field="minOrder" type="number" {...fProps} />
@@ -269,6 +325,15 @@ export default function AdminRestaurants() {
             </div>
           </div>
         </div>
+      )}
+
+      {cropConfig && (
+        <ImageCropperModal
+          imageSrc={cropConfig.imageSrc}
+          aspect={cropConfig.aspect}
+          onCancel={() => setCropConfig(null)}
+          onCropDone={handleCropDone}
+        />
       )}
     </div>
   );

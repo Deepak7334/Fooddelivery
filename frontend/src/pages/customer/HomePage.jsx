@@ -48,7 +48,6 @@ export default function HomePage() {
     try { return JSON.parse(localStorage.getItem('jdkart_coords') || 'null'); } catch { return null; }
   });
   const [locLoading, setLocLoading]   = useState(false);
-  const [outOfRange, setOutOfRange]   = useState(false); // shown after GPS check
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToCart, addProductToCart, cartItems, cartType, storeId: cartStoreId, updateQuantity } = useCart();
@@ -61,6 +60,7 @@ export default function HomePage() {
     try {
       const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
       if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+        // eslint-disable-next-line
         setCategories(cached.categories);
         setRestaurants(cached.restaurants);
         setFoods(cached.foods);
@@ -69,7 +69,9 @@ export default function HomePage() {
         setLoading(false);
         return;
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     Promise.all([
       api.get('/customer/categories').catch(() => ({ data: { categories: [] } })),
@@ -90,7 +92,9 @@ export default function HomePage() {
       setStores(sts);
       try {
         sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), categories: cats, restaurants: rests, foods: fds, products: prods, stores: sts }));
-      } catch {}
+      } catch {
+        // ignore
+      }
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -110,9 +114,8 @@ export default function HomePage() {
         setLocationText('📍 Current Location');
         toast.success('Location detected!', { id: 'loc' });
         setLocLoading(false);
-        setOutOfRange(false);
       },
-      err => {
+      () => {
         toast.error('Could not get location. Please allow access or type manually.', { id: 'loc' });
         setLocLoading(false);
       },
@@ -174,7 +177,12 @@ export default function HomePage() {
 
   const handleAddToCart = (food) => {
     if (!user) { navigate('/login'); return; }
-    addToCart({ foodId: food._id, name: food.name, price: food.price, image: food.image }, food.restaurantId?._id || food.restaurantId, food.restaurantId?.name || 'Restaurant');
+    if (food.variants && food.variants.length > 0) {
+      navigate(`/food/${food._id}`);
+      return;
+    }
+    const finalPrice = food.discountedPrice || food.price;
+    addToCart({ foodId: food._id, name: food.name, price: finalPrice, image: food.image }, food.restaurantId?._id || food.restaurantId, food.restaurantId?.name || 'Restaurant');
   };
 
   const handleBuy = (food) => {
@@ -184,6 +192,10 @@ export default function HomePage() {
 
   const handleAddProduct = (product) => {
     if (!user) { navigate('/login'); return; }
+    if (product.variants && product.variants.length > 0) {
+      navigate(`/product/${product._id}`);
+      return;
+    }
     addProductToCart({
       productId: product._id,
       foodId: product._id, // alias
@@ -246,7 +258,6 @@ export default function HomePage() {
     setUserCoords(null);
     setLocationText('');
     localStorage.removeItem('jdkart_coords');
-    setOutOfRange(false);
   };
 
   return (
@@ -575,6 +586,10 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
     }
   }
 
+  const discount = dPrice && dPrice < pPrice
+    ? Math.round((1 - dPrice / pPrice) * 100)
+    : 0;
+
   return (
     <div className="card item-card" style={{ display: 'flex', flexDirection: 'column', padding: 14 }}>
       <Link to={`/food/${food._id}`} className="item-link" style={{ display: 'flex', gap: 14, marginBottom: 14, textDecoration: 'none', color: 'inherit' }}>
@@ -584,6 +599,11 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: food.isVeg ? 'var(--success)' : 'var(--danger)', display: 'block' }} />
             </span>
             {food.isBestseller && <span style={{ fontSize: 10, color: '#FF8F00', fontWeight: 700 }}>★ Bestseller</span>}
+            {food.offer ? (
+              <span style={{ fontSize: 10, background: '#388E3C', color: '#fff', padding: '3px 8px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.02em', display: 'inline-flex', alignItems: 'center' }}>🏷️ {food.offer}</span>
+            ) : discount > 0 ? (
+              <span style={{ fontSize: 10, color: '#388E3C', fontWeight: 700 }}>{discount}% off</span>
+            ) : null}
           </div>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{food.name}</div>
           {food.restaurantId && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>from {food.restaurantId.name}</div>}
@@ -616,7 +636,7 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </button>
         {hasVariants ? (
           <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            Customize
+            Order
           </Link>
         ) : (
           <button onClick={onBuy} disabled={!food.isAvailable}
@@ -655,10 +675,14 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
       <Link to={`/product/${product._id}`} className="item-link" style={{ display: 'flex', gap: 14, marginBottom: 14, textDecoration: 'none', color: 'inherit' }}>
         <div className="item-text" style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-            <span style={{ fontSize: 10, background: 'rgba(33,150,243,0.1)', color: '#2196F3', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+            <span style={{ fontSize: 10, background: 'rgba(33,150,243,0.1)', color: '#2196F3', padding: '3px 8px', borderRadius: 4, fontWeight: 700 }}>
               Store Product
             </span>
-            {discount > 0 && <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 700 }}>★ -{discount}% OFF</span>}
+            {product.offer ? (
+              <span style={{ fontSize: 10, background: '#388E3C', color: '#fff', padding: '3px 8px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.02em', display: 'inline-flex', alignItems: 'center' }}>🏷️ {product.offer}</span>
+            ) : discount > 0 ? (
+              <span style={{ fontSize: 10, color: '#388E3C', fontWeight: 700 }}>{discount}% off</span>
+            ) : null}
           </div>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{product.name}</div>
           {product.storeId && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>from {product.storeId.name}</div>}
@@ -702,7 +726,7 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
         )}
         {hasVariants ? (
           <Link to={`/product/${product._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            Choose Pack
+            Buy
           </Link>
         ) : (
           <button onClick={onBuy} disabled={!product.isAvailable}

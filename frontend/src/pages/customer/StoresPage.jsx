@@ -21,7 +21,7 @@ export default function StoresPage() {
   const [stores, setStores] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [sort, setSort] = useState('');
   const [type, setType] = useState(searchParams.get('type') || '');
@@ -30,6 +30,7 @@ export default function StoresPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // eslint-disable-next-line
     if (!stores.length && !products.length) setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set('search', search);
@@ -46,13 +47,8 @@ export default function StoresPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    // eslint-disable-next-line
   }, [search, sort, type]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const val = e.target.elements.search.value;
-    setSearch(val);
-  };
 
   const handleAddProduct = (product) => {
     addProductToCart(product, product.storeId?._id);

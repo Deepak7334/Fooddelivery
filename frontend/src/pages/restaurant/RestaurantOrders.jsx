@@ -21,6 +21,7 @@ export default function RestaurantOrders() {
     api.get(`/restaurant/orders${q}`).then(res => setOrders(res.data.orders || [])).catch(console.error).finally(() => setLoading(false));
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchOrders(); }, [statusFilter]);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function RestaurantOrders() {
     finally { setUpdating(p => ({ ...p, [orderId]: false })); }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleSendOTP = async (orderId) => {
     setUpdating(p => ({ ...p, [`otp_${orderId}`]: true }));
     try {

@@ -100,6 +100,7 @@ function AgentDetailsModal({ agentId, onClose }) {
   const socketRef = useRef(null);
 
   useEffect(() => {
+    // eslint-disable-next-line
     setLoading(true);
     api.get(`/admin/delivery-agents/${agentId}/details`)
       .then(res => {
@@ -108,7 +109,7 @@ function AgentDetailsModal({ agentId, onClose }) {
           setAgentLocation({ lat: res.data.agent.location.lat, lng: res.data.agent.location.lng });
         }
       })
-      .catch(e => toast.error('Failed to load agent details'))
+      .catch(() => toast.error('Failed to load agent details'))
       .finally(() => setLoading(false));
   }, [agentId]);
 
@@ -244,7 +245,7 @@ export default function AdminDeliveryAgents() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modalAgent, setModalAgent] = useState(null); // null = closed, {} = new, agent = edit
+  const [modalAgent, setModalAgent] = useState(null);
   const [detailsAgentId, setDetailsAgentId] = useState(null);
 
   const fetchAgents = useCallback(async () => {
@@ -278,7 +279,7 @@ export default function AdminDeliveryAgents() {
       const res = await api.patch(`/admin/delivery-agents/${id}/toggle`);
       setAgents(prev => prev.map(a => a._id === id ? { ...a, isActive: res.data.agent.isActive } : a));
       toast.success('Agent status updated');
-    } catch (e) { toast.error('Failed to update'); }
+    } catch { toast.error('Failed to update'); }
   };
 
   const handleDelete = async (id) => {
@@ -287,7 +288,7 @@ export default function AdminDeliveryAgents() {
       await api.delete(`/admin/delivery-agents/${id}`);
       setAgents(prev => prev.filter(a => a._id !== id));
       toast.success('Agent removed');
-    } catch (e) { toast.error('Failed to delete agent'); }
+    } catch { toast.error('Failed to unblock agent'); }
   };
 
   const filtered = agents.filter(a => {

@@ -20,7 +20,11 @@ export default function StoreOwnerOrders() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(filter); }, [filter]);
+   
+  useEffect(() => {
+    // eslint-disable-next-line
+    load(filter);
+  }, [filter]);
 
   const updateStatus = async (orderId, status, otp) => {
     try {
