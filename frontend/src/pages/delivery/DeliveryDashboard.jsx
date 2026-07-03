@@ -135,13 +135,19 @@ export default function DeliveryDashboard() {
     return () => socket.disconnect();
   }, [user?._id, otpOrder?._id]);
 
+  const lastLocUpdateRef = useRef(0);
+
   useEffect(() => {
     if (!profile || profile.deliveryStatus === 'offline') return;
     let watchId;
     if ('geolocation' in navigator) {
       watchId = navigator.geolocation.watchPosition(
         ({ coords: { latitude, longitude } }) => {
-          api.patch('/delivery/location', { lat: latitude, lng: longitude }).catch(() => {});
+          const now = Date.now();
+          if (now - lastLocUpdateRef.current > 10000) { // Throttle HTTP patch to once every 10 seconds
+            api.patch('/delivery/location', { lat: latitude, lng: longitude }).catch(() => {});
+            lastLocUpdateRef.current = now;
+          }
           socketRef.current?.emit('delivery:update_location', { agentId: user._id, lat: latitude, lng: longitude });
         },
         err => console.log('Geo error:', err),
