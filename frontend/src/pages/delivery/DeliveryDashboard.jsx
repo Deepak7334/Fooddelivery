@@ -144,11 +144,11 @@ export default function DeliveryDashboard() {
       watchId = navigator.geolocation.watchPosition(
         ({ coords: { latitude, longitude } }) => {
           const now = Date.now();
-          if (now - lastLocUpdateRef.current > 10000) { // Throttle HTTP patch to once every 10 seconds
+          if (now - lastLocUpdateRef.current > 5000) { // Throttle EVERYTHING (HTTP + Socket) to once every 5 seconds
             api.patch('/delivery/location', { lat: latitude, lng: longitude }).catch(() => {});
+            socketRef.current?.emit('delivery:update_location', { agentId: user._id, lat: latitude, lng: longitude });
             lastLocUpdateRef.current = now;
           }
-          socketRef.current?.emit('delivery:update_location', { agentId: user._id, lat: latitude, lng: longitude });
         },
         err => console.log('Geo error:', err),
         { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
