@@ -90,11 +90,13 @@ router.patch('/orders/:id/accept', async (req, res) => {
       const customerEmail = order.customerEmail || order.customerId?.email;
       const customerName = order.customerId?.name || 'Customer';
 
-      sendEmail({
-        to: customerEmail,
-        subject: '🚴 JDkart — Your Delivery Agent is Assigned',
-        html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDkart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Delivery Partner Assigned!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p><strong>${req.user.name}</strong> has been assigned to your order and is heading out.</p><p>Share this OTP with them to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
-      }).catch(err => console.error('Failed to send OTP email on agent accept', err));
+      setTimeout(() => {
+        sendEmail({
+          to: customerEmail,
+          subject: '🚴 JDkart — Your Delivery Agent is Assigned',
+          html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDkart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Delivery Partner Assigned!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p><strong>${req.user.name}</strong> has been assigned to your order and is heading out.</p><p>Share this OTP with them to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
+        }).catch(err => console.error('Failed to send OTP email on agent accept', err));
+      }, 0);
     }
 
     await order.save();
