@@ -71,10 +71,16 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api/booking', require('./routes/booking'));
 app.use('/api/store', require('./routes/store'));
 app.use('/api/store-owner', require('./routes/storeOwner'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Socket.io
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
+
+  socket.on('join_user_room', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`Socket ${socket.id} joined user room user_${userId}`);
+  });
 
   socket.on('join_order_room', (orderId) => {
     socket.join(`order_${orderId}`);

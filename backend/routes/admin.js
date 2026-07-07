@@ -456,6 +456,15 @@ router.patch('/orders/:id/assign-agent', async (req, res) => {
     // Notify delivery agent
     io.to(`delivery_${order.deliveryAgentId._id || order.deliveryAgentId}`).emit('delivery:new_assignment', order);
 
+    const NotificationService = require('../services/notificationService');
+    await NotificationService.sendToDeliveryPartner(
+      order.deliveryAgentId._id || order.deliveryAgentId,
+      'New Delivery Assigned',
+      'Pickup order from the restaurant.',
+      'DELIVERY_ASSIGNED',
+      io
+    ).catch(console.error);
+
     res.json({ success: true, order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

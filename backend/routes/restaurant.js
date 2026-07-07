@@ -182,6 +182,15 @@ router.patch('/orders/:id/status', async (req, res) => {
     });
     io.to(`restaurant_${req.user.restaurantId}`).emit('order:updated', order);
 
+    const NotificationService = require('../services/notificationService');
+    await NotificationService.sendToCustomer(
+      order.customerId._id || order.customerId,
+      'Order Status Updated',
+      `Your order is now ${status.replace(/_/g, ' ')}.`,
+      'ORDER_STATUS',
+      io
+    ).catch(console.error);
+
     res.json({
       success: true,
       order,

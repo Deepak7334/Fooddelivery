@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const navLinks = [
   { to: '/delivery', icon: '🚴', label: 'Dashboard', exact: true },
@@ -50,9 +51,12 @@ export default function DeliveryLayout({ children }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Mobile topbar */}
         <div className="delivery-topbar">
-          <button onClick={() => setOpen(true)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#E5E7EB', width: 36, height: 36, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
-          <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}>🚴 Delivery App</div>
-          <div style={{ width: 36 }} />
+          <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}> 
+            <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <NotificationBell />
+            <button onClick={() => setOpen(true)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#E5E7EB', width: 36, height: 36, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
+          </div>
         </div>
 
 
@@ -74,6 +78,6 @@ const CSS = `
 @media (max-width: 640px) {
   .delivery-sidebar { position: fixed; left: -220px; top: 0; height: 100%; transition: left 0.28s ease; z-index: 99; }
   .delivery-sidebar.open { left: 0; }
-  .delivery-topbar { display: flex; }
+  .delivery-topbar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 }
 `;

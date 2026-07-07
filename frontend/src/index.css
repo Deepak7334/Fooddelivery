@@ -967,6 +967,9 @@ tbody tr:last-child td {
 
   .panel-topbar {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
 
   .desktop-nav {

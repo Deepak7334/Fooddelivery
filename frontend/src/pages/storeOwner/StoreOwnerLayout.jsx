@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FiGrid, FiPackage, FiList, FiLogOut, FiX, FiMenu, FiUser } from 'react-icons/fi';
+import NotificationBell from '../../components/NotificationBell';
 
 const navLinks = [
   { to: '/store-owner', icon: <FiGrid />, label: 'Dashboard', exact: true },
@@ -51,10 +52,14 @@ export default function StoreOwnerLayout({ children }) {
       <StoreOwnerSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-with-sidebar" style={{ width: '100%', background: 'var(--bg-dark)', minHeight: '100vh' }}>
         <div className="panel-topbar">
-          <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-            <FiMenu size={20} />
-          </button>
-          <span className="panel-topbar-title">🏪 Store Panel</span>
+         <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}> 
+            <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <NotificationBell />
+            <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+              <FiMenu size={20} />
+            </button>
+          </div>
         </div>
         <div style={{ padding: '24px' }}>
           {children}

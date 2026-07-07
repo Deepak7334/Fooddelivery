@@ -48,7 +48,7 @@ export default function FoodDetailPage() {
 
   let pPrice = food.price;
   let dPrice = food.discountedPrice;
-  if ((!pPrice || pPrice === 0) && selectedVariant) {
+  if (selectedVariant) {
     pPrice = selectedVariant.price;
     dPrice = selectedVariant.discountedPrice;
   }

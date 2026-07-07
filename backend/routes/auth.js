@@ -21,6 +21,17 @@ router.post('/register', async (req, res) => {
     }
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashed, phone, address, role: 'customer' });
+    
+    // Notify admin about new registration
+    const NotificationService = require('../services/notificationService');
+    const io = req.app.get('io');
+    await NotificationService.sendToAdmin(
+      'New User Registration',
+      `${name} has just registered as a customer.`,
+      'NEW_USER',
+      io
+    ).catch(err => console.error('Notification error:', err));
+
     const token = generateToken(user._id);
     res.status(201).json({
       success: true,

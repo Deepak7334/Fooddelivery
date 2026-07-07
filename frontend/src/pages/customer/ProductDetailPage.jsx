@@ -41,7 +41,7 @@ export default function ProductDetailPage() {
 
   let pPrice = product.price;
   let dPrice = product.discountedPrice;
-  if ((!pPrice || pPrice === 0) && selectedVariant) {
+  if (selectedVariant) {
     pPrice = selectedVariant.price;
     dPrice = selectedVariant.discountedPrice;
   }

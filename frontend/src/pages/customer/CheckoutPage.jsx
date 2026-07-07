@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -20,7 +20,7 @@ const ALLOWED_STATE = ['Bihar'];
 // ==========================================
 
 export default function CheckoutPage() {
-  const { cartItems, totalPrice, clearCart } = useCart();
+  const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [addrHouse, setAddrHouse] = useState(user?.address || '');
@@ -36,9 +36,26 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
 
-  // Delivery fee: < ₹30 → ₹5, ≥ ₹30 → ₹10 (matches backend rule exactly)
-  const deliveryFee = totalPrice < 30 ? 5 : 10;
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [calculating, setCalculating] = useState(true);
 
+  useEffect(() => {
+    if (cartItems.length === 0) return;
+    const isValidId = (id) => Boolean(id) && id !== 'null' && id !== 'undefined';
+    const restaurantIds = Array.from(new Set(cartItems.map(i => i.restaurantId || ctxRestaurantId).filter(isValidId)));
+    const storeIds = Array.from(new Set(cartItems.map(i => i.storeId || ctxStoreId).filter(isValidId)));
+
+    api.post('/customer/checkout-info', { restaurantIds, storeIds })
+      .then(res => {
+        setDeliveryFee(res.data.deliveryFees || 0);
+      })
+      .catch(err => {
+        console.error('Error fetching checkout info:', err);
+        toast.error(`Checkout info error: ${err.response?.data?.message || err.message}`);
+        setDeliveryFee(30); // fallback
+      })
+      .finally(() => setCalculating(false));
+  }, [cartItems]);
 
   const handleSaveAddress = async () => {
     if (!address.trim()) return toast.error('Address cannot be empty');
@@ -46,7 +63,7 @@ export default function CheckoutPage() {
     try {
       await api.put('/auth/profile', { address });
       toast.success('Address saved to profile!');
-    } catch {
+    } catch (err) {
       toast.error('Failed to save address');
     } finally {
       setSavingAddress(false);
@@ -300,18 +317,18 @@ export default function CheckoutPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, color: 'var(--text-secondary)' }}>
               <span>Delivery Fee</span>
-              <span>{deliveryFee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free Delivery</span> : `₹${deliveryFee}`}</span>
+              <span>{calculating ? '...' : deliveryFee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free Delivery</span> : `₹${deliveryFee}`}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px dashed var(--border)', fontWeight: 800, fontSize: 18, marginBottom: 20 }}>
               <span>Total</span>
-              <span style={{ color: 'var(--primary)' }}>₹{total}</span>
+              <span style={{ color: 'var(--primary)' }}>₹{calculating ? '...' : total}</span>
             </div>
             <button 
               className="btn btn-primary btn-lg btn-full" 
               onClick={handlePlaceOrder}
-              disabled={loading || cartItems.length === 0}
+              disabled={loading || calculating || cartItems.length === 0}
             >
-              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? ' Place Order' : paymentMethod === 'upi' ? `Proceed to UPI Payment · ₹${total}` : ` Pay ₹${total}`}
+              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? ' Place Order' : paymentMethod === 'upi' ? `Proceed to UPI Payment · ₹${calculating ? '...' : total}` : ` Pay ₹${calculating ? '...' : total}`}
             </button>
           </div>
         </div>

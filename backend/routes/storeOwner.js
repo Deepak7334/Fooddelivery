@@ -186,6 +186,15 @@ router.patch('/orders/:id/status', async (req, res) => {
         status: order.status,
         statusHistory: order.statusHistory,
       });
+
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.sendToCustomer(
+        order.customerId._id || order.customerId,
+        'Store Order Status Updated',
+        `Your store order is now ${status.replace(/_/g, ' ')}.`,
+        'ORDER_STATUS',
+        io
+      ).catch(console.error);
     }
 
     res.json({
