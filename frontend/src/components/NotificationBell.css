@@ -56,14 +56,16 @@
   background-color: #3f3f5a !important;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .notification-dropdown {
     position: fixed;
-    top: 65px;
-    right: 10px;
-    left: 10px;
-    width: auto;
-    max-width: none;
+    top: 70px;
+    right: 16px;
+    left: auto;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 90px);
     box-sizing: border-box;
+    z-index: 2000;
   }
 }

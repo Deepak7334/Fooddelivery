@@ -445,6 +445,31 @@ select.form-input option {
   }
 }
 
+@media (max-width: 480px) {
+  .search-form {
+    flex-direction: column;
+  }
+  .search-location {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    padding: 8px 12px !important;
+    width: 100%;
+  }
+  .search-input-wrap {
+    padding: 8px 12px !important;
+    width: 100%;
+  }
+  .search-submit-btn {
+    width: calc(100% - 16px);
+    margin: 8px;
+    padding: 10px !important;
+    justify-content: center;
+  }
+  .search-submit-text {
+    display: inline;
+  }
+}
+
 /* === Restaurant Detail Layout === */
 .restaurant-layout {
   display: flex;

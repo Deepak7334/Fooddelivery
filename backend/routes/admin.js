@@ -398,6 +398,17 @@ router.patch('/orders/:id/status', async (req, res) => {
         subject: '🚴 JDkart — Your Delivery OTP',
         html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDkart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Your order is on the way!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p>Share this OTP with the delivery agent to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
       });
+      
+      // Send Push Notification
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.sendToCustomer(
+        order.customerId._id || order.customerId,
+        'Order Out for Delivery!',
+        `Your order is on the way. Your delivery OTP is: ${otp}`,
+        'ORDER_STATUS',
+        req.app.get('io')
+      ).catch(console.error);
+      
       // Do NOT set agent to busy here yet — agent becomes busy when they *accept* it (picked_up)
     }
 

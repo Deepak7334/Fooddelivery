@@ -150,7 +150,7 @@ export default function DeliveryDashboard() {
             lastLocUpdateRef.current = now;
           }
         },
-        err => console.log('Geo error:', err),
+        err => {}, // Silently ignore geo errors (e.g. user denied)
         { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
       );
     }

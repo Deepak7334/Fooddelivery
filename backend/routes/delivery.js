@@ -189,6 +189,16 @@ router.patch('/orders/:id/status', async (req, res) => {
           html
         }).catch(err => console.error('Failed to send OTP email:', err));
       }
+
+      // Send Push Notification
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.sendToCustomer(
+        order.customerId._id || order.customerId,
+        'Delivery Arrived!',
+        `Your agent is here. Your delivery OTP is: ${otp}`,
+        'ORDER_STATUS',
+        req.app.get('io')
+      ).catch(console.error);
     }
 
     order.status = status;

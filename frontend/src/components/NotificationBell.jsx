@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../context/NotificationContext';
 import { FiBell, FiCheck, FiTrash2 } from 'react-icons/fi';
 import './NotificationBell.css'; // Optional: if you prefer external CSS, but inline/utility works
@@ -6,6 +7,7 @@ import './NotificationBell.css'; // Optional: if you prefer external CSS, but in
 export default function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotification();
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
   // Close dropdown on outside click
@@ -30,14 +32,10 @@ export default function NotificationBell() {
   };
 
   return (
-    <div className="notification-bell-container" ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <div className="notification-bell-container" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className="notification-icon-btn"
-        style={{ 
-          background: 'transparent', border: 'none', cursor: 'pointer',
-          padding: '8px', color: 'var(--text-color, #fff)', position: 'relative'
-        }}
       >
         <FiBell size={24} />
         {unreadCount > 0 && (
@@ -52,16 +50,7 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div 
-          className="notification-dropdown"
-          style={{
-            position: 'absolute', right: 0, top: '40px',
-            width: '320px', maxHeight: '400px', overflowY: 'auto',
-            background: '#1e1e2d', color: '#fff',
-            borderRadius: '12px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
-            zIndex: 1000, padding: '16px'
-          }}
-        >
+        <div className="notification-dropdown">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
             <h3 style={{ margin: 0, fontSize: '16px' }}>Notifications</h3>
             {unreadCount > 0 && (
@@ -90,7 +79,11 @@ export default function NotificationBell() {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
                   }}
                 >
-                  <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => !notif.isRead && markAsRead(notif._id)}>
+                  <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => {
+                    if (!notif.isRead) markAsRead(notif._id);
+                    setIsOpen(false);
+                    navigate('/orders');
+                  }}>
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', color: notif.isRead ? '#ccc' : '#fff' }}>{notif.title}</h4>
                     <p style={{ margin: 0, fontSize: '12px', color: '#aaa', lineHeight: '1.4' }}>{notif.body}</p>
                     <span style={{ fontSize: '10px', color: '#666', marginTop: '6px', display: 'block' }}>{formatTime(notif.createdAt)}</span>
