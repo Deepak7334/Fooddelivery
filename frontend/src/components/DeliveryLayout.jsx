@@ -37,6 +37,10 @@ export default function DeliveryLayout({ children }) {
         <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: '#E5E7EB', marginBottom: 4 }}>{user?.name}</div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>{user?.phone}</div>
+          <Link to="/profile" 
+            style={{ display: 'block', width: '100%', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#E5E7EB', fontWeight: 600, fontSize: 13, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', marginBottom: 8, fontFamily: 'inherit' }}>
+             Profile Settings
+          </Link>
           <button onClick={() => { logout(); navigate('/login'); }}
             style={{ width: '100%', padding: '9px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, color: '#EF4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             Logout
@@ -51,7 +55,7 @@ export default function DeliveryLayout({ children }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Mobile topbar */}
         <div className="delivery-topbar">
-          <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}> 
+          <div style={{ fontWeight: 800, fontSize: 20, color: '#F97316' }}> 
             <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <NotificationBell />

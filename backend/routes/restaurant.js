@@ -168,7 +168,18 @@ router.patch('/orders/:id/status', async (req, res) => {
         `,
       });
 
-      console.log(`📦 OTP for Order ${order._id}: ${otp} → sent to ${customerEmail}`);
+      console.log(` OTP for Order ${order._id}: ${otp} → sent to ${customerEmail}`);
+    }
+
+    if (status === 'delivered') {
+      order.deliveredAt = new Date();
+      if (order.paymentMethod === 'cod') {
+        order.paymentStatus = 'paid';
+      }
+      if (order.deliveryAgentId) {
+        const User = require('../models/User');
+        await User.findByIdAndUpdate(order.deliveryAgentId, { deliveryStatus: 'available' });
+      }
     }
 
     await order.save();

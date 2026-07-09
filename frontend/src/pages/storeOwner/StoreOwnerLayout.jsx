@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FiGrid, FiPackage, FiList, FiLogOut, FiX, FiMenu, FiUser } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiList, FiLogOut, FiX, FiMenu, FiUser, FiSettings } from 'react-icons/fi';
 import NotificationBell from '../../components/NotificationBell';
 
 const navLinks = [
@@ -36,6 +36,9 @@ function StoreOwnerSidebar({ open, onClose }) {
           <div style={{ padding: '8px 16px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
             <FiUser size={12} style={{ marginRight: 6 }} />{user?.name}
           </div>
+          <Link to="/profile" className={`sidebar-link ${isActive('/profile') ? 'active' : ''}`} onClick={onClose}>
+            <FiSettings /> Profile Settings
+          </Link>
           <button onClick={() => { logout(); navigate('/login'); onClose?.(); }} className="sidebar-link" style={{ width: '100%', background: 'transparent', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
             <FiLogOut /> Logout
           </button>
@@ -52,7 +55,7 @@ export default function StoreOwnerLayout({ children }) {
       <StoreOwnerSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-with-sidebar" style={{ width: '100%', background: 'var(--bg-dark)', minHeight: '100vh' }}>
         <div className="panel-topbar">
-         <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}> 
+         <div style={{ fontWeight: 800, fontSize: 20, color: '#F97316' }}> 
             <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <NotificationBell />

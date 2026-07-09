@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiList, FiPackage, FiLogOut, FiX, FiLayout, FiCalendar } from 'react-icons/fi';
+import { FiGrid, FiList, FiPackage, FiLogOut, FiX, FiLayout, FiCalendar, FiSettings } from 'react-icons/fi';
 
 const navLinks = [
   { to: '/restaurant', icon: <FiGrid />, label: 'Dashboard', exact: true },
@@ -43,6 +43,9 @@ export default function RestaurantSidebar({ open, onClose }) {
           ))}
         </nav>
         <div style={{ borderTop: '1px solid var(--border)', marginTop: 40, paddingTop: 16 }}>
+          <Link to="/profile" className={`sidebar-link ${isActive('/profile') ? 'active' : ''}`} onClick={onClose}>
+            <FiSettings /> Profile Settings
+          </Link>
           <button onClick={() => { logout(); navigate('/login'); onClose?.(); }} className="sidebar-link" style={{ width: '100%', background: 'transparent', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
             <FiLogOut /> Logout
           </button>

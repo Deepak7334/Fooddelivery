@@ -1,40 +1,57 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiEye, FiEyeOff } from 'react-icons/fi';
 import ImageCropperModal from '../../components/ImageCropperModal';
 
 const emptyForm = { name: '', description: '', cuisine: '', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '' };
 
-const F = ({ label, field, type = 'text', placeholder, form, setForm, onUpload, uploading }) => (
-  <div className="form-group">
-    <label className="form-label">{label}</label>
-    {type === 'image-upload' ? (
-      <div style={{ display: 'flex', gap: 8 }}>
+const F = ({ label, field, type = 'text', placeholder, form, setForm, onUpload, uploading }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  return (
+    <div className="form-group">
+      <label className="form-label">{label}</label>
+      {type === 'image-upload' ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="form-input"
+            type="text"
+            placeholder={placeholder || 'Paste URL or upload'}
+            value={form[field] || ''}
+            onChange={e => setForm({ ...form, [field]: e.target.value })}
+            style={{ flex: 1 }}
+          />
+          <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px' }}>
+            Upload
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => onUpload(e, field)} disabled={uploading} />
+          </label>
+        </div>
+      ) : type === 'password' ? (
+        <div style={{ position: 'relative' }}>
+          <input
+            className="form-input"
+            style={{ paddingRight: '40px' }}
+            type={showPassword ? "text" : "password"}
+            placeholder={placeholder}
+            value={form[field] || ''}
+            onChange={e => setForm({ ...form, [field]: e.target.value })}
+          />
+          <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
+            {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+          </button>
+        </div>
+      ) : (
         <input
           className="form-input"
-          type="text"
-          placeholder={placeholder || 'Paste URL or upload'}
+          type={type}
+          placeholder={placeholder}
           value={form[field] || ''}
           onChange={e => setForm({ ...form, [field]: e.target.value })}
-          style={{ flex: 1 }}
         />
-        <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px' }}>
-          Upload
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => onUpload(e, field)} disabled={uploading} />
-        </label>
-      </div>
-    ) : (
-      <input
-        className="form-input"
-        type={type}
-        placeholder={placeholder}
-        value={form[field] || ''}
-        onChange={e => setForm({ ...form, [field]: e.target.value })}
-      />
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
+};
 
 export default function AdminRestaurants() {
   const [restaurants, setRestaurants] = useState([]);

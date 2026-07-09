@@ -1,0 +1,17 @@
+{
+  "short_name": "JDkart",
+  "name": "JDkart - Food Delivery & Table Booking",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#F97316",
+  "background_color": "#0F1117",
+  "description": "Order delicious food from restaurants near you. Fast delivery, easy ordering & table booking."
+}

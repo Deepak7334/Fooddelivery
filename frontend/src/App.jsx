@@ -11,8 +11,11 @@ import AdminSidebar from './components/AdminSidebar';
 import RestaurantSidebar from './components/RestaurantSidebar';
 import DeliveryLayout from './components/DeliveryLayout';
 
+import PostLoginPrompt from './components/PostLoginPrompt';
+
 // ── Customer Pages (lazy) ─────────────────────────────────────────────────────
 const HomePage             = lazy(() => import('./pages/customer/HomePage'));
+const ProfilePage          = lazy(() => import('./pages/shared/ProfilePage'));
 const RestaurantsPage      = lazy(() => import('./pages/customer/RestaurantsPage'));
 const RestaurantDetailPage = lazy(() => import('./pages/customer/RestaurantDetailPage'));
 const FoodDetailPage       = lazy(() => import('./pages/customer/FoodDetailPage'));
@@ -97,7 +100,7 @@ const AdminLayout = ({ children }) => {
       <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-with-sidebar" style={{ width: '100%', background: 'var(--bg-dark)', minHeight: '100vh' }}>
         <div className="panel-topbar">
-          <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}> 
+          <div style={{ fontWeight: 800, fontSize: 20, color: '#F97316' }}> 
             <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <NotificationBell />
@@ -119,7 +122,7 @@ const RestaurantLayout = ({ children }) => {
       <RestaurantSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-with-sidebar" style={{ width: '100%', background: 'var(--bg-dark)', minHeight: '100vh' }}>
         <div className="panel-topbar">
-          <div style={{ fontWeight: 800, fontSize: 16, color: '#F97316' }}> 
+          <div style={{ fontWeight: 800, fontSize: 20, color: '#F97316' }}> 
             <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <NotificationBell />
@@ -138,7 +141,11 @@ const RestaurantLayout = ({ children }) => {
 export default function App() {
   return (
     <Suspense fallback={<PageLoader />}>
+      <PostLoginPrompt />
       <Routes>
+        {/* Global Protected Routes */}
+        <Route path="/profile"               element={<PrivateRoute><CustomerLayout><ProfilePage /></CustomerLayout></PrivateRoute>} />
+        
         {/* Customer Routes */}
         <Route path="/"                      element={<CustomerLayout><HomePage /></CustomerLayout>} />
         <Route path="/restaurants"           element={<CustomerLayout><RestaurantsPage /></CustomerLayout>} />

@@ -91,7 +91,9 @@ export default function RestaurantOrders() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                       <span style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--text-secondary)' }}>#{order._id.slice(-8).toUpperCase()}</span>
                       <span className={`badge badge-${order.status}`}>{STATUS_ICONS[order.status]} {STATUS_LABELS[order.status]}</span>
-                      <span className={`badge badge-${order.paymentStatus}`}>{order.paymentStatus}</span>
+                      <span className={`badge badge-${order.paymentStatus}`}>
+                        {order.paymentStatus === 'paid' ? (order.paymentMethod === 'cod' ? 'Paid (Cash)' : 'Paid (Online)') : order.paymentStatus}
+                      </span>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{order.customerId?.name || 'Customer'}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}> {order.customerId?.phone || order.customerPhone || '—'} · {order.customerId?.email || '—'}</div>

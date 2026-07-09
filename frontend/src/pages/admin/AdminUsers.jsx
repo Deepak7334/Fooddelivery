@@ -37,7 +37,7 @@ export default function AdminUsers() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800 }}>👥 User <span style={{ color: 'var(--primary)' }}>Management</span></h1>
+        <h1 style={{ fontSize: 26, fontWeight: 800 }}> User <span style={{ color: 'var(--primary)' }}>Management</span></h1>
         <div style={{ display: 'flex', gap: 8 }}>
           {['all', 'customer', 'restaurant', 'store_owner'].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}>
@@ -80,13 +80,51 @@ export default function AdminUsers() {
 
       {viewUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, width: '100%', maxWidth: 450, boxShadow: '0 12px 32px rgba(0,0,0,0.2)' }}>
+          <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, width: '100%', maxWidth: 500, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 12px 32px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 20, fontWeight: 800 }}>User Details</h2>
               <button onClick={() => setViewUser(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><FiX size={24} /></button>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+               <button 
+                 onClick={() => setViewUser(prev => ({ ...prev, _tab: 'details' }))} 
+                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: viewUser._tab !== 'history' ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                 Current Details
+               </button>
+               <button 
+                 onClick={() => {
+                   setViewUser(prev => ({ ...prev, _tab: 'history' }));
+                   if (!viewUser._logsLoaded) {
+                     api.get(`/admin/users/${viewUser._id}/audit-log`)
+                        .then(res => setViewUser(prev => ({ ...prev, _logsLoaded: true, _logs: res.data.logs })))
+                        .catch(err => toast.error('Failed to load history'));
+                   }
+                 }} 
+                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14, color: viewUser._tab === 'history' ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                 Audit History 
+               </button>
+            </div>
+
+            {viewUser._tab === 'history' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {!viewUser._logsLoaded ? <div className="spinner" style={{ margin: '20px auto' }} /> : 
+                 viewUser._logs?.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No profile changes recorded.</div> :
+                 viewUser._logs.map(log => (
+                   <div key={log._id} style={{ padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{new Date(log.createdAt).toLocaleString()}</div>
+                     {log.changes.map((change, idx) => (
+                       <div key={idx} style={{ marginBottom: 4, fontSize: 13 }}>
+                         <span style={{ fontWeight: 600 }}>{change.field}:</span>{' '}
+                         <span style={{ color: 'var(--danger)', textDecoration: 'line-through' }}>{change.oldValue || '—'}</span> 
+                         {' '}➔{' '}
+                         <span style={{ color: 'var(--success)' }}>{change.newValue}</span>
+                       </div>
+                     ))}
+                   </div>
+                 ))}
+              </div>
+            ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8, fontSize: 14 }}>
                 <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Name:</div>
                 <div style={{ fontWeight: 700 }}>{viewUser.name}</div>
@@ -109,7 +147,7 @@ export default function AdminUsers() {
                 <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Status:</div>
                 <div style={{ color: viewUser.isActive ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>{viewUser.isActive ? 'Active' : 'Inactive'}</div>
               </div>
-            </div>
+            )}
 
             <button onClick={() => setViewUser(null)} className="btn btn-secondary" style={{ width: '100%', marginTop: 24 }}>Close</button>
           </div>

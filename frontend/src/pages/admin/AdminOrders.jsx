@@ -426,7 +426,11 @@ export default function AdminOrders() {
                       <td style={{ fontSize: 13 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDkart'}</td>
                       <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 140 }}>{o.items?.map(i => i.name).join(', ')}</td>
                       <td style={{ fontWeight: 700, color: 'var(--success)' }}>₹{o.finalAmount}</td>
-                      <td><span className={`badge badge-${o.paymentStatus}`}>{o.paymentStatus}</span></td>
+                      <td>
+                        <span className={`badge badge-${o.paymentStatus}`}>
+                          {o.paymentStatus === 'paid' ? (o.paymentMethod === 'cod' ? 'Paid (Cash)' : 'Paid (Online)') : o.paymentStatus}
+                        </span>
+                      </td>
                       <td><StatusBadge status={o.status} /></td>
                       <td style={{ fontSize: 12 }}>
                         {o.deliveryAgentId ? (

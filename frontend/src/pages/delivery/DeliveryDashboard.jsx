@@ -3,6 +3,7 @@ import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 // ── Status Config ─────────────────────────────────────────────────────────────
 const STATUS_CFG = {
@@ -250,7 +251,6 @@ export default function DeliveryDashboard() {
               <span className="dd-status-dot" />
               {isOnline ? (isBusy ? 'Busy' : 'Online') : 'Go Online'}
             </button>
-            <button onClick={logout} className="dd-logout-btn">Logout</button>
           </div>
         </header>
 

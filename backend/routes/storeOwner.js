@@ -177,6 +177,17 @@ router.patch('/orders/:id/status', async (req, res) => {
       }
     }
 
+    if (status === 'delivered') {
+      order.deliveredAt = new Date();
+      if (order.paymentMethod === 'cod') {
+        order.paymentStatus = 'paid';
+      }
+      if (order.deliveryAgentId) {
+        const User = require('../models/User');
+        await User.findByIdAndUpdate(order.deliveryAgentId, { deliveryStatus: 'available' });
+      }
+    }
+
     await order.save();
 
     const io = req.app.get('io');

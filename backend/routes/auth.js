@@ -100,12 +100,57 @@ router.get('/me', require('../middleware/auth').protect, async (req, res) => {
 // @PUT /api/auth/profile
 router.put('/profile', require('../middleware/auth').protect, async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { name, phone, address },
-      { new: true }
-    ).select('-password');
+    const { name, password, phone, address } = req.body;
+    
+    // Fetch current user to compare
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    let updateFields = {};
+    let changes = [];
+
+    // Compare fields and log changes
+    if (name && name !== currentUser.name) {
+      updateFields.name = name;
+      changes.push({ field: 'Name', oldValue: currentUser.name || '', newValue: name });
+    }
+    if (phone !== undefined && phone !== currentUser.phone) {
+      updateFields.phone = phone;
+      changes.push({ field: 'Mobile Number', oldValue: currentUser.phone || '', newValue: phone });
+    }
+    if (address !== undefined && address !== currentUser.address) {
+      updateFields.address = address;
+      changes.push({ field: 'Address', oldValue: currentUser.address || '', newValue: address });
+    }
+    
+    if (password) {
+      updateFields.password = await bcrypt.hash(password, 10);
+    }
+    
+    // Perform update if there are changes
+    if (Object.keys(updateFields).length > 0) {
+      const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        updateFields,
+        { new: true }
+      ).select('-password');
+
+      // Save audit log if non-password fields were changed
+      if (changes.length > 0) {
+        const ProfileAuditLog = require('../models/ProfileAuditLog');
+        await ProfileAuditLog.create({
+          userId: req.user._id,
+          changes
+        });
+      }
+
+      return res.json({ success: true, user: updatedUser });
+    }
+
+    // If nothing changed
+    const user = await User.findById(req.user._id).select('-password');
     res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

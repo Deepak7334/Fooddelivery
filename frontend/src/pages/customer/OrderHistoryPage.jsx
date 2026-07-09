@@ -33,6 +33,12 @@ export default function OrderHistoryPage() {
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [cancellingId, setCancellingId] = useState(null);
 
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [ratingOrder, setRatingOrder] = useState(null);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+
   useEffect(() => {
     api.get('/customer/orders')
       .then(res => setOrders(res.data.orders || []))
@@ -69,6 +75,27 @@ export default function OrderHistoryPage() {
       toast.error(err.response?.data?.message || 'Could not cancel booking');
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const submitRating = async () => {
+    if (!ratingOrder) return;
+    setSubmittingRating(true);
+    try {
+      const res = await api.post(`/customer/orders/${ratingOrder._id}/rate`, {
+        rating: ratingValue,
+        review: reviewText
+      });
+      toast.success(res.data.message || 'Thanks for your feedback!');
+      setOrders(prev => prev.map(o => o._id === ratingOrder._id ? { ...o, rating: ratingValue, review: reviewText } : o));
+      setRatingModalOpen(false);
+      setRatingOrder(null);
+      setRatingValue(5);
+      setReviewText('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -143,11 +170,27 @@ export default function OrderHistoryPage() {
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--primary)', marginBottom: 10 }}>₹{order.finalAmount}</div>
-                        {order.status === 'delivered' || order.status === 'cancelled' ? (
-                          <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Details</Link>
-                        ) : (
-                          <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Track →</Link>
-                        )}
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {order.status === 'delivered' && !order.rating ? (
+                            <button className="btn btn-secondary btn-sm" onClick={(e) => {
+                              e.stopPropagation();
+                              setRatingOrder(order);
+                              setRatingValue(5);
+                              setReviewText('');
+                              setRatingModalOpen(true);
+                            }}>⭐ Rate</button>
+                          ) : order.rating ? (
+                            <span style={{ fontSize: 13, color: '#FF9800', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginRight: 4 }}>
+                              ⭐ {order.rating}/5
+                            </span>
+                          ) : null}
+
+                          {order.status === 'delivered' || order.status === 'cancelled' ? (
+                            <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Details</Link>
+                          ) : (
+                            <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Track →</Link>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -224,6 +267,52 @@ export default function OrderHistoryPage() {
           )
         )}
       </div>
+
+      {/* Rating Modal */}
+      {ratingModalOpen && ratingOrder && (
+        <div className="modal-overlay" onClick={() => setRatingModalOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: 400, padding: 24, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Rate your order</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>
+              How was your experience with {ratingOrder.restaurantName || ratingOrder.storeName || 'JDkart'}?
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
+              {[1, 2, 3, 4, 5].map(star => (
+                <button
+                  key={star}
+                  onClick={() => setRatingValue(star)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 32, padding: 0,
+                    color: star <= ratingValue ? '#FF9800' : '#E0E0E0',
+                    transition: 'transform 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              placeholder="Leave a review (optional)..."
+              value={reviewText}
+              onChange={e => setReviewText(e.target.value)}
+              className="input-field"
+              style={{ minHeight: 100, resize: 'vertical', marginBottom: 24, width: '100%' }}
+            />
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-secondary" onClick={() => setRatingModalOpen(false)} style={{ flex: 1 }}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitRating} disabled={submittingRating} style={{ flex: 1 }}>
+                {submittingRating ? 'Submitting...' : 'Submit Rating'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

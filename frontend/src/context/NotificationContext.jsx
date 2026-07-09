@@ -60,28 +60,25 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Firebase Cloud Messaging Setup
-  useEffect(() => {
-    const setupFCM = async () => {
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          const token = await getToken(messaging, { 
-            vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY 
-          });
-          if (token) {
-            await api.post('/notifications/save-token', { token });
-          }
+  const requestFCMPermission = async () => {
+    if (!user) return false;
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const token = await getToken(messaging, { 
+          vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY 
+        });
+        if (token) {
+          await api.post('/notifications/save-token', { token });
+          return true;
         }
-      } catch (error) {
-        console.error('FCM Setup Error:', error);
       }
-    };
-
-    if (user) {
-      setupFCM();
+      return false;
+    } catch (error) {
+      console.error('FCM Setup Error:', error);
+      return false;
     }
-  }, [user]);
+  };
 
   // Handle Foreground FCM Messages
   useEffect(() => {
@@ -140,7 +137,8 @@ export const NotificationProvider = ({ children }) => {
       unreadCount,
       markAsRead,
       markAllAsRead,
-      deleteNotification
+      deleteNotification,
+      requestFCMPermission
     }}>
       {children}
     </NotificationContext.Provider>

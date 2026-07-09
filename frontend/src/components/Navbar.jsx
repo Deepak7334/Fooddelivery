@@ -82,6 +82,11 @@ export default function Navbar() {
                     borderRadius: 12, padding: 8, minWidth: 180, zIndex: 600,
                     boxShadow: 'var(--shadow)',
                   }}>
+                    <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <FiUser size={16} /> My Profile
+                    </Link>
                     {user.role === 'customer' && (
                       <>
                         <Link to="/orders" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
@@ -181,6 +186,10 @@ export default function Navbar() {
             <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
               👋 {user.name}
             </div>
+            <Link to="/profile" onClick={() => setMobileOpen(false)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+              <FiUser size={16} /> My Profile
+            </Link>
             {user.role === 'customer' && (
               <>
                 <Link to="/orders" onClick={() => setMobileOpen(false)}

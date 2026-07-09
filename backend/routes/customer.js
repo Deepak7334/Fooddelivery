@@ -225,7 +225,11 @@ router.post('/orders/:id/verify-otp', protect, authorize('customer'), async (req
 
     order.status = 'delivered';
     order.otpVerified = true;
-    order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: 'OTP verified by customer' });
+    order.deliveredAt = new Date();
+    if (order.paymentMethod === 'cod') {
+      order.paymentStatus = 'paid';
+    }
+    order.statusHistory.push({ status: 'delivered', timestamp: order.deliveredAt, note: 'OTP verified by customer' });
     await order.save();
 
     // Notify restaurant
@@ -303,6 +307,55 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
     await NotificationService.sendToStore(storeId, 'New Order', 'You received a new store order.', 'NEW_ORDER', io).catch(console.error);
 
     res.status(201).json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+// Rate a delivered order
+router.post('/orders/:id/rate', protect, authorize('customer'), async (req, res) => {
+  try {
+    const { rating, review } = req.body;
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ success: false, message: 'Valid rating between 1 and 5 is required' });
+    }
+
+    const order = await Order.findOne({ _id: req.params.id, customerId: req.user.id });
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.status !== 'delivered') return res.status(400).json({ success: false, message: 'Only delivered orders can be rated' });
+    if (order.rating) return res.status(400).json({ success: false, message: 'Order has already been rated' });
+
+    order.rating = rating;
+    order.review = review || '';
+    await order.save();
+
+    // Update Restaurant or Store rating
+    if (order.restaurantId) {
+      const Restaurant = require('../models/Restaurant');
+      const restaurant = await Restaurant.findById(order.restaurantId);
+      if (restaurant) {
+        const oldTotal = restaurant.totalRatings || 0;
+        const oldRating = restaurant.rating || 0;
+        const newTotal = oldTotal + 1;
+        const newAvg = ((oldRating * oldTotal) + rating) / newTotal;
+        restaurant.totalRatings = newTotal;
+        restaurant.rating = parseFloat(newAvg.toFixed(1));
+        await restaurant.save();
+      }
+    } else if (order.storeId) {
+      const Store = require('../models/Store');
+      const store = await Store.findById(order.storeId);
+      if (store) {
+        const oldTotal = store.totalRatings || 0;
+        const oldRating = store.rating || 0;
+        const newTotal = oldTotal + 1;
+        const newAvg = ((oldRating * oldTotal) + rating) / newTotal;
+        store.totalRatings = newTotal;
+        store.rating = parseFloat(newAvg.toFixed(1));
+        await store.save();
+      }
+    }
+
+    res.json({ success: true, message: 'Thanks for your feedback!', order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

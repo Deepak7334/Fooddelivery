@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiShoppingBag, FiUsers, FiList, FiTag, FiLogOut, FiX, FiTruck, FiCalendar, FiPackage } from 'react-icons/fi';
+import { FiGrid, FiShoppingBag, FiUsers, FiList, FiTag, FiLogOut, FiX, FiTruck, FiCalendar, FiPackage, FiSettings } from 'react-icons/fi';
 
 const navLinks = [
   { to: '/admin', icon: <FiGrid />, label: 'Dashboard', exact: true },
@@ -47,6 +47,9 @@ export default function AdminSidebar({ open, onClose }) {
           ))}
         </nav>
         <div style={{ paddingTop: 24, borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
+          <Link to="/profile" className={`sidebar-link ${isActive('/profile') ? 'active' : ''}`} onClick={onClose}>
+            <FiSettings /> Profile Settings
+          </Link>
           <button onClick={() => { logout(); navigate('/login'); onClose?.(); }} className="sidebar-link" style={{ width: '100%', background: 'transparent', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
             <FiLogOut /> Logout
           </button>

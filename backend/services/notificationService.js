@@ -39,15 +39,17 @@ class NotificationService {
           },
           token: user.fcmToken,
           android: {
-            notification: {
-              sound: 'default'
-            }
+            notification: { sound: 'default' }
           },
           apns: {
-            payload: {
-              aps: {
-                sound: 'default'
-              }
+            payload: { aps: { sound: 'default' } }
+          },
+          webpush: {
+            notification: {
+              icon: '/favicon.svg'
+            },
+            fcmOptions: {
+              link: '/'
             }
           }
         };
