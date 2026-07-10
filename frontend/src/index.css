@@ -1396,11 +1396,15 @@ img {
     padding: 16px;
   }
 
-  /* Vendor/item grids: single column on tiny phones */
-  .vendor-grid,
+  /* Vendor grid: single column on tiny phones */
+  .vendor-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Items grid: force 2 columns on all mobile screens to attract customers */
   .items-grid,
   .items-grid-small {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 
   .btn-lg {
