@@ -386,12 +386,15 @@ select.form-input option {
   align-items: center;
   padding: 0 16px;
   border-right: 1px solid rgba(255,255,255,0.1);
+  min-width: 0;
+  flex: 1 1 160px;
 }
 .search-input-wrap {
-  flex: 1;
+  flex: 2 1 200px;
   display: flex;
   align-items: center;
   padding: 0 16px;
+  position: relative;
 }
 
 .search-input-field {
@@ -454,10 +457,12 @@ select.form-input option {
     border-bottom: 1px solid rgba(255,255,255,0.1) !important;
     padding: 8px 12px !important;
     width: 100%;
+    flex: none !important;
   }
   .search-input-wrap {
     padding: 8px 12px !important;
     width: 100%;
+    flex: none !important;
   }
   .search-submit-btn {
     width: calc(100% - 16px);

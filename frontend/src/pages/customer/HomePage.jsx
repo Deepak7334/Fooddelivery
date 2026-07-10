@@ -289,7 +289,7 @@ export default function HomePage() {
             {/* ── Search bar ── */}
             <form onSubmit={handleSearch} className="search-form">
               {/* Location input */}
-              <div className="search-location" style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: '1 1 160px' }}>
+              <div className="search-location">
                 <button
                   type="button"
                   onClick={handleDetectLocation}
@@ -317,7 +317,7 @@ export default function HomePage() {
               </div>
 
               {/* Food search input */}
-              <div className="search-input-wrap" style={{ flex: '2 1 200px', position: 'relative' }}>
+              <div className="search-input-wrap">
                 <input
                   type="text"
                   className="search-input-field"
