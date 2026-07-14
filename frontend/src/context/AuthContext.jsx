@@ -53,6 +53,31 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const firebaseLogin = async (idToken, name, loginProvider = 'phone') => {
+    const res = await api.post('/auth/firebase-login', { idToken, name, loginProvider });
+    if (res.data.success) {
+      localStorage.setItem('foodhub_token', res.data.token);
+      localStorage.setItem('foodhub_user', JSON.stringify(res.data.user));
+      setUser(res.data.user);
+    }
+    return res.data;
+  };
+
+  const sendEmailOtp = async (email) => {
+    const res = await api.post('/auth/send-email-otp', { email });
+    return res.data;
+  };
+
+  const verifyEmailOtp = async (email, otp, name) => {
+    const res = await api.post('/auth/verify-email-otp', { email, otp, name });
+    if (res.data.success) {
+      localStorage.setItem('foodhub_token', res.data.token);
+      localStorage.setItem('foodhub_user', JSON.stringify(res.data.user));
+      setUser(res.data.user);
+    }
+    return res.data;
+  };
+
   const logout = () => {
     localStorage.removeItem('foodhub_token');
     localStorage.removeItem('foodhub_user');
@@ -60,7 +85,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout }}>
       {children}
     </AuthContext.Provider>
   );

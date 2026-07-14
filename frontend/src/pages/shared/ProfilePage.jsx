@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { FiBell, FiUser, FiLock, FiLogOut, FiPackage, FiMail, FiPhone, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiBell, FiUser, FiLock, FiLogOut, FiPackage, FiMail, FiPhone, FiEye, FiEyeOff, FiCamera } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
+import ImageCropperModal from '../../components/ImageCropperModal';
 import './ProfilePage.css';
 
 export default function ProfilePage() {
@@ -17,7 +18,8 @@ export default function ProfilePage() {
     phone: user?.phone || '',
     address: user?.address || '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    profileImage: user?.profileImage || ''
   });
   const [loading, setLoading] = useState(false);
   const [permission, setPermission] = useState('unknown');
@@ -25,6 +27,10 @@ export default function ProfilePage() {
   const [isToggling, setIsToggling] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const fileInputRef = useRef(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -54,6 +60,7 @@ export default function ProfilePage() {
         name: formData.name,
         phone: formData.phone,
         address: formData.address,
+        profileImage: formData.profileImage,
         ...(formData.password ? { password: formData.password } : {})
       });
       toast.success('Profile updated successfully');
@@ -64,6 +71,29 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageToCrop(reader.result);
+        setShowCropper(true);
+      });
+      reader.readAsDataURL(file);
+      e.target.value = ''; // Reset input
+    }
+  };
+
+  const handleCropDone = (croppedFile) => {
+    setShowCropper(false);
+    setImageToCrop(null);
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setFormData(prev => ({ ...prev, profileImage: reader.result }));
+    });
+    reader.readAsDataURL(croppedFile);
   };
 
   const handleToggleNotification = async (e) => {
@@ -120,8 +150,32 @@ export default function ProfilePage() {
         <div className="profile-sidebar">
           <div className="profile-card">
             <div className="profile-user-info">
-              <div className="profile-avatar">
-                {user?.name?.charAt(0) || 'U'}
+              <div className="profile-avatar" style={{ position: 'relative' }}>
+                {formData.profileImage ? (
+                  <img src={formData.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                ) : (
+                  (user?.email?.charAt(0) || user?.name?.charAt(0) || 'U').toUpperCase()
+                )}
+                <button 
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ 
+                    position: 'absolute', bottom: -5, right: -5, background: 'var(--primary)', 
+                    color: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                  }}
+                  title="Upload profile picture"
+                >
+                  <FiCamera size={16} />
+                </button>
+                <input 
+                  type="file" 
+                  accept="image/jpeg, image/png, image/webp" 
+                  ref={fileInputRef} 
+                  style={{ display: 'none' }} 
+                  onChange={handleFileChange} 
+                />
               </div>
               <div className="profile-user-details">
                 <h2>{user?.name}</h2>
@@ -276,6 +330,15 @@ export default function ProfilePage() {
           
         </div>
       </div>
+
+      {showCropper && imageToCrop && (
+        <ImageCropperModal
+          imageSrc={imageToCrop}
+          aspect={1} // 1:1 square for circular avatar
+          onCancel={() => { setShowCropper(false); setImageToCrop(null); }}
+          onCropDone={handleCropDone}
+        />
+      )}
     </div>
   );
 }

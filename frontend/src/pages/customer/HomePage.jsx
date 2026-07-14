@@ -512,14 +512,14 @@ export default function HomePage() {
       <section style={{ padding: 'clamp(32px,5vw,48px) 0', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
         <div className="container">
           <h2 className="section-title" style={{ textAlign: 'center', marginBottom: 36 }}>Why choose <span>JDkart?</span></h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 16, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', snapType: 'x mandatory' }}>
             {[
               { icon: '🚀', title: 'Lightning Fast',  desc: 'Average delivery in 30 mins' },
               { icon: '💯', title: 'Top Quality',      desc: 'Verified restaurants only' },
               { icon: '🔐', title: 'Secure OTP',       desc: 'OTP verified delivery' },
               { icon: '💳', title: 'Easy Payment',     desc: 'Razorpay, Cards, UPI' },
             ].map(f => (
-              <div key={f.title} style={{ textAlign: 'center', padding: '20px 16px' }}>
+              <div key={f.title} style={{ flex: '1 0 160px', textAlign: 'center', padding: '20px 16px', background: 'var(--bg-dark)', borderRadius: 16, border: '1px solid var(--border)', scrollSnapAlign: 'start' }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>{f.icon}</div>
                 <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 15 }}>{f.title}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{f.desc}</div>

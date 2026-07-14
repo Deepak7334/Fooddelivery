@@ -21,4 +21,45 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// The Firebase SDK automatically handles background messages when the backend sends a standard 'notification' payload with 'webpush' options.
+// The Firebase SDK automatically handles background messages when the backend sends a standard 'notification' payload.
+// However, to ensure it forcibly wakes up the lock screen on Android PWAs with vibration, we intercept it here.
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  
+  const notificationTitle = payload.notification.title || 'JDkart Update';
+  const notificationOptions = {
+    body: payload.notification.body || '',
+    icon: '/favicon.svg', // Update to your 192x192 PWA icon if available
+    badge: '/favicon.svg',
+    vibrate: [200, 100, 200, 100, 200, 100, 200], // Aggressive vibration to wake user
+    requireInteraction: true, // Forces notification to stay until dismissed
+    data: payload.data
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+self.addEventListener('notificationclick', function(event) {
+  console.log('[firebase-messaging-sw.js] Notification click received.');
+  event.notification.close();
+
+  // URL to open
+  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there is already a window/tab open with the target URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        // If so, just focus it.
+        if (client.url.includes(targetUrl) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If not, then open the target URL in a new window/tab.
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

@@ -155,12 +155,12 @@ async function seedAdmin() {
     const hashed = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123', 10);
     await User.create({
       name: 'Admin',
-      email: process.env.ADMIN_EMAIL || 'admin@foodhub.com',
+      email: process.env.ADMIN_EMAIL || 'supportjdkart@gmail.com',
       password: hashed,
       role: 'admin',
       phone: '9999999999',
     });
-    console.log('✅ Admin seeded: admin@foodhub.com / Admin@123');
+    console.log('✅ Admin seeded: supportjdkart@gmail.com / Jdkart@support');
   }
 }
 

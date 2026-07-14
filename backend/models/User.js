@@ -3,19 +3,17 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Name is required'],
     trim: true,
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
     unique: true,
+    sparse: true,
     lowercase: true,
     trim: true,
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
     minlength: 6,
   },
   role: {
@@ -25,8 +23,38 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    default: '',
+    unique: true,
+    sparse: true,
+    default: undefined, // Mongoose sparse indexes need undefined/null to not collide
   },
+  firebaseUid: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  loginProvider: {
+    type: String,
+    enum: ['local', 'phone', 'google', 'email_otp'],
+    default: 'local',
+  },
+  emailOtp: {
+    type: String,
+    default: null,
+  },
+  emailOtpExpiry: {
+    type: Date,
+    default: null,
+  },
+  addresses: [{
+    label: { type: String, enum: ['Home', 'Work', 'Other'], default: 'Other' },
+    name: String,
+    address: String, // Full address string
+    district: String,
+    state: String,
+    pincode: String,
+    alternatePhone: String,
+    landmark: String,
+  }],
   address: {
     type: String,
     default: '',

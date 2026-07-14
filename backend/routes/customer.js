@@ -169,6 +169,33 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       const NotificationService = require('../services/notificationService');
       await NotificationService.sendToCustomer(req.user._id, 'Order Placed Successfully', 'Your order has been placed successfully.', 'NEW_ORDER', io).catch(console.error);
       await NotificationService.sendToAdmin('New Order', 'Customer placed an order.', 'NEW_ORDER', io).catch(console.error);
+
+      // Email Notification to Admin
+      if (process.env.ADMIN_EMAIL) {
+        const sendEmail = require('../utils/sendEmail');
+        const adminEmailHtml = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 500px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #ff5722;">New Order Alert 🚨</h2>
+            <p>A new order was just placed on JDkart!</p>
+            <ul style="line-height: 1.6;">
+              <li><strong>Order ID:</strong> ${order._id}</li>
+              <li><strong>Vendor:</strong> ${order.restaurantName || order.storeName || 'Vendor'}</li>
+              <li><strong>Total Amount:</strong> ₹${order.finalAmount}</li>
+              <li><strong>Customer Name:</strong> ${req.user.name || 'Customer'}</li>
+              <li><strong>Customer Email:</strong> ${order.customerEmail}</li>
+              <li><strong>Customer Phone:</strong> ${order.customerPhone || 'N/A'}</li>
+              <li><strong>Delivery Address:</strong> ${order.deliveryAddress ? `${order.deliveryAddress.name}, ${order.deliveryAddress.address}, ${order.deliveryAddress.district}` : 'N/A'}</li>
+            </ul>
+            <br/>
+            <p><a href="${process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0] : 'http://localhost:5173'}/admin" style="background: #000; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 5px;">View in Admin Panel</a></p>
+          </div>
+        `;
+        sendEmail({
+          to: process.env.ADMIN_EMAIL,
+          subject: '🚨 New Order Received - JDkart',
+          html: adminEmailHtml
+        }).catch(err => console.error('Admin Email Error:', err));
+      }
       
       if (group.vendorType === 'restaurant') {
         await NotificationService.sendToRestaurant(group.vendorId, 'New Order', 'You received a new order.', 'NEW_ORDER', io).catch(console.error);
