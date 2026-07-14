@@ -131,11 +131,15 @@ router.post('/send-email-otp', async (req, res) => {
       </div>
     `;
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: email,
       subject: 'JDkart Verification Code',
       html: emailHtml,
     });
+
+    if (!emailResult.success) {
+      throw new Error(emailResult.error || 'Failed to send email via SMTP');
+    }
 
     res.json({ success: true, message: 'OTP sent successfully to email' });
   } catch (err) {
