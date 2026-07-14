@@ -27,7 +27,7 @@ export default function Footer() {
           </div>
           <div>
             <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>Contact</div>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📧 support@jdkart.com</p>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📧 supportjdkart@gmail.com</p>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📞 1800-JDkart</p>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>⏰ 24/7 Support</p>
           </div>
