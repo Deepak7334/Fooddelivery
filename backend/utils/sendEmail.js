@@ -1,41 +1,47 @@
 const nodemailer = require('nodemailer');
 
 /**
- * sendEmail — Brevo SMTP sender
+ * sendEmail — Brevo REST API sender
  *
- * Uses Brevo (smtp-relay.brevo.com) for production.
- * Falls back to mock/log mode if credentials are not set.
+ * Uses Brevo's HTTP API for production.
+ * This completely bypasses Render's firewall and SMTP blocking.
  */
 // Check if a value is a real credential (not a placeholder)
 const isSet = (val) => val && !val.startsWith('your_');
 
 const sendEmail = async ({ to, subject, html }) => {
 
-  // ── Production: Brevo SMTP ────────────────────────────────────────────────
-  if (isSet(process.env.BREVO_SMTP_USER) && isSet(process.env.BREVO_SMTP_KEY)) {
+  // ── Production: Brevo REST API (HTTPS port 443 - never blocked) ──────────
+  if (isSet(process.env.BREVO_API_KEY)) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com',
-        port: 465,
-        secure: true,
-        auth: {
-          user: process.env.BREVO_SMTP_USER,   // your Brevo login email
-          pass: process.env.BREVO_SMTP_KEY,    // your Brevo SMTP key
+      const fromEmail = process.env.BREVO_FROM_EMAIL || 'supportjdkart@gmail.com';
+      
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': process.env.BREVO_API_KEY,
+          'content-type': 'application/json'
         },
+        body: JSON.stringify({
+          sender: { name: "JDkart", email: fromEmail },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: html
+        })
       });
 
-      const info = await transporter.sendMail({
-        from: `"JDkart" <${process.env.BREVO_FROM_EMAIL || process.env.BREVO_SMTP_USER}>`,
-        to,
-        subject,
-        html,
-      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
 
-      console.log('✅ Email sent via Brevo. MessageID:', info.messageId);
-      return { success: true, messageId: info.messageId };
+      const data = await response.json();
+      console.log('✅ Email sent via Brevo API. MessageID:', data.messageId);
+      return { success: true, messageId: data.messageId };
 
     } catch (err) {
-      console.error('❌ Brevo SMTP error:', err.message);
+      console.error('❌ Brevo API error:', err.message);
       return { success: false, error: err.message };
     }
   }
