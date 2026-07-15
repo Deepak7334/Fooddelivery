@@ -142,7 +142,7 @@ export default function AuthPage() {
               {step === 1 ? (
                 <form onSubmit={handleSendOtp}>
                   <div className="form-group">
-                    <label className="form-label">Full Name (Optional)</label>
+                    <label className="form-label">Full Name</label>
                     <input className="form-input" type="text" placeholder="e.g. John Doe" value={name} onChange={e => setName(e.target.value)} />
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Required only for new accounts.</div>
                   </div>
