@@ -6,6 +6,7 @@ const baseURL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PROD_BAC
 const api = axios.create({
   baseURL: baseURL + '/api',
   headers: { 'Content-Type': 'application/json' },
+  timeout: 60000, // 60s — needed for Render cold starts & SMTP sending
 });
 
 api.interceptors.request.use((config) => {
