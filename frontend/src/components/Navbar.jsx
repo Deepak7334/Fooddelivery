@@ -73,7 +73,7 @@ export default function Navbar() {
                   borderRadius: 100, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>
                   <FiUser size={16} color="var(--primary)" />
-                  {user.name.split(' ')[0]}
+                  {user.name ? user.name.split(' ')[0] : 'User'}
                 </button>
                 {dropdownOpen && (
                   <div style={{
@@ -184,7 +184,7 @@ export default function Navbar() {
         {user ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
             <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
-              👋 {user.name}
+              👋 {user.name || 'User'}
             </div>
             <Link to="/profile" onClick={() => setMobileOpen(false)}
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
