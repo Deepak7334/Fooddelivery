@@ -106,7 +106,7 @@ export default function ProductDetailPage() {
               <button onClick={handleAddToCart} style={{ flex: 1, padding: '16px 8px', background: 'var(--secondary)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px 0 rgba(0,0,0,.2)' }}>
                 ADD TO CART
               </button>
-              <button onClick={() => { handleAddToCart(); navigate('/cart'); }} style={{ flex: 1, padding: '16px 8px', background: 'var(--primary-dark)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px 0 rgba(0,0,0,.2)' }}>
+              <button onClick={() => { if (!user) { navigate('/login'); return; } handleAddToCart(); navigate('/cart'); }} style={{ flex: 1, padding: '16px 8px', background: 'var(--primary-dark)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px 0 rgba(0,0,0,.2)' }}>
                 BUY NOW
               </button>
             </div>

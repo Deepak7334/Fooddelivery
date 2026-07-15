@@ -151,7 +151,7 @@ export default function RestaurantsPage() {
                       key={food._id} 
                       food={food} 
                       onAddToCart={() => handleAddFood(food)}
-                      onBuy={() => { handleAddFood(food); navigate('/cart'); }}
+                      onBuy={() => { if (!user) { navigate('/login'); return; } handleAddFood(food); navigate('/cart'); }}
                     />
                   ))}
                 </div>

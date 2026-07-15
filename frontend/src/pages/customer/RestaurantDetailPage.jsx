@@ -146,7 +146,7 @@ export default function RestaurantDetailPage() {
               <div className="items-grid-small">
                 {menuGrouped[cat].map(food => (
                   <FoodCard key={food._id} food={food} qty={getItemQty(food._id)} onAdd={() => handleAdd(food)}
-                    onBuy={() => { handleAdd(food); navigate('/cart'); }} />
+                    onBuy={() => { if (!user) { navigate('/login'); return; } handleAdd(food); navigate('/cart'); }} />
                 ))}
               </div>
             </div>

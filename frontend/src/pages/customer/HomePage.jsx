@@ -186,6 +186,7 @@ export default function HomePage() {
   };
 
   const handleBuy = (food) => {
+    if (!user) { navigate('/login'); return; }
     handleAddToCart(food);
     navigate('/cart');
   };
@@ -491,7 +492,7 @@ export default function HomePage() {
                             qty={getProductQty(item._id, item.storeId?._id)} 
                             onAdd={() => handleAddProduct(item)} 
                             onUpdate={(qty) => updateQuantity(item._id, qty)} 
-                            onBuy={() => { handleAddProduct(item); navigate('/cart'); }}
+                            onBuy={() => { if (!user) { navigate('/login'); return; } handleAddProduct(item); navigate('/cart'); }}
                           />
                         : <HomeFoodCard 
                             key={item._id} 

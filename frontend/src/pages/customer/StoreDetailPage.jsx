@@ -178,7 +178,7 @@ export default function StoreDetailPage() {
                 <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>{cat}</h2>
                 <div className="items-grid-small">
                   {products.map(product => (
-                    <ProductCard key={product._id} product={product} qty={getQty(product._id)} onAdd={() => handleAdd(product)} onBuy={() => { handleAdd(product); navigate('/cart'); }} onUpdate={(qty) => {
+                    <ProductCard key={product._id} product={product} qty={getQty(product._id)} onAdd={() => handleAdd(product)} onBuy={() => { if (!user) { navigate('/login'); return; } handleAdd(product); navigate('/cart'); }} onUpdate={(qty) => {
                       if (!user) { navigate('/login'); return; }
                       if (qty <= 0) {
                         updateQuantity(product._id, 0);

@@ -180,7 +180,7 @@ export default function StoresPage() {
                       qty={getProductQty(product._id, product.storeId?._id)}
                       onAdd={() => handleAddProduct(product)}
                       onUpdate={(qty) => updateQuantity(product._id, qty)}
-                      onBuy={() => { handleAddProduct(product); navigate('/cart'); }}
+                      onBuy={() => { if (!user) { navigate('/login'); return; } handleAddProduct(product); navigate('/cart'); }}
                     />
                   ))}
                 </div>
