@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { FiArrowLeft, FiHeart, FiShare2, FiMinus, FiPlus } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -9,6 +10,7 @@ export default function FoodDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   
   const [food, setFood] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -124,10 +126,10 @@ export default function FoodDetailPage() {
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: 12, marginTop: 16, paddingLeft: food.images && food.images.length > 0 ? 80 : 0 }}>
               <button onClick={handleAddToCart} style={{ flex: 1, padding: '16px 8px', background: 'var(--secondary)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px 0 rgba(0,0,0,.2)' }}>
-                ADD TO CART
+                + Cart
               </button>
               <button onClick={() => { if (!user) { navigate('/login'); return; } handleAddToCart(); navigate('/cart'); }} style={{ flex: 1, padding: '16px 8px', background: 'var(--primary-dark)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px 0 rgba(0,0,0,.2)' }}>
-                ORDER NOW
+                Order
               </button>
             </div>
           </div>

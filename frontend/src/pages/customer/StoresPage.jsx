@@ -274,7 +274,7 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
         )}
         <button onClick={onBuy} disabled={!product.isAvailable}
           style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: product.isAvailable ? 'pointer' : 'not-allowed', opacity: product.isAvailable ? 1 : 0.5, height: 36 }}>
-          Buy Now
+          Buy
         </button>
       </div>
     </div>

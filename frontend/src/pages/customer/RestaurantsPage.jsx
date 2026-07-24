@@ -248,7 +248,7 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </button>
         <button onClick={onBuy} disabled={!food.isAvailable}
           style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5 }}>
-          Buy Now
+          Order
         </button>
       </div>
     </div>
