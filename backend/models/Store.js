@@ -11,8 +11,8 @@ const storeSchema = new mongoose.Schema({
   address: { type: String, required: true },
   city: { type: String, default: '' },
   location: {
-    lat: { type: Number },
-    lng: { type: Number },
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] } // [longitude, latitude]
   },
   image: { type: String, default: '' },
   coverImage: { type: String, default: '' },
@@ -29,5 +29,7 @@ const storeSchema = new mongoose.Schema({
   offers: [{ type: String }],
   tags: [{ type: String }],
 }, { timestamps: true });
+
+storeSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Store', storeSchema);

@@ -3,6 +3,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { FiMenu } from 'react-icons/fi';
 import NotificationBell from './components/NotificationBell';
+import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
+import { useEffect } from 'react';
 
 // ── Layouts (eager — always needed) ──────────────────────────────────────────
 import Navbar from './components/Navbar';
@@ -40,6 +43,7 @@ const AdminDeliveryAgents  = lazy(() => import('./pages/admin/AdminDeliveryAgent
 const AdminBookings        = lazy(() => import('./pages/admin/AdminBookings'));
 const AdminItems           = lazy(() => import('./pages/admin/AdminItems'));
 const AdminStores          = lazy(() => import('./pages/admin/AdminStores'));
+const AdminPayouts         = lazy(() => import('./pages/admin/AdminPayouts'));
 
 // ── Restaurant Pages (lazy) ───────────────────────────────────────────────────
 const RestaurantDashboard  = lazy(() => import('./pages/restaurant/RestaurantDashboard'));
@@ -139,6 +143,49 @@ const RestaurantLayout = ({ children }) => {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Connect to Socket.io server
+    const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const socket = io(apiBase);
+
+    socket.on('connect', () => {
+      // Join the user's specific room
+      const userId = user._id || user.id;
+      socket.emit('join_user_room', userId);
+    });
+
+    // Listen for global push notifications
+    socket.on('notification', (notif) => {
+      // Play a small success/info sound if desired, or just show toast
+      toast(
+        (t) => (
+          <div>
+            <strong>{notif.title}</strong>
+            <p style={{ margin: '4px 0 0', fontSize: 13 }}>{notif.body}</p>
+          </div>
+        ),
+        {
+          duration: 5000,
+          position: 'top-right',
+          icon: '🔔',
+          style: {
+            background: 'var(--bg-card)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)'
+          },
+        }
+      );
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
+
   return (
     <Suspense fallback={<PageLoader />}>
       <PostLoginPrompt />
@@ -172,6 +219,7 @@ export default function App() {
         <Route path="/admin/delivery-agents"    element={<PrivateRoute role="admin"><AdminLayout><AdminDeliveryAgents /></AdminLayout></PrivateRoute>} />
         <Route path="/admin/categories"         element={<PrivateRoute role="admin"><AdminLayout><AdminCategories /></AdminLayout></PrivateRoute>} />
         <Route path="/admin/items"              element={<PrivateRoute role="admin"><AdminLayout><AdminItems /></AdminLayout></PrivateRoute>} />
+        <Route path="/admin/payouts"            element={<PrivateRoute role="admin"><AdminLayout><AdminPayouts /></AdminLayout></PrivateRoute>} />
 
         {/* Restaurant Routes */}
         <Route path="/restaurant"                element={<PrivateRoute role="restaurant"><RestaurantLayout><RestaurantDashboard /></RestaurantLayout></PrivateRoute>} />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../../lib/api';
 
 import { FiShoppingBag, FiUsers, FiList, FiTrendingUp } from 'react-icons/fi';
@@ -8,6 +9,8 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
+  const [settings, setSettings] = useState(null);
+  const [savingSettings, setSavingSettings] = useState(false);
 
 
   const [loading, setLoading] = useState(true);
@@ -16,9 +19,10 @@ export default function AdminDashboard() {
     Promise.all([
       api.get('/admin/stats'),
       api.get('/admin/settings')
-    ]).then(([statsRes]) => {
+    ]).then(([statsRes, settingsRes]) => {
       setStats(statsRes.data.stats);
       setRecentOrders(statsRes.data.recentOrders || []);
+      setSettings(settingsRes.data.settings || { platformCommissionRate: 15 });
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -28,9 +32,12 @@ export default function AdminDashboard() {
   const statCards = [
     { icon: '', label: 'Total Customers', value: stats?.totalUsers || 0, color: '#00BCD4', link: '/admin/users' },
     { icon: '', label: 'Restaurants', value: stats?.totalRestaurants || 0, color: '#FF5722', link: '/admin/restaurants' },
+    { icon: '', label: 'Stores', value: stats?.totalStores || 0, color: '#4CAF50', link: '/admin/stores' },
     { icon: '', label: 'Total Orders', value: stats?.totalOrders || 0, color: '#9C27B0', link: '/admin/orders' },
     { icon: '', label: 'Table Bookings', value: stats?.totalBookings || 0, color: '#FF9800', link: '/admin/bookings' },
     { icon: '', label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString('en-IN')}`, color: '#4CAF50', link: '/admin/orders' },
+    { icon: '', label: 'Platform Earnings', value: `₹${(stats?.adminEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#009688', link: '/admin/orders' },
+    { icon: '', label: 'Vendor Payouts', value: `₹${(stats?.vendorPayouts || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#E91E63', link: '/admin/payouts' },
   ];
 
   return (
@@ -62,10 +69,45 @@ export default function AdminDashboard() {
         <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Quick Actions</h2>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Link to="/admin/restaurants" className="btn btn-primary"><FiShoppingBag /> Add Restaurant</Link>
+          <Link to="/admin/stores" className="btn btn-primary" style={{ background: '#4CAF50' }}>Add Store</Link>
           <Link to="/admin/bookings" className="btn btn-primary" style={{ background: '#FF9800' }}>Manage Bookings</Link>
           <Link to="/admin/categories" className="btn btn-secondary"><span></span> Manage Categories</Link>
           <Link to="/admin/orders" className="btn btn-secondary"><FiList /> View All Orders</Link>
           <Link to="/admin/items" className="btn btn-primary" style={{ background: '#9C27B0' }}>View All Items</Link>
+        </div>
+      </div>
+
+      {/* Platform Settings */}
+      <div style={{ marginBottom: 32 }}>
+        <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Platform Settings</h2>
+        <div className="card" style={{ padding: 24, maxWidth: 500, display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Commission Rate (%)</label>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>This percentage is automatically deducted from all future orders as your platform fee.</p>
+            <input 
+              type="number" 
+              className="input-field" 
+              value={settings?.platformCommissionRate || 15}
+              onChange={(e) => setSettings({ ...settings, platformCommissionRate: Number(e.target.value) })}
+              min="0" max="100"
+              style={{ width: '100%', maxWidth: 200 }}
+            />
+          </div>
+          <button 
+            className="btn btn-primary"
+            disabled={savingSettings}
+            onClick={async () => {
+              setSavingSettings(true);
+              try {
+                await api.put('/admin/settings', settings);
+                toast.success('Commission rate updated successfully!');
+              } catch(e) { toast.error('Failed to update settings'); }
+              setSavingSettings(false);
+            }}
+            style={{ padding: '12px 24px' }}
+          >
+            {savingSettings ? 'Saving...' : 'Save Settings'}
+          </button>
         </div>
       </div>
 

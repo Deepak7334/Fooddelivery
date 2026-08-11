@@ -21,11 +21,13 @@ router.use(protect, authorize('admin'));
 router.get('/stats', async (req, res) => {
   try {
     const Booking = require('../models/Booking');
-    const [totalUsers, totalRestaurants, totalOrders, revenueAgg, totalDeliveryAgents, totalBookings] = await Promise.all([
+    const Store = require('../models/Store');
+    const [totalUsers, totalRestaurants, totalStores, totalOrders, revenueAgg, totalDeliveryAgents, totalBookings] = await Promise.all([
       User.countDocuments({ role: 'customer' }),
       Restaurant.countDocuments(),
+      Store.countDocuments(),
       Order.countDocuments(),
-      Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$finalAmount' } } }]),
+      Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$finalAmount' }, adminEarnings: { $sum: '$adminCommission' }, vendorPayouts: { $sum: '$vendorPayout' } } }]),
       User.countDocuments({ role: 'delivery' }),
       Booking.countDocuments(),
     ]);
@@ -33,7 +35,7 @@ router.get('/stats', async (req, res) => {
       .populate('customerId', 'name email phone')
       .populate('restaurantId', 'name')
       .populate('deliveryAgentId', 'name phone');
-    res.json({ success: true, stats: { totalUsers, totalRestaurants, totalOrders, totalRevenue: revenueAgg[0]?.total || 0, totalDeliveryAgents, totalBookings }, recentOrders });
+    res.json({ success: true, stats: { totalUsers, totalRestaurants, totalStores, totalOrders, totalRevenue: revenueAgg[0]?.total || 0, adminEarnings: revenueAgg[0]?.adminEarnings || 0, vendorPayouts: revenueAgg[0]?.vendorPayouts || 0, totalDeliveryAgents, totalBookings }, recentOrders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -769,6 +771,89 @@ router.get('/users/:id/audit-log', async (req, res) => {
   } catch (err) {
     console.error('Fetch audit log error:', err);
     res.status(500).json({ success: false, message: 'Backend error: ' + err.message });
+  }
+});
+// ========== VENDOR PAYOUTS ==========
+router.get('/payouts', async (req, res) => {
+  try {
+    const orders = await Order.find({
+      paymentStatus: 'paid',
+      vendorPayoutStatus: 'pending',
+      $or: [{ restaurantId: { $ne: null } }, { storeId: { $ne: null } }]
+    }).populate('restaurantId', 'name').populate('storeId', 'name');
+
+    const payouts = {};
+    for (const order of orders) {
+      const isRestaurant = !!order.restaurantId;
+      const vendorId = isRestaurant ? order.restaurantId._id : order.storeId._id;
+      const vendorName = isRestaurant ? order.restaurantId.name : order.storeId.name;
+      const key = `${isRestaurant ? 'restaurant' : 'store'}_${vendorId}`;
+      
+      if (!payouts[key]) {
+        payouts[key] = {
+          vendorId,
+          vendorName,
+          vendorType: isRestaurant ? 'restaurant' : 'store',
+          pendingOrdersCount: 0,
+          totalOwed: 0,
+        };
+      }
+      payouts[key].pendingOrdersCount += 1;
+      payouts[key].totalOwed += (order.vendorPayout || 0);
+    }
+
+    res.json({ success: true, payouts: Object.values(payouts) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/payouts/settle', async (req, res) => {
+  try {
+    const { vendorId, vendorType, vendorName } = req.body;
+    if (!vendorId || !vendorType) return res.status(400).json({ success: false, message: 'Vendor ID and Type required' });
+
+    const filter = {
+      paymentStatus: 'paid',
+      vendorPayoutStatus: 'pending'
+    };
+    if (vendorType === 'restaurant') filter.restaurantId = vendorId;
+    else filter.storeId = vendorId;
+
+    const pendingOrders = await Order.find(filter);
+    if (pendingOrders.length === 0) {
+      return res.status(400).json({ success: false, message: 'No pending orders found for this vendor' });
+    }
+
+    const totalOwed = pendingOrders.reduce((sum, order) => sum + (order.vendorPayout || 0), 0);
+    const orderIds = pendingOrders.map(order => order._id);
+
+    // Create Payout Record
+    const Payout = require('../models/Payout');
+    await Payout.create({
+      vendorId,
+      vendorType,
+      vendorName: vendorName || 'Vendor',
+      amountPaid: totalOwed,
+      orderCount: pendingOrders.length,
+      orderIds
+    });
+
+    // Mark as paid
+    const result = await Order.updateMany(filter, { $set: { vendorPayoutStatus: 'paid' } });
+    res.json({ success: true, message: `Successfully settled ₹${totalOwed.toFixed(2)} across ${result.modifiedCount} orders.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.get('/payout-history', async (req, res) => {
+  try {
+    const Payout = require('../models/Payout');
+    const payouts = await Payout.find().sort({ createdAt: -1 });
+    res.json({ success: true, payouts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

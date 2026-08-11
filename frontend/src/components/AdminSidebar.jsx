@@ -1,9 +1,10 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiGrid, FiShoppingBag, FiUsers, FiList, FiTag, FiLogOut, FiX, FiTruck, FiCalendar, FiPackage, FiSettings } from 'react-icons/fi';
+import { FiGrid, FiShoppingBag, FiUsers, FiList, FiTag, FiLogOut, FiX, FiTruck, FiCalendar, FiPackage, FiSettings, FiDollarSign } from 'react-icons/fi';
 
 const navLinks = [
   { to: '/admin', icon: <FiGrid />, label: 'Dashboard', exact: true },
+  { to: '/admin/payouts', icon: <FiDollarSign />, label: 'Vendor Payouts' },
   { to: '/admin/restaurants', icon: <FiShoppingBag />, label: 'Restaurants' },
   { to: '/admin/stores', icon: <FiPackage />, label: 'Stores' },
   { to: '/admin/users', icon: <FiUsers />, label: 'Users' },

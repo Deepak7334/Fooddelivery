@@ -71,6 +71,19 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  adminCommission: {
+    type: Number,
+    default: 0,
+  },
+  vendorPayout: {
+    type: Number,
+    default: 0,
+  },
+  vendorPayoutStatus: {
+    type: String,
+    enum: ['pending', 'paid'],
+    default: 'pending',
+  },
   status: {
     type: String,
     enum: ['pending', 'accepted', 'preparing', 'assignment_pending', 'out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer', 'delivered', 'cancelled'],
@@ -148,16 +161,10 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-  rating: {
-    type: Number,
-    min: 1,
-    max: 5,
-    default: null
-  },
-  review: {
-    type: String,
-    default: ''
-  },
+  isReviewed: {
+    type: Boolean,
+    default: false
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

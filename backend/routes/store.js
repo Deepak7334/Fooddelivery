@@ -24,10 +24,24 @@ router.get('/types', (req, res) => {
 // GET /api/store/stores — list all active stores (with filters)
 router.get('/stores', async (req, res) => {
   try {
-    const { type, city, search } = req.query;
+    const { type, city, search, lat, lng } = req.query;
     const filter = { isActive: true };
+    
+    if (lat && lng) {
+      filter.location = {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)]
+          },
+          $maxDistance: 5000 // 5 km radius
+        }
+      };
+    } else if (city) {
+      filter.city = { $regex: city, $options: 'i' };
+    }
+
     if (type && type !== 'all') filter.storeType = type;
-    if (city) filter.city = { $regex: city, $options: 'i' };
     if (search) filter.$or = [
       { name: { $regex: search, $options: 'i' } },
       { description: { $regex: search, $options: 'i' } },

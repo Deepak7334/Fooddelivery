@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiPackage, FiCalendar, FiXCircle } from 'react-icons/fi';
+import ReviewOrderModal from './ReviewOrderModal';
 
 const STATUS_STYLES = {
   pending:   { bg: 'rgba(255,152,0,0.12)',  color: '#FF9800',  label: '⏳ Pending' },
@@ -35,9 +36,6 @@ export default function OrderHistoryPage() {
 
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
   const [ratingOrder, setRatingOrder] = useState(null);
-  const [ratingValue, setRatingValue] = useState(5);
-  const [reviewText, setReviewText] = useState('');
-  const [submittingRating, setSubmittingRating] = useState(false);
 
   useEffect(() => {
     api.get('/customer/orders')
@@ -78,25 +76,10 @@ export default function OrderHistoryPage() {
     }
   };
 
-  const submitRating = async () => {
-    if (!ratingOrder) return;
-    setSubmittingRating(true);
-    try {
-      const res = await api.post(`/customer/orders/${ratingOrder._id}/rate`, {
-        rating: ratingValue,
-        review: reviewText
-      });
-      toast.success(res.data.message || 'Thanks for your feedback!');
-      setOrders(prev => prev.map(o => o._id === ratingOrder._id ? { ...o, rating: ratingValue, review: reviewText } : o));
-      setRatingModalOpen(false);
-      setRatingOrder(null);
-      setRatingValue(5);
-      setReviewText('');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit rating');
-    } finally {
-      setSubmittingRating(false);
-    }
+  const handleRatingSuccess = () => {
+    setOrders(prev => prev.map(o => o._id === ratingOrder._id ? { ...o, isReviewed: true } : o));
+    setRatingModalOpen(false);
+    setRatingOrder(null);
   };
 
   const formatDate = (d) => new Date(d).toLocaleDateString('en-IN', {
@@ -171,17 +154,15 @@ export default function OrderHistoryPage() {
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--primary)', marginBottom: 10 }}>₹{order.finalAmount}</div>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-                          {order.status === 'delivered' && !order.rating ? (
+                          {order.status === 'delivered' && !order.isReviewed ? (
                             <button className="btn btn-secondary btn-sm" onClick={(e) => {
                               e.stopPropagation();
                               setRatingOrder(order);
-                              setRatingValue(5);
-                              setReviewText('');
                               setRatingModalOpen(true);
-                            }}>⭐ Rate</button>
-                          ) : order.rating ? (
-                            <span style={{ fontSize: 13, color: '#FF9800', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginRight: 4 }}>
-                              ⭐ {order.rating}/5
+                            }}>⭐ Rate Order</button>
+                          ) : order.isReviewed ? (
+                            <span style={{ fontSize: 13, color: '#4CAF50', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginRight: 4 }}>
+                              ✅ Reviewed
                             </span>
                           ) : null}
 
@@ -270,48 +251,11 @@ export default function OrderHistoryPage() {
 
       {/* Rating Modal */}
       {ratingModalOpen && ratingOrder && (
-        <div className="modal-overlay" onClick={() => setRatingModalOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: 400, padding: 24, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Rate your order</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>
-              How was your experience with {ratingOrder.restaurantName || ratingOrder.storeName || 'JDkart'}?
-            </p>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
-              {[1, 2, 3, 4, 5].map(star => (
-                <button
-                  key={star}
-                  onClick={() => setRatingValue(star)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 32, padding: 0,
-                    color: star <= ratingValue ? '#FF9800' : '#E0E0E0',
-                    transition: 'transform 0.2s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'none'}
-                >
-                  ★
-                </button>
-              ))}
-            </div>
-
-            <textarea
-              placeholder="Leave a review (optional)..."
-              value={reviewText}
-              onChange={e => setReviewText(e.target.value)}
-              className="input-field"
-              style={{ minHeight: 100, resize: 'vertical', marginBottom: 24, width: '100%' }}
-            />
-
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn btn-secondary" onClick={() => setRatingModalOpen(false)} style={{ flex: 1 }}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitRating} disabled={submittingRating} style={{ flex: 1 }}>
-                {submittingRating ? 'Submitting...' : 'Submit Rating'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReviewOrderModal 
+          order={ratingOrder}
+          onClose={() => setRatingModalOpen(false)}
+          onSuccess={handleRatingSuccess}
+        />
       )}
     </div>
   );

@@ -24,6 +24,14 @@ export default function RestaurantsPage() {
     if (sort) params.set('sort', sort);
     if (cuisine) params.set('cuisine', cuisine);
     
+    try {
+      const coords = JSON.parse(localStorage.getItem('jdkart_coords'));
+      if (coords && coords.lat && coords.lng) {
+        params.set('lat', coords.lat);
+        params.set('lng', coords.lng);
+      }
+    } catch(e) {}
+    
     Promise.all([
       api.get(`/customer/restaurants?${params}`),
       api.get(`/customer/foods?${params}`)

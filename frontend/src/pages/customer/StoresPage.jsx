@@ -37,6 +37,14 @@ export default function StoresPage() {
     if (sort) params.set('sort', sort);
     if (type && type !== 'all') params.set('type', type);
     
+    try {
+      const coords = JSON.parse(localStorage.getItem('jdkart_coords'));
+      if (coords && coords.lat && coords.lng) {
+        params.set('lat', coords.lat);
+        params.set('lng', coords.lng);
+      }
+    } catch(e) {}
+    
     Promise.all([
       api.get(`/store/stores?${params}`),
       api.get(`/store/products?${params}`)

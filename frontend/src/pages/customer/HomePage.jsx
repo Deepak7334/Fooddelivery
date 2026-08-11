@@ -42,7 +42,9 @@ export default function HomePage() {
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [locationText, setLocationText] = useState('');
+  const [locationText, setLocationText] = useState(() => {
+    try { return localStorage.getItem('jdkart_coords') ? '📍 Current Location' : ''; } catch { return ''; }
+  });
   // GPS coords stored separately from display text
   const [userCoords, setUserCoords]   = useState(() => {
     try { return JSON.parse(localStorage.getItem('jdkart_coords') || 'null'); } catch { return null; }
@@ -54,8 +56,17 @@ export default function HomePage() {
   const locationInputRef = useRef(null);
 
   useEffect(() => {
+    let qs = '';
+    let coordsObj = null;
+    try {
+      coordsObj = JSON.parse(localStorage.getItem('jdkart_coords'));
+      if (coordsObj && coordsObj.lat && coordsObj.lng) {
+        qs = `?lat=${coordsObj.lat}&lng=${coordsObj.lng}`;
+      }
+    } catch(e) {}
+
     // Use sessionStorage to cache homepage data for 5 minutes
-    const CACHE_KEY = 'jdkart_home_cache';
+    const CACHE_KEY = `jdkart_home_cache_${qs}`;
     const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
     try {
       const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
@@ -74,11 +85,11 @@ export default function HomePage() {
     }
 
     Promise.all([
-      api.get('/customer/categories').catch(() => ({ data: { categories: [] } })),
-      api.get('/customer/restaurants').catch(() => ({ data: { restaurants: [] } })),
-      api.get('/customer/foods').catch(() => ({ data: { foods: [] } })),
-      api.get('/store/products').catch(() => ({ data: { products: [] } })),
-      api.get('/store/stores').catch(() => ({ data: { stores: [] } }))
+      api.get(`/customer/categories`).catch(() => ({ data: { categories: [] } })),
+      api.get(`/customer/restaurants${qs}`).catch(() => ({ data: { restaurants: [] } })),
+      api.get(`/customer/foods${qs}`).catch(() => ({ data: { foods: [] } })),
+      api.get(`/store/products${qs}`).catch(() => ({ data: { products: [] } })),
+      api.get(`/store/stores${qs}`).catch(() => ({ data: { stores: [] } }))
     ]).then(([catRes, restRes, foodRes, prodRes, storeRes]) => {
       const cats  = catRes.data.categories   || [];
       const rests = restRes.data.restaurants || [];
@@ -98,7 +109,6 @@ export default function HomePage() {
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  // ----- GPS Detection -----
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
@@ -111,9 +121,10 @@ export default function HomePage() {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserCoords(coords);
         localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-        setLocationText('📍 Current Location');
+        setLocationText(' Current Location');
         toast.success('Location detected!', { id: 'loc' });
         setLocLoading(false);
+        setTimeout(() => window.location.reload(), 500); // Reload to fetch nearby vendors
       },
       () => {
         toast.error('Could not get location. Please allow access or type manually.', { id: 'loc' });
@@ -127,7 +138,9 @@ export default function HomePage() {
   const visibleRestaurants = useMemo(() => {
     if (!userCoords) return restaurants;
     return restaurants.filter(r => {
-      const d = getDistanceKm(userCoords.lat, userCoords.lng, r.location?.lat, r.location?.lng);
+      const rLat = r.location?.coordinates ? r.location.coordinates[1] : r.location?.lat;
+      const rLng = r.location?.coordinates ? r.location.coordinates[0] : r.location?.lng;
+      const d = getDistanceKm(userCoords.lat, userCoords.lng, rLat, rLng);
       return d === null || d <= DELIVERY_RADIUS_KM;
     });
   }, [restaurants, userCoords]);
@@ -288,15 +301,16 @@ export default function HomePage() {
             </p>
 
             {/* ── Search bar ── */}
-            <form onSubmit={handleSearch} className="search-form">
+            <form onSubmit={handleSearch} className="search-form" style={{ borderRadius: 100, padding: '4px 6px', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              
               {/* Location input */}
-              <div className="search-location">
+              <div className="search-location" style={{ borderRight: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', flex: '1 1 140px' }}>
                 <button
                   type="button"
                   onClick={handleDetectLocation}
                   disabled={locLoading}
                   title="Auto-detect location"
-                  style={{ background: 'transparent', border: 'none', cursor: locLoading ? 'not-allowed' : 'pointer', fontSize: 18, color: 'var(--primary)', padding: '0 8px 0 0', flexShrink: 0 }}
+                  style={{ background: 'transparent', border: 'none', cursor: locLoading ? 'not-allowed' : 'pointer', fontSize: 18, color: 'var(--primary)', padding: 0, marginRight: 8, display: 'flex', alignItems: 'center' }}
                 >
                   {locLoading ? '⏳' : '📍'}
                 </button>
@@ -304,21 +318,22 @@ export default function HomePage() {
                   ref={locationInputRef}
                   type="text"
                   className="search-input-field"
-                  placeholder="Enter city or 📍 detect"
+                  placeholder="Enter city or detect"
                   value={locationText}
                   onChange={e => {
                     setLocationText(e.target.value);
-                    // If user edits manually, clear GPS coords so we don't filter by radius
                     if (userCoords) { setUserCoords(null); localStorage.removeItem('jdkart_coords'); }
                   }}
+                  style={{ color: 'var(--text-primary)', padding: '12px 0', fontSize: 14 }}
                 />
                 {(locationText || userCoords) && (
-                  <button type="button" onClick={clearLocation} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16, padding: '0 4px', flexShrink: 0 }} title="Clear location">✕</button>
+                  <button type="button" onClick={clearLocation} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16, padding: '0 4px', marginLeft: 4 }}>✕</button>
                 )}
               </div>
 
               {/* Food search input */}
-              <div className="search-input-wrap">
+              <div className="search-input-wrap" style={{ display: 'flex', alignItems: 'center', flex: '2 1 240px', padding: '0 16px', position: 'relative' }}>
+                <span style={{ fontSize: 18, color: 'var(--text-muted)', marginRight: 10 }}>🔍</span>
                 <input
                   type="text"
                   className="search-input-field"
@@ -327,10 +342,11 @@ export default function HomePage() {
                   onChange={e => { setSearch(e.target.value); setShowSuggestions(true); }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  style={{ color: 'var(--text-primary)', padding: '12px 0', fontSize: 14 }}
                 />
                 
                 {showSuggestions && searchSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, zIndex: 999, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, marginTop: 12, zIndex: 999, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
                     {searchSuggestions.map((s, i) => (
                       <div key={i} onClick={() => {
                         setSearch(s.name);
@@ -352,8 +368,8 @@ export default function HomePage() {
                 )}
               </div>
 
-              <button type="submit" className="btn btn-primary search-submit-btn">
-                🔍 <span className="search-submit-text">Search</span>
+              <button type="submit" className="btn btn-primary" style={{ borderRadius: 100, padding: '12px 24px', fontWeight: 700, margin: '4px 4px 4px 0', flexShrink: 0 }}>
+                Search
               </button>
             </form>
 
@@ -535,7 +551,9 @@ export default function HomePage() {
 
 // ── Restaurant Card ──
 function RestaurantCard({ restaurant, userCoords }) {
-  const d = getDistanceKm(userCoords?.lat, userCoords?.lng, restaurant.location?.lat, restaurant.location?.lng);
+  const rLat = restaurant.location?.coordinates ? restaurant.location.coordinates[1] : restaurant.location?.lat;
+  const rLng = restaurant.location?.coordinates ? restaurant.location.coordinates[0] : restaurant.location?.lng;
+  const d = getDistanceKm(userCoords?.lat, userCoords?.lng, rLat, rLng);
   return (
     <Link to={`/restaurants/${restaurant._id}`} className="card" style={{ textDecoration: 'none' }}>
       <div style={{ position: 'relative', height: 160, background: 'var(--bg-card2)', overflow: 'hidden' }}>

@@ -7,6 +7,9 @@ const Order = require('../models/Order');
 const Category = require('../models/Category');
 const Store = require('../models/Store');
 const Settings = require('../models/Settings');
+const Review = require('../models/Review');
+const User = require('../models/User');
+const Product = require('../models/Product');
 
 // ========== PUBLIC ROUTES ==========
 // Get all categories
@@ -53,19 +56,35 @@ router.get('/foods', async (req, res) => {
 // Get all restaurants (with search & filter)
 router.get('/restaurants', async (req, res) => {
   try {
-    const { search, cuisine, sort, city } = req.query;
+    const { search, cuisine, sort, city, lat, lng } = req.query;
     let filter = { isActive: true };
-    if (city) filter.city = new RegExp(city, 'i');
+    
+    if (lat && lng) {
+      filter.location = {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)]
+          },
+          $maxDistance: 5000 // 5 km radius
+        }
+      };
+    } else if (city) {
+      filter.city = new RegExp(city, 'i');
+    }
+
     if (cuisine) filter.cuisine = new RegExp(cuisine, 'i');
     if (search) filter.$or = [
       { name: new RegExp(search, 'i') },
       { cuisine: { $elemMatch: { $regex: search, $options: 'i' } } },
     ];
     let query = Restaurant.find(filter);
+    
+    // Note: $near automatically sorts by distance. Only override sort if specifically requested and NOT using geo
     if (sort === 'rating') query = query.sort({ rating: -1 });
     else if (sort === 'deliveryTime') query = query.sort({ deliveryTime: 1 });
     else if (sort === 'deliveryFee') query = query.sort({ deliveryFee: 1 });
-    else query = query.sort({ createdAt: -1 });
+    else if (!lat || !lng) query = query.sort({ createdAt: -1 });
     const restaurants = await query;
     res.json({ success: true, restaurants });
   } catch (err) {
@@ -127,12 +146,42 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
     for (const key of Object.keys(vendorGroups)) {
       const group = vendorGroups[key];
       let vendorName = 'JDkart';
+      let vendorCoords = null;
       if (group.vendorType === 'restaurant' && group.vendorId) {
         const rest = await Restaurant.findById(group.vendorId);
-        if (rest) vendorName = rest.name;
+        if (rest) {
+          vendorName = rest.name;
+          if (rest.location && rest.location.coordinates) vendorCoords = rest.location.coordinates;
+        }
       } else if (group.vendorType === 'store' && group.vendorId) {
         const store = await Store.findById(group.vendorId);
-        if (store) vendorName = store.name;
+        if (store) {
+          vendorName = store.name;
+          if (store.location && store.location.coordinates) vendorCoords = store.location.coordinates;
+        }
+      }
+
+      // Auto-assign closest available rider
+      let assignedAgentId = null;
+      if (vendorCoords && vendorCoords.length === 2 && vendorCoords[0] !== 0) {
+        const User = require('../models/User');
+        const nearestAgent = await User.findOne({
+          role: 'delivery',
+          isActive: true,
+          deliveryStatus: 'available',
+          location: {
+            $near: {
+              $geometry: {
+                type: "Point",
+                coordinates: vendorCoords
+              },
+              $maxDistance: 10000 // 10km search radius
+            }
+          }
+        });
+        if (nearestAgent) {
+          assignedAgentId = nearestAgent._id;
+        }
       }
 
       // Calculate total delivery fee for this vendor group
@@ -141,6 +190,11 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       // Delivery fee based on order amount (consistent rule)
       const groupDeliveryFee = Number(totalAmount) < 30 ? 5 : 10;
       const finalAmount = totalAmount + groupDeliveryFee;
+      
+      const settings = await Settings.findOne();
+      const platformRate = settings?.platformCommissionRate ?? 15;
+      const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));
+      const vendorPayout = Number((totalAmount - adminCommission).toFixed(2));
 
       const order = await Order.create({
         customerId: req.user._id,
@@ -153,14 +207,21 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
         totalAmount,
         deliveryFee: groupDeliveryFee,
         finalAmount,
+        adminCommission,
+        vendorPayout,
         deliveryAddress,
         specialInstructions,
         paymentMethod: paymentMethod || 'razorpay',
         customerEmail: req.user.email,
         customerPhone: req.user.phone,
         alternatePhone: req.body.alternatePhone || '',
+        deliveryAgentId: assignedAgentId,
         statusHistory: [{ status: 'pending', timestamp: new Date() }],
       });
+      
+      if (assignedAgentId) {
+        io.to(`delivery_${assignedAgentId}`).emit('order:assigned', order);
+      }
       
       createdOrders.push(order);
       io.to(`${group.vendorType}_${group.vendorId}`).emit('order:new', order);
@@ -309,6 +370,11 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
     const deliveryFee = Number(totalAmount) < 30 ? 5 : 10;
     const finalAmount = Number(totalAmount) + deliveryFee;
 
+    const settings = await Settings.findOne();
+    const platformRate = settings?.platformCommissionRate ?? 15;
+    const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));
+    const vendorPayout = Number((totalAmount - adminCommission).toFixed(2));
+
     const order = await Order.create({
       customerId: req.user.id,
       storeId,
@@ -318,6 +384,8 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
       totalAmount,
       deliveryFee,
       finalAmount,
+      adminCommission,
+      vendorPayout,
       deliveryAddress,
       paymentMethod: paymentMethod || 'cod',
       paymentStatus: 'pending',
@@ -338,51 +406,82 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
     res.status(500).json({ success: false, message: err.message });
   }
 });
-// Rate a delivered order
+// Submit a multi-part review for a delivered order
 router.post('/orders/:id/rate', protect, authorize('customer'), async (req, res) => {
   try {
-    const { rating, review } = req.body;
-    if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ success: false, message: 'Valid rating between 1 and 5 is required' });
-    }
-
+    const { vendorRating, vendorReview, deliveryRating, deliveryReview, itemRatings } = req.body;
+    
+    // 1. Fetch order
     const order = await Order.findOne({ _id: req.params.id, customerId: req.user.id });
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     if (order.status !== 'delivered') return res.status(400).json({ success: false, message: 'Only delivered orders can be rated' });
-    if (order.rating) return res.status(400).json({ success: false, message: 'Order has already been rated' });
+    if (order.isReviewed) return res.status(400).json({ success: false, message: 'Order has already been reviewed' });
 
-    order.rating = rating;
-    order.review = review || '';
+    // 2. Create the Review document
+    const reviewData = {
+      orderId: order._id,
+      customerId: req.user.id,
+      vendorId: order.restaurantId || order.storeId,
+      vendorType: order.restaurantId ? 'restaurant' : 'store',
+      vendorRating: vendorRating || null,
+      vendorReview: vendorReview || '',
+      deliveryAgentId: order.deliveryAgentId,
+      deliveryRating: deliveryRating || null,
+      deliveryReview: deliveryReview || '',
+      items: itemRatings || [] // array of { itemId, itemType, rating }
+    };
+    
+    const review = await Review.create(reviewData);
+
+    // 3. Mark order as reviewed
+    order.isReviewed = true;
     await order.save();
 
-    // Update Restaurant or Store rating
-    if (order.restaurantId) {
-      const Restaurant = require('../models/Restaurant');
-      const restaurant = await Restaurant.findById(order.restaurantId);
-      if (restaurant) {
-        const oldTotal = restaurant.totalRatings || 0;
-        const oldRating = restaurant.rating || 0;
+    // 4. Update Vendor (Restaurant/Store) Rating
+    if (vendorRating) {
+      const VendorModel = order.restaurantId ? require('../models/Restaurant') : require('../models/Store');
+      const vendor = await VendorModel.findById(reviewData.vendorId);
+      if (vendor) {
+        const oldTotal = vendor.totalRatings || 0;
+        const oldRating = vendor.rating || 0;
         const newTotal = oldTotal + 1;
-        const newAvg = ((oldRating * oldTotal) + rating) / newTotal;
-        restaurant.totalRatings = newTotal;
-        restaurant.rating = parseFloat(newAvg.toFixed(1));
-        await restaurant.save();
-      }
-    } else if (order.storeId) {
-      const Store = require('../models/Store');
-      const store = await Store.findById(order.storeId);
-      if (store) {
-        const oldTotal = store.totalRatings || 0;
-        const oldRating = store.rating || 0;
-        const newTotal = oldTotal + 1;
-        const newAvg = ((oldRating * oldTotal) + rating) / newTotal;
-        store.totalRatings = newTotal;
-        store.rating = parseFloat(newAvg.toFixed(1));
-        await store.save();
+        vendor.rating = parseFloat((((oldRating * oldTotal) + vendorRating) / newTotal).toFixed(1));
+        vendor.totalRatings = newTotal;
+        await vendor.save();
       }
     }
 
-    res.json({ success: true, message: 'Thanks for your feedback!', order });
+    // 5. Update Delivery Agent Rating
+    if (deliveryRating && order.deliveryAgentId) {
+      const agent = await User.findById(order.deliveryAgentId);
+      if (agent) {
+        const oldTotal = agent.totalRatings || 0;
+        const oldRating = agent.rating || 0;
+        const newTotal = oldTotal + 1;
+        agent.rating = parseFloat((((oldRating * oldTotal) + deliveryRating) / newTotal).toFixed(1));
+        agent.totalRatings = newTotal;
+        await agent.save();
+      }
+    }
+
+    // 6. Update Food/Product Item Ratings
+    if (itemRatings && itemRatings.length > 0) {
+      for (const item of itemRatings) {
+        if (!item.rating) continue;
+        const ItemModel = item.itemType === 'product' ? require('../models/Product') : require('../models/Food');
+        const dbItem = await ItemModel.findById(item.itemId);
+        if (dbItem) {
+          const oldTotal = dbItem.totalRatings || 0;
+          const oldRating = dbItem.rating || 4.0; // Default is 4.0 if never rated
+          const newTotal = oldTotal + 1;
+          dbItem.rating = parseFloat((((oldRating * oldTotal) + item.rating) / newTotal).toFixed(1));
+          dbItem.totalRatings = newTotal;
+          await dbItem.save();
+        }
+      }
+    }
+
+    res.json({ success: true, message: 'Review submitted successfully', review });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

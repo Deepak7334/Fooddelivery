@@ -43,17 +43,35 @@ export const CartProvider = ({ children }) => {
 
   // Add food item (existing restaurants)
   const addToCart = (item, restId, restName, config = {}) => {
+    let currentCartItems = cartItems;
+    
+    if (cartItems.length > 0 && (cartType !== 'food' || (restaurantId && restaurantId !== restId))) {
+      if (!window.confirm("Your cart contains items from another vendor. Do you want to clear your cart and add this item?")) {
+        return;
+      }
+      setRestaurantId(restId);
+      setRestaurantName(restName);
+      setStoreId(null);
+      setStoreName('');
+      setCartType('food');
+      currentCartItems = [];
+    } else if (cartItems.length === 0) {
+      setRestaurantId(restId);
+      setRestaurantName(restName);
+      setCartType('food');
+    }
+
     setCartItems(prev => {
+      const actualPrev = currentCartItems.length === 0 ? [] : prev;
       const baseId = item._id || item.foodId;
       const cartItemId = generateCartItemId(baseId, config);
-      // Legacy support: if item already in cart without cartItemId, match by foodId
-      const exists = prev.find(i => (i.cartItemId === cartItemId || (!i.cartItemId && i.foodId === baseId)) && i.type === 'food');
+      const exists = actualPrev.find(i => (i.cartItemId === cartItemId || (!i.cartItemId && i.foodId === baseId)) && i.type === 'food');
       
       const itemPrice = config.computedPrice || item.discountedPrice || item.price;
       
-      if (exists) return prev.map(i => (i === exists) ? { ...i, quantity: i.quantity + 1 } : i);
+      if (exists) return actualPrev.map(i => (i === exists) ? { ...i, quantity: i.quantity + 1 } : i);
       
-      return [...prev, { 
+      return [...actualPrev, { 
         ...item, 
         foodId: baseId, 
         cartItemId,
@@ -74,16 +92,35 @@ export const CartProvider = ({ children }) => {
 
   // Add product item (stores)
   const addProductToCart = (item, sId, sName, config = {}) => {
+    let currentCartItems = cartItems;
+
+    if (cartItems.length > 0 && (cartType !== 'product' || (storeId && storeId !== sId))) {
+      if (!window.confirm("Your cart contains items from another vendor. Do you want to clear your cart and add this item?")) {
+        return;
+      }
+      setStoreId(sId);
+      setStoreName(sName);
+      setRestaurantId(null);
+      setRestaurantName('');
+      setCartType('product');
+      currentCartItems = [];
+    } else if (cartItems.length === 0) {
+      setStoreId(sId);
+      setStoreName(sName);
+      setCartType('product');
+    }
+
     setCartItems(prev => {
+      const actualPrev = currentCartItems.length === 0 ? [] : prev;
       const baseId = item._id || item.productId;
       const cartItemId = generateCartItemId(baseId, config);
-      const exists = prev.find(i => (i.cartItemId === cartItemId || (!i.cartItemId && i.productId === baseId)) && i.type === 'product');
+      const exists = actualPrev.find(i => (i.cartItemId === cartItemId || (!i.cartItemId && i.productId === baseId)) && i.type === 'product');
       
       const itemPrice = config.computedPrice || item.discountedPrice || item.price;
 
-      if (exists) return prev.map(i => (i === exists) ? { ...i, quantity: i.quantity + 1 } : i);
+      if (exists) return actualPrev.map(i => (i === exists) ? { ...i, quantity: i.quantity + 1 } : i);
       
-      return [...prev, { 
+      return [...actualPrev, { 
         ...item, 
         productId: baseId, 
         cartItemId,
