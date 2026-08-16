@@ -348,6 +348,32 @@ select.form-input option {
     flex-direction: column !important;
     gap: 6px !important;
   }
+
+  .horizontal-scroll-mobile {
+    display: flex !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    gap: 16px !important;
+    padding-bottom: 12px;
+    padding-left: 4px;
+    padding-right: 4px;
+    margin-left: -4px;
+    margin-right: -4px;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  
+  .horizontal-scroll-mobile::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+  
+  .horizontal-scroll-mobile > * {
+    min-width: 260px; /* Fixed width for better UI across small devices */
+    scroll-snap-align: center;
+    flex: 0 0 auto;
+  }
 }
 
 

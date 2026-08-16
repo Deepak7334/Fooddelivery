@@ -473,7 +473,7 @@ export default function HomePage() {
                       <Link to="/stores" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Stores →</Link>
                     </div>
                   </div>
-                  <div className="vendor-grid">
+                  <div className="vendor-grid horizontal-scroll-mobile">
                     {loading ? Array(6).fill(0).map((_, i) => (
                       <div key={i} style={{ height: 270, borderRadius: 16 }} className="shimmer" />
                     )) : mixedVendors.map(v => (
