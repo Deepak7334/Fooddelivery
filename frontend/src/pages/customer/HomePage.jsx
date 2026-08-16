@@ -333,7 +333,6 @@ export default function HomePage() {
 
               {/* Food search input */}
               <div className="search-input-wrap">
-                <span style={{ fontSize: 18, color: 'var(--text-muted)', marginRight: 10 }}>🔍</span>
                 <input
                   type="text"
                   className="search-input-field"
