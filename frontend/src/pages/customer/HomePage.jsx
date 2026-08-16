@@ -368,7 +368,7 @@ export default function HomePage() {
                 )}
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ borderRadius: 100, padding: '12px 24px', fontWeight: 700, margin: '4px 4px 4px 0', flexShrink: 0 }}>
+              <button type="submit" className="btn btn-primary search-submit-btn">
                 Search
               </button>
             </form>
