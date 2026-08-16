@@ -301,10 +301,10 @@ export default function HomePage() {
             </p>
 
             {/* ── Search bar ── */}
-            <form onSubmit={handleSearch} className="search-form" style={{ borderRadius: 100, padding: '4px 6px', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <form onSubmit={handleSearch} className="search-form">
               
               {/* Location input */}
-              <div className="search-location" style={{ borderRight: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', flex: '1 1 140px' }}>
+              <div className="search-location">
                 <button
                   type="button"
                   onClick={handleDetectLocation}
@@ -332,7 +332,7 @@ export default function HomePage() {
               </div>
 
               {/* Food search input */}
-              <div className="search-input-wrap" style={{ display: 'flex', alignItems: 'center', flex: '2 1 240px', padding: '0 16px', position: 'relative' }}>
+              <div className="search-input-wrap">
                 <span style={{ fontSize: 18, color: 'var(--text-muted)', marginRight: 10 }}>🔍</span>
                 <input
                   type="text"

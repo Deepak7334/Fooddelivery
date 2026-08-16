@@ -400,23 +400,22 @@ select.form-input option {
   display: flex;
   gap: 0;
   max-width: 640px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.1);
-  overflow: visible;
-  backdrop-filter: blur(10px);
-  align-items: stretch;
+  background: var(--bg-card);
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  align-items: center;
 }
 .search-location {
   display: flex;
   align-items: center;
   padding: 0 16px;
-  border-right: 1px solid rgba(255,255,255,0.1);
+  border-right: 1px solid var(--border);
   min-width: 0;
-  flex: 1 1 160px;
+  flex: 1 1 140px;
 }
 .search-input-wrap {
-  flex: 2 1 200px;
+  flex: 2 1 240px;
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -445,11 +444,8 @@ select.form-input option {
 @media (max-width: 640px) {
   .search-form {
     flex-direction: row;
-    border-radius: 12px;
   }
   .search-location {
-    border-right: 1px solid rgba(255,255,255,0.1);
-    border-bottom: none;
     padding: 0 10px;
     flex: 1 1 80px !important;
   }
@@ -465,7 +461,7 @@ select.form-input option {
     font-size: 11px;
   }
   .search-submit-btn {
-    border-radius: 8px;
+    border-radius: 100px;
     margin: 4px;
     padding: 0 14px;
   }
@@ -477,24 +473,26 @@ select.form-input option {
 @media (max-width: 480px) {
   .search-form {
     flex-direction: column;
+    border-radius: 20px;
+    padding: 12px;
+    align-items: stretch;
   }
   .search-location {
     border-right: none !important;
-    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-    padding: 8px 12px !important;
-    width: 100%;
-    flex: none !important;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 6px;
   }
   .search-input-wrap {
-    padding: 8px 12px !important;
+    padding: 12px 6px !important;
     width: 100%;
     flex: none !important;
   }
   .search-submit-btn {
-    width: calc(100% - 16px);
-    margin: 8px;
-    padding: 10px !important;
+    width: 100%;
+    margin: 8px 0 0 0;
+    padding: 14px !important;
     justify-content: center;
+    border-radius: 12px;
   }
   .search-submit-text {
     display: inline;
