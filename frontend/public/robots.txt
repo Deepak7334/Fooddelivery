@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /restaurants
+Allow: /stores
+Disallow: /admin
+Disallow: /restaurant
+Disallow: /store-owner
+Disallow: /delivery
+
+Sitemap: https://jdkart.vercel.app/sitemap.xml
