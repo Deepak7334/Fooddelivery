@@ -25,30 +25,44 @@ router.get('/types', (req, res) => {
 router.get('/stores', async (req, res) => {
   try {
     const { type, city, search, lat, lng } = req.query;
-    const filter = { isActive: true };
+    let andConditions = [{ isActive: true }];
     
     if (lat && lng) {
-      filter.location = {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(lng), parseFloat(lat)]
-          },
-          $maxDistance: 5000 // 5 km radius
+      andConditions.push({
+        location: {
+          $near: {
+            $geometry: {
+              type: "Point",
+              coordinates: [parseFloat(lng), parseFloat(lat)]
+            },
+            $maxDistance: 5000 // 5 km radius
+          }
         }
-      };
+      });
     } else if (city) {
-      filter.city = { $regex: city, $options: 'i' };
+      const tokens = city.replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
+      const cityOr = tokens.flatMap(t => [
+        { city: { $regex: t, $options: 'i' } },
+        { address: { $regex: t, $options: 'i' } }
+      ]);
+      if (cityOr.length > 0) {
+        andConditions.push({ $or: cityOr });
+      }
     }
 
-    if (type && type !== 'all') filter.storeType = type;
-    if (search) filter.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
-      { tags: { $regex: search, $options: 'i' } },
-    ];
+    if (type && type !== 'all') andConditions.push({ storeType: type });
+    
+    if (search) {
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } },
+        ]
+      });
+    }
 
-    const stores = await Store.find(filter);
+    const stores = await Store.find({ $and: andConditions });
     res.json({ success: true, stores });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

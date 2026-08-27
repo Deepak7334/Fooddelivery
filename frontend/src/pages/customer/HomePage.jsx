@@ -21,7 +21,7 @@ function getDistanceKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-const DELIVERY_RADIUS_KM = 10; // deliver within 10 km
+const DELIVERY_RADIUS_KM = 5; // deliver within 5 km
 
 const STORE_TYPES = [
   { _id: 'grocery', name: 'Grocery', icon: '🛒', color: '#4CAF50', type: 'store' },
@@ -43,7 +43,9 @@ export default function HomePage() {
   const [search, setSearch]           = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [locationText, setLocationText] = useState(() => {
-    try { return localStorage.getItem('jdkart_coords') ? '📍 Current Location' : ''; } catch { return ''; }
+    try { 
+      return localStorage.getItem('jdkart_loc_name') || (localStorage.getItem('jdkart_coords') ? '📍 Current Location' : '');
+    } catch { return ''; }
   });
   // GPS coords stored separately from display text
   const [userCoords, setUserCoords]   = useState(() => {
@@ -65,25 +67,6 @@ export default function HomePage() {
       }
     } catch(e) {}
 
-    // Use sessionStorage to cache homepage data for 5 minutes
-    const CACHE_KEY = `jdkart_home_cache_${qs}`;
-    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-    try {
-      const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
-      if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
-        // eslint-disable-next-line
-        setCategories(cached.categories);
-        setRestaurants(cached.restaurants);
-        setFoods(cached.foods);
-        setProducts(cached.products);
-        setStores(cached.stores);
-        setLoading(false);
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
     Promise.all([
       api.get(`/customer/categories`).catch(() => ({ data: { categories: [] } })),
       api.get(`/customer/restaurants${qs}`).catch(() => ({ data: { restaurants: [] } })),
@@ -91,25 +74,22 @@ export default function HomePage() {
       api.get(`/store/products${qs}`).catch(() => ({ data: { products: [] } })),
       api.get(`/store/stores${qs}`).catch(() => ({ data: { stores: [] } }))
     ]).then(([catRes, restRes, foodRes, prodRes, storeRes]) => {
-      const cats  = catRes.data.categories   || [];
-      const rests = restRes.data.restaurants || [];
-      const fds   = foodRes.data.foods       || [];
-      const prods = prodRes.data.products    || [];
-      const sts   = storeRes.data.stores     || [];
-      setCategories(cats);
-      setRestaurants(rests);
-      setFoods(fds);
-      setProducts(prods);
-      setStores(sts);
-      try {
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), categories: cats, restaurants: rests, foods: fds, products: prods, stores: sts }));
-      } catch {
-        // ignore
-      }
+      setCategories(catRes.data.categories || []);
+      setRestaurants(restRes.data.restaurants || []);
+      setFoods(foodRes.data.foods || []);
+      setProducts(prodRes.data.products || []);
+      setStores(storeRes.data.stores || []);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+
+  const triggerLocationPrompt = () => {
+    setShowLocationPrompt(true);
+  };
+
   const handleDetectLocation = () => {
+    setShowLocationPrompt(false);
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
       return;
@@ -117,11 +97,27 @@ export default function HomePage() {
     setLocLoading(true);
     toast.loading('Detecting your location…', { id: 'loc' });
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      async pos => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserCoords(coords);
         localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-        setLocationText(' Current Location');
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+          const data = await res.json();
+          let locName = '📍 Current Location';
+          if (data && data.address) {
+            const addr = data.address;
+            const place = addr.amenity || addr.building || addr.neighbourhood || addr.suburb || addr.city_district || addr.village || addr.town || addr.city;
+            if (place) locName = `📍 ${place}`;
+          }
+          localStorage.setItem('jdkart_loc_name', locName);
+          setLocationText(locName);
+        } catch(e) {
+          localStorage.setItem('jdkart_loc_name', '📍 Current Location');
+          setLocationText('📍 Current Location');
+        }
+
         toast.success('Location detected!', { id: 'loc' });
         setLocLoading(false);
         setTimeout(() => window.location.reload(), 500); // Reload to fetch nearby vendors
@@ -134,24 +130,55 @@ export default function HomePage() {
     );
   };
 
-  // ----- Filter restaurants by proximity (only when GPS coords available) -----
+  // ----- Filter restaurants by proximity or locationText -----
   const visibleRestaurants = useMemo(() => {
-    if (!userCoords) return restaurants;
-    return restaurants.filter(r => {
-      const rLat = r.location?.coordinates ? r.location.coordinates[1] : r.location?.lat;
-      const rLng = r.location?.coordinates ? r.location.coordinates[0] : r.location?.lng;
-      const d = getDistanceKm(userCoords.lat, userCoords.lng, rLat, rLng);
-      return d === null || d <= DELIVERY_RADIUS_KM;
-    });
-  }, [restaurants, userCoords]);
+    if (userCoords) {
+      return restaurants.filter(r => {
+        const rLat = r.location?.coordinates ? r.location.coordinates[1] : r.location?.lat;
+        const rLng = r.location?.coordinates ? r.location.coordinates[0] : r.location?.lng;
+        const d = getDistanceKm(userCoords.lat, userCoords.lng, rLat, rLng);
+        return d === null || d <= DELIVERY_RADIUS_KM;
+      });
+    }
+    if (locationText.trim() && locationText !== '📍 Current Location') {
+      const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
+      return restaurants.filter(r => {
+        const c = r.city?.toLowerCase() || '';
+        const a = r.address?.toLowerCase() || '';
+        return tokens.some(t => c.includes(t) || a.includes(t));
+      });
+    }
+    return restaurants;
+  }, [restaurants, userCoords, locationText]);
+
+  // ----- Filter stores by proximity or locationText -----
+  const visibleStores = useMemo(() => {
+    if (userCoords) {
+      return stores.filter(s => {
+        const sLat = s.location?.coordinates ? s.location.coordinates[1] : s.location?.lat;
+        const sLng = s.location?.coordinates ? s.location.coordinates[0] : s.location?.lng;
+        const d = getDistanceKm(userCoords.lat, userCoords.lng, sLat, sLng);
+        return d === null || d <= DELIVERY_RADIUS_KM;
+      });
+    }
+    if (locationText.trim() && locationText !== '📍 Current Location') {
+      const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
+      return stores.filter(s => {
+        const c = s.city?.toLowerCase() || '';
+        const a = s.address?.toLowerCase() || '';
+        return tokens.some(t => c.includes(t) || a.includes(t));
+      });
+    }
+    return stores;
+  }, [stores, userCoords, locationText]);
 
   // Determine if we're "out of range" only when the user explicitly used GPS
-  const isOutOfRange = userCoords && restaurants.length > 0 && visibleRestaurants.length === 0;
+  const isOutOfRange = userCoords && (restaurants.length > 0 || stores.length > 0) && visibleRestaurants.length === 0 && visibleStores.length === 0;
 
   const mixedVendors = useMemo(() => {
     const allVendors = [
       ...visibleRestaurants.map(r => ({ ...r, isStore: false })),
-      ...stores.map(s => ({ ...s, isStore: true })),
+      ...visibleStores.map(s => ({ ...s, isStore: true })),
     ];
     const searchLower = search.toLowerCase();
     return allVendors
@@ -161,12 +188,20 @@ export default function HomePage() {
         return v.isStore ? v.storeType === activeCategory : v.cuisine?.includes(activeCategory);
       })
       .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  }, [visibleRestaurants, stores, search, activeCategory]);
+  }, [visibleRestaurants, visibleStores, search, activeCategory]);
+
+  const visibleFoods = useMemo(() => {
+    return foods;
+  }, [foods]);
+
+  const visibleProducts = useMemo(() => {
+    return products;
+  }, [products]);
 
   const mixedItems = useMemo(() => {
     const allItems = [
-      ...foods.map(f => ({ ...f, isProduct: false })),
-      ...products.map(p => ({ ...p, isProduct: true })),
+      ...visibleFoods.map(f => ({ ...f, isProduct: false })),
+      ...visibleProducts.map(p => ({ ...p, isProduct: true })),
     ];
     const searchLower = search.toLowerCase();
     return allItems
@@ -226,11 +261,11 @@ export default function HomePage() {
   };
 
   const searchSuggestions = useMemo(() => search.trim() ? [
-    ...foods.filter(f => f.name.toLowerCase().includes(search.toLowerCase())).map(f => ({ ...f, itemType: 'food' })),
-    ...products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => ({ ...p, itemType: 'product' })),
-    ...restaurants.filter(r => r.name.toLowerCase().includes(search.toLowerCase())).map(r => ({ ...r, itemType: 'restaurant' })),
-    ...stores.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map(s => ({ ...s, itemType: 'store' }))
-  ].slice(0, 6) : [], [search, foods, products, restaurants, stores]);
+    ...visibleFoods.filter(f => f.name.toLowerCase().includes(search.toLowerCase())).map(f => ({ ...f, itemType: 'food' })),
+    ...visibleProducts.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => ({ ...p, itemType: 'product' })),
+    ...visibleRestaurants.filter(r => r.name.toLowerCase().includes(search.toLowerCase())).map(r => ({ ...r, itemType: 'restaurant' })),
+    ...visibleStores.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map(s => ({ ...s, itemType: 'store' }))
+  ].slice(0, 6) : [], [search, visibleFoods, visibleProducts, visibleRestaurants, visibleStores]);
 
 
   const handleSearch = (e) => {
@@ -240,38 +275,46 @@ export default function HomePage() {
     if (locationText.trim() && locationText !== '📍 Current Location') {
       q.push(`city=${encodeURIComponent(locationText)}`);
     }
+    if (!search.trim()) {
+      // User just entered a location and pressed Enter, do not redirect!
+      // The homepage live-filters vendors based on locationText already.
+      return;
+    }
 
     let destination = 'restaurants';
     if (search.trim()) {
       const query = search.toLowerCase();
-      const exactProduct = products.find(p => p.name.toLowerCase() === query);
-      const exactStore = stores.find(s => s.name.toLowerCase() === query);
-      const exactFood = foods.find(f => f.name.toLowerCase() === query);
-      const exactRest = restaurants.find(r => r.name.toLowerCase() === query);
+      const exactProduct = visibleProducts.find(p => p.name.toLowerCase() === query);
+      const exactStore = visibleStores.find(s => s.name.toLowerCase() === query);
+      const exactFood = visibleFoods.find(f => f.name.toLowerCase() === query);
+      const exactRest = visibleRestaurants.find(r => r.name.toLowerCase() === query);
 
       if (exactProduct || exactStore) destination = 'stores';
       // If exact food/rest, override back to restaurants (priority if both match)
       if (exactFood || exactRest) destination = 'restaurants';
       
       if (!exactProduct && !exactStore && !exactFood && !exactRest) {
-        const hasProduct = products.some(p => p.name.toLowerCase().includes(query) || p.category?.toLowerCase().includes(query));
-        const hasStore = stores.some(s => s.name.toLowerCase().includes(query));
-        const hasFood = foods.some(f => f.name.toLowerCase().includes(query) || f.category?.toLowerCase().includes(query));
-        const hasRest = restaurants.some(r => r.name.toLowerCase().includes(query));
+        const hasProduct = visibleProducts.some(p => p.name.toLowerCase().includes(query) || p.category?.toLowerCase().includes(query));
+        const hasStore = visibleStores.some(s => s.name.toLowerCase().includes(query));
+        const hasFood = visibleFoods.some(f => f.name.toLowerCase().includes(query) || f.category?.toLowerCase().includes(query));
+        const hasRest = visibleRestaurants.some(r => r.name.toLowerCase().includes(query));
 
         if ((hasProduct || hasStore) && !hasFood && !hasRest) {
           destination = 'stores';
         }
       }
     }
-
+    
     navigate(q.length ? `/${destination}?${q.join('&')}` : `/${destination}`);
   };
 
   const clearLocation = () => {
+    localStorage.removeItem('jdkart_coords');
+    localStorage.removeItem('jdkart_loc_name');
     setUserCoords(null);
     setLocationText('');
-    localStorage.removeItem('jdkart_coords');
+    toast.success('Location cleared');
+    setTimeout(() => window.location.reload(), 500);
   };
 
   return (
@@ -307,7 +350,7 @@ export default function HomePage() {
               <div className="search-location">
                 <button
                   type="button"
-                  onClick={handleDetectLocation}
+                  onClick={triggerLocationPrompt}
                   disabled={locLoading}
                   title="Auto-detect location"
                   style={{ background: 'transparent', border: 'none', cursor: locLoading ? 'not-allowed' : 'pointer', fontSize: 18, color: 'var(--primary)', padding: 0, marginRight: 8, display: 'flex', alignItems: 'center' }}
@@ -322,7 +365,11 @@ export default function HomePage() {
                   value={locationText}
                   onChange={e => {
                     setLocationText(e.target.value);
-                    if (userCoords) { setUserCoords(null); localStorage.removeItem('jdkart_coords'); }
+                    if (userCoords) { 
+                      setUserCoords(null); 
+                      localStorage.removeItem('jdkart_coords'); 
+                      localStorage.removeItem('jdkart_loc_name'); 
+                    }
                   }}
                   style={{ color: 'var(--text-primary)', padding: '12px 0', fontSize: 14 }}
                 />
@@ -381,9 +428,9 @@ export default function HomePage() {
               }}>
                 <span style={{ fontSize: 22 }}>😔</span>
                 <span>
-                  <strong>Sorry, we can't reach you!</strong> There are no restaurants within {DELIVERY_RADIUS_KM} km of your location.
-                  <button onClick={clearLocation} style={{ marginLeft: 10, background: 'transparent', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline', fontSize: 13 }}>
-                    Browse all anyway
+                  <strong>"We can't reach you — sorry! Very soon we expand in your Area!"</strong>
+                  <button onClick={clearLocation} style={{ marginLeft: 10, background: 'transparent', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline', fontSize: 13, fontWeight: 700 }}>
+                    Try Again
                   </button>
                 </span>
               </div>
@@ -413,65 +460,54 @@ export default function HomePage() {
       </section>
 
       {/* ── MAIN CONTENT ── */}
-      {(!loading && isOutOfRange) ? (
-        // Full out-of-range page (when GPS used and truly nothing nearby)
-        <section style={{ padding: '80px 20px', textAlign: 'center', minHeight: 400, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ fontSize: 80, marginBottom: 24 }}>😔</div>
-          <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, marginBottom: 16 }}>We can't reach you — sorry!</h2>
-          <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 480 }}>
-            There are no restaurants within <strong>{DELIVERY_RADIUS_KM} km</strong> of your current location. We're expanding fast — check back soon!
-          </p>
-          <button className="btn btn-primary" style={{ marginTop: 32, padding: '12px 28px' }} onClick={clearLocation}>
-            Browse All Restaurants
-          </button>
-        </section>
-      ) : (
-        <>
-          {/* CATEGORIES */}
-          <section style={{ padding: 'clamp(32px,5vw,48px) 0 24px' }}>
-            <div className="container">
-              <div className="section-header">
-                <h2 className="section-title">What's on your <span>mind?</span></h2>
-                <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>See all →</Link>
-              </div>
-              <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
-                {loading ? Array(8).fill(0).map((_, i) => (
-                  <div key={i} style={{ minWidth: 90, height: 88, borderRadius: 16, background: 'var(--bg-card)' }} className="shimmer" />
-                )) : [...STORE_TYPES, ...categories].map(cat => {
-                  const catId = cat.type === 'store' ? cat._id : cat.name;
-                  const isActive = activeCategory === catId;
-                  return (
-                  <button key={cat._id} onClick={() => setActiveCategory(isActive ? null : catId)}
-                    style={{ minWidth: 90, textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', padding: 0, transition: 'var(--transition)', flexShrink: 0 }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                    <div style={{ background: isActive ? (cat.color ? `${cat.color}22` : 'rgba(255,87,34,0.15)') : 'var(--bg-card)', borderRadius: 16, padding: '14px 10px', marginBottom: 6, border: `1px solid ${isActive ? (cat.color || 'var(--primary)') : 'var(--border)'}`, transition: 'var(--transition)' }}
-                      onMouseEnter={e => { if(!isActive) e.currentTarget.style.borderColor = cat.color ? `${cat.color}88` : 'rgba(255,87,34,0.35)'}}
-                      onMouseLeave={e => { if(!isActive) e.currentTarget.style.borderColor = 'var(--border)'}}>
-                      <div style={{ fontSize: 30, marginBottom: 4 }}>{cat.icon}</div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: isActive ? (cat.color || 'var(--primary)') : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{cat.name}</div>
-                    </div>
-                  </button>
-                )})}
-              </div>
+      <>
+        {/* CATEGORIES */}
+        <section style={{ padding: 'clamp(32px,5vw,48px) 0 24px' }}>
+          <div className="container">
+            <div className="section-header">
+              <h2 className="section-title">What's on your <span>mind?</span></h2>
+              <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>See all →</Link>
             </div>
-          </section>
-
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {/* ALL VENDORS (Restaurants & Stores) */}
-            {(mixedVendors.length > 0 || mixedItems.length === 0) && (
-              <section style={{ padding: '8px 0 32px', order: search ? 2 : 1 }}>
-                <div className="container">
-                  <div className="section-header">
-                    <h2 className="section-title">
-                      {userCoords ? 'Near' : 'Top'} <span>Restaurants & Stores</span>
-                      {userCoords && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(within {DELIVERY_RADIUS_KM} km)</span>}
-                    </h2>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Restaurants →</Link>
-                      <Link to="/stores" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Stores →</Link>
-                    </div>
+            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
+              {loading ? Array(8).fill(0).map((_, i) => (
+                <div key={i} style={{ minWidth: 90, height: 88, borderRadius: 16, background: 'var(--bg-card)' }} className="shimmer" />
+              )) : [...STORE_TYPES, ...categories].map(cat => {
+                const catId = cat.type === 'store' ? cat._id : cat.name;
+                const isActive = activeCategory === catId;
+                return (
+                <button key={cat._id} onClick={() => setActiveCategory(isActive ? null : catId)}
+                  style={{ minWidth: 90, textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', padding: 0, transition: 'var(--transition)', flexShrink: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                  <div style={{ background: isActive ? (cat.color ? `${cat.color}22` : 'rgba(255,87,34,0.15)') : 'var(--bg-card)', borderRadius: 16, padding: '14px 10px', marginBottom: 6, border: `1px solid ${isActive ? (cat.color || 'var(--primary)') : 'var(--border)'}`, transition: 'var(--transition)' }}
+                    onMouseEnter={e => { if(!isActive) e.currentTarget.style.borderColor = cat.color ? `${cat.color}88` : 'rgba(255,87,34,0.35)'}}
+                    onMouseLeave={e => { if(!isActive) e.currentTarget.style.borderColor = 'var(--border)'}}>
+                    <div style={{ fontSize: 30, marginBottom: 4 }}>{cat.icon}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: isActive ? (cat.color || 'var(--primary)') : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{cat.name}</div>
                   </div>
+                </button>
+              )})}
+            </div>
+          </div>
+        </section>
+
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* ALL VENDORS (Restaurants & Stores) */}
+          {(mixedVendors.length > 0 || mixedItems.length === 0 || true) && (
+            <section style={{ padding: '8px 0 32px', order: search ? 2 : 1 }}>
+              <div className="container">
+                <div className="section-header">
+                  <h2 className="section-title">
+                    {userCoords || (locationText && locationText !== '📍 Current Location') ? 'Near' : 'Top'} <span>Restaurants & Stores</span>
+                    {userCoords && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(within {DELIVERY_RADIUS_KM} km)</span>}
+                    {!userCoords && locationText && locationText !== '📍 Current Location' && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(near {locationText})</span>}
+                  </h2>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Restaurants →</Link>
+                    <Link to="/stores" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Stores →</Link>
+                  </div>
+                </div>
+                {mixedVendors.length > 0 ? (
                   <div className="vendor-grid horizontal-scroll-mobile">
                     {loading ? Array(6).fill(0).map((_, i) => (
                       <div key={i} style={{ height: 270, borderRadius: 16 }} className="shimmer" />
@@ -479,15 +515,24 @@ export default function HomePage() {
                       v.isStore ? <StoreCard key={v._id} store={v} /> : <RestaurantCard key={v._id} restaurant={v} userCoords={userCoords} />
                     ))}
                   </div>
-                  {!loading && mixedVendors.length === 0 && !isOutOfRange && (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
-                      <div style={{ fontSize: 48, marginBottom: 12 }}>🍽️</div>
-                      <p>No results found.</p>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
+                ) : !loading && (
+                  <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>😔</div>
+                    {(userCoords || (locationText && locationText !== '📍 Current Location')) ? (
+                      <>
+                        <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 800, marginBottom: 16, color: 'var(--text-primary)' }}>"our service not started in your area yet !! soon we expand it in your area"</h2>
+                        <button className="btn btn-primary" style={{ marginTop: 16, padding: '10px 24px' }} onClick={clearLocation}>
+                          Try Again
+                        </button>
+                      </>
+                    ) : (
+                      <p>We couldn't find any matches in this area.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
             {/* ALL ITEMS (Dishes & Products) */}
             {mixedItems.length > 0 && (
@@ -522,7 +567,6 @@ export default function HomePage() {
             )}
           </div>
         </>
-      )}
 
       {/* WHY JDKART */}
       <section style={{ padding: 'clamp(32px,5vw,48px) 0', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
@@ -544,6 +588,46 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Location Permission Modal */}
+      {showLocationPrompt && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', width: '100%', maxWidth: 360, borderRadius: 20,
+            padding: '32px 24px', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+            border: '1px solid var(--border)', animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>📍</div>
+            <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text-primary)' }}>
+              Enable Location
+            </h3>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28, lineHeight: 1.6 }}>
+              Allow us to access your location so we can instantly find the best restaurants and stores near you!
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setShowLocationPrompt(false)}
+                style={{ flex: 1, padding: '14px', background: 'var(--bg-dark)', border: '1px solid var(--border)', borderRadius: 12, color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-dark)'}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDetectLocation}
+                style={{ flex: 1, padding: '14px', background: 'var(--primary)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'var(--transition)', boxShadow: '0 4px 12px rgba(255,87,34,0.3)' }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                Allow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -648,10 +732,16 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </div>
       </Link>
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-        <button onClick={onAddToCart} disabled={!food.isAvailable}
-          style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5 }}>
-          + Cart
-        </button>
+        {hasVariants ? (
+          <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            + Cart
+          </Link>
+        ) : (
+          <button onClick={onAddToCart} disabled={!food.isAvailable}
+            style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5 }}>
+            + Cart
+          </button>
+        )}
         {hasVariants ? (
           <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             Order
@@ -733,6 +823,10 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
             <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
             <button onClick={() => onUpdate(qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
           </div>
+        ) : hasVariants ? (
+          <Link to={`/product/${product._id}`} style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            + Cart
+          </Link>
         ) : (
           <button
             onClick={onAdd}

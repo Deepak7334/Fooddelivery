@@ -103,15 +103,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: 12, marginTop: 16, paddingLeft: product.images && product.images.length > 0 ? 80 : 0 }}>
-              <button onClick={handleAddToCart} style={{ flex: 1, padding: '16px 8px', background: 'var(--secondary)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px 0 rgba(0,0,0,.2)' }}>
-                + Cart
-              </button>
-              <button onClick={() => { if (!user) { navigate('/login'); return; } handleAddToCart(); navigate('/cart'); }} style={{ flex: 1, padding: '16px 8px', background: 'var(--primary-dark)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 1px 2px 0 rgba(0,0,0,.2)' }}>
-                Buy
-              </button>
-            </div>
           </div>
 
           {/* Right Column - Product Info */}
@@ -226,6 +217,16 @@ export default function ProductDetailPage() {
 
           </div>
         </div>
+      </div>
+      
+      {/* Sticky Bottom Action Bar */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--bg-card)', padding: '10px 16px', display: 'flex', gap: 12, boxShadow: '0 -2px 10px rgba(0,0,0,0.3)', zIndex: 1000, borderTop: '1px solid var(--border)' }}>
+        <button onClick={handleAddToCart} style={{ flex: 1, padding: '14px 8px', background: 'var(--secondary)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          + Cart
+        </button>
+        <button onClick={() => { if (!user) { navigate('/login'); return; } handleAddToCart(); navigate('/cart'); }} style={{ flex: 1, padding: '14px 8px', background: 'var(--primary-dark)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          Buy
+        </button>
       </div>
     </div>
   );

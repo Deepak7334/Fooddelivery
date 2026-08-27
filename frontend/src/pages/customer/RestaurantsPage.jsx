@@ -23,6 +23,8 @@ export default function RestaurantsPage() {
     if (search) params.set('search', search);
     if (sort) params.set('sort', sort);
     if (cuisine) params.set('cuisine', cuisine);
+    const cityParam = searchParams.get('city');
+    if (cityParam) params.set('city', cityParam);
     
     try {
       const coords = JSON.parse(localStorage.getItem('jdkart_coords'));
@@ -37,7 +39,10 @@ export default function RestaurantsPage() {
       api.get(`/customer/foods?${params}`)
     ])
       .then(([restRes, foodRes]) => {
-        setRestaurants(restRes.data.restaurants || []);
+        const fetchedRests = restRes.data.restaurants || [];
+        setRestaurants(fetchedRests);
+        
+        // Do not filter foods by city/geo. Always show popular foods regardless of location match as requested by user.
         setFoods(foodRes.data.foods || []);
       })
       .catch(console.error)
@@ -121,17 +126,34 @@ export default function RestaurantsPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Restaurants Section */}
-          {(restaurants.length > 0 || foods.length === 0) && (
+          {(true) && (
             <div style={{ order: search ? 2 : 1, marginBottom: 40 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Top Restaurants</h2>
+              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
+                {searchParams.get('city') ? `Restaurants near ${searchParams.get('city')}` : searchParams.get('lat') ? `Restaurants near you` : 'Top Restaurants'}
+              </h2>
               {loading ? (
                 <div className="vendor-grid">
                   {Array(3).fill(0).map((_, i) => <div key={i} style={{ height: 280, borderRadius: 16 }} className="shimmer" />)}
                 </div>
               ) : restaurants.length === 0 ? (
-                <div className="empty-state">
-                  <p>No restaurants found</p>
-                </div>
+                searchParams.get('city') || searchParams.get('lat') ? (
+                  <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 80, marginBottom: 24 }}>😔</div>
+                    <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, marginBottom: 16 }}>
+                      "our service not started in your area yet !! soon we expand it in your area"
+                    </h2>
+                    <button className="btn btn-primary" style={{ marginTop: 24, padding: '12px 28px' }} onClick={() => {
+                      if (searchParams.get('lat')) localStorage.removeItem('jdkart_coords');
+                      navigate('/restaurants');
+                    }}>
+                      Try Again
+                    </button>
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <p>No restaurants found</p>
+                  </div>
+                )
               ) : (
                 <div className="vendor-grid">
                   {restaurants.map(r => <RestaurantCard key={r._id} restaurant={r} />)}
@@ -250,14 +272,27 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </div>
       </Link>
       <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-        <button onClick={onAddToCart} disabled={!food.isAvailable}
-          style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5 }}>
-          + Cart
-        </button>
-        <button onClick={onBuy} disabled={!food.isAvailable}
-          style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5 }}>
-          Order
-        </button>
+        {hasVariants ? (
+          <>
+            <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              + Cart
+            </Link>
+            <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              Order
+            </Link>
+          </>
+        ) : (
+          <>
+            <button onClick={onAddToCart} disabled={!food.isAvailable}
+              style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5 }}>
+              + Cart
+            </button>
+            <button onClick={onBuy} disabled={!food.isAvailable}
+              style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5 }}>
+              Order
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

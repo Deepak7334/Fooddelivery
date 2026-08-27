@@ -30,8 +30,24 @@ export default function RestaurantDetailPage() {
     api.get(`/customer/restaurants/${id}`)
       .then(res => {
         setRestaurant(res.data.restaurant);
-        setMenuGrouped(res.data.menuGrouped || {});
-        const cats = Object.keys(res.data.menuGrouped || {});
+        
+        const rawGrouped = res.data.menuGrouped || {};
+        const cleanGrouped = {};
+        
+        Object.keys(rawGrouped).forEach(key => {
+          let norm = key.trim().toLowerCase();
+          
+          // Capitalize each word (e.g., "north indian" -> "North Indian")
+          norm = norm.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+          
+          if (!cleanGrouped[norm]) {
+            cleanGrouped[norm] = [];
+          }
+          cleanGrouped[norm] = cleanGrouped[norm].concat(rawGrouped[key]);
+        });
+        
+        setMenuGrouped(cleanGrouped);
+        const cats = Object.keys(cleanGrouped);
         if (cats.length) setActiveCategory(cats[0]);
         
         // Calculate distance if location available
@@ -237,9 +253,14 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
             <button onClick={() => updateQuantity(food._id, qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
           </div>
         ) : hasVariants ? (
-          <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36 }}>
-            Order
-          </Link>
+          <>
+            <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, boxSizing: 'border-box' }}>
+              + Cart
+            </Link>
+            <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, boxSizing: 'border-box' }}>
+              Order
+            </Link>
+          </>
         ) : (
           <button
             onClick={onAdd}
@@ -249,10 +270,12 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
             {food.isAvailable ? '+ Cart' : 'Unavailable'}
           </button>
         )}
-        <button onClick={onBuy} disabled={!food.isAvailable}
-          style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5, height: 36 }}>
-          Order
-        </button>
+        {!hasVariants && (
+          <button onClick={onBuy} disabled={!food.isAvailable}
+            style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5, height: 36 }}>
+            Order
+          </button>
+        )}
       </div>
     </div>
   );

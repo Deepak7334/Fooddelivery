@@ -57,28 +57,43 @@ router.get('/foods', async (req, res) => {
 router.get('/restaurants', async (req, res) => {
   try {
     const { search, cuisine, sort, city, lat, lng } = req.query;
-    let filter = { isActive: true };
+    let andConditions = [{ isActive: true }];
     
     if (lat && lng) {
-      filter.location = {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(lng), parseFloat(lat)]
-          },
-          $maxDistance: 5000 // 5 km radius
+      andConditions.push({
+        location: {
+          $near: {
+            $geometry: {
+              type: "Point",
+              coordinates: [parseFloat(lng), parseFloat(lat)]
+            },
+            $maxDistance: 5000 // 5 km radius
+          }
         }
-      };
+      });
     } else if (city) {
-      filter.city = new RegExp(city, 'i');
+      const tokens = city.replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
+      const cityOr = tokens.flatMap(t => [
+        { city: new RegExp(t, 'i') },
+        { address: new RegExp(t, 'i') }
+      ]);
+      if (cityOr.length > 0) {
+        andConditions.push({ $or: cityOr });
+      }
     }
 
-    if (cuisine) filter.cuisine = new RegExp(cuisine, 'i');
-    if (search) filter.$or = [
-      { name: new RegExp(search, 'i') },
-      { cuisine: { $elemMatch: { $regex: search, $options: 'i' } } },
-    ];
-    let query = Restaurant.find(filter);
+    if (cuisine) andConditions.push({ cuisine: new RegExp(cuisine, 'i') });
+    
+    if (search) {
+      andConditions.push({
+        $or: [
+          { name: new RegExp(search, 'i') },
+          { cuisine: { $elemMatch: { $regex: search, $options: 'i' } } }
+        ]
+      });
+    }
+    
+    let query = Restaurant.find({ $and: andConditions });
     
     // Note: $near automatically sorts by distance. Only override sort if specifically requested and NOT using geo
     if (sort === 'rating') query = query.sort({ rating: -1 });

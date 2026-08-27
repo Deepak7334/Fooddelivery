@@ -28,8 +28,29 @@ export default function StoreDetailPage() {
     api.get(`/store/stores/${id}`)
       .then(res => {
         setStore(res.data.store);
-        setGrouped(res.data.grouped || {});
-        const cats = Object.keys(res.data.grouped || {});
+        
+        const rawGrouped = res.data.grouped || {};
+        const cleanGrouped = {};
+        
+        Object.keys(rawGrouped).forEach(key => {
+          let norm = key.trim().toLowerCase();
+          
+          // Fix common typos
+          if (norm === 'grecery' || norm === 'grocerys') norm = 'grocery';
+          if (norm === 'shope' || norm === 'shops') norm = 'shop';
+          if (norm === 'biscuit' || norm === 'biscuts') norm = 'biscuits';
+          
+          // Capitalize first letter
+          norm = norm.charAt(0).toUpperCase() + norm.slice(1);
+          
+          if (!cleanGrouped[norm]) {
+            cleanGrouped[norm] = [];
+          }
+          cleanGrouped[norm] = cleanGrouped[norm].concat(rawGrouped[key]);
+        });
+        
+        setGrouped(cleanGrouped);
+        const cats = Object.keys(cleanGrouped);
         if (cats.length) setActiveCategory(cats[0]);
       })
       .catch(() => toast.error('Store not found'))
@@ -291,9 +312,14 @@ function ProductCard({ product, qty, onAdd, onBuy }) {
             <button onClick={() => updateQuantity(product._id, qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
           </div>
         ) : hasVariants ? (
-          <Link to={`/product/${product._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36 }}>
-            Buy
-          </Link>
+          <>
+            <Link to={`/product/${product._id}`} style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, boxSizing: 'border-box' }}>
+              + Cart
+            </Link>
+            <Link to={`/product/${product._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, boxSizing: 'border-box' }}>
+              Buy
+            </Link>
+          </>
         ) : (
           <button
             onClick={onAdd}

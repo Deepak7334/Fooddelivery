@@ -88,11 +88,13 @@ const PrivateRoute = ({ children, role }) => {
   return children;
 };
 
-// ── Layouts ───────────────────────────────────────────────────────────────────
+import ChatBox from './components/ChatBox';
+
 const CustomerLayout = ({ children }) => (
   <>
     <Navbar />
     <main>{children}</main>
+    <ChatBox />
     <Footer />
   </>
 );

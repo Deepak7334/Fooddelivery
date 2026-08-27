@@ -36,6 +36,8 @@ export default function StoresPage() {
     if (search) params.set('search', search);
     if (sort) params.set('sort', sort);
     if (type && type !== 'all') params.set('type', type);
+    const cityParam = searchParams.get('city');
+    if (cityParam) params.set('city', cityParam);
     
     try {
       const coords = JSON.parse(localStorage.getItem('jdkart_coords'));
@@ -50,7 +52,10 @@ export default function StoresPage() {
       api.get(`/store/products?${params}`)
     ])
       .then(([storeRes, prodRes]) => {
-        setStores(storeRes.data.stores || []);
+        const fetchedStores = storeRes.data.stores || [];
+        setStores(fetchedStores);
+        
+        // Do not filter products by city/geo. Always show popular products regardless of location match as requested by user.
         setProducts(prodRes.data.products || []);
       })
       .catch(console.error)
@@ -148,17 +153,34 @@ export default function StoresPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Stores Section */}
-          {(stores.length > 0 || products.length === 0) && (
+          {(true) && (
             <div style={{ order: search ? 2 : 1, marginBottom: 40 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Top Stores</h2>
+              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
+                {searchParams.get('city') ? `Stores near ${searchParams.get('city')}` : searchParams.get('lat') ? `Stores near you` : 'Top Stores'}
+              </h2>
               {loading ? (
                 <div className="vendor-grid">
                   {Array(3).fill(0).map((_, i) => <div key={i} style={{ height: 280, borderRadius: 16 }} className="shimmer" />)}
                 </div>
               ) : stores.length === 0 ? (
-                <div className="empty-state">
-                  <p>No stores found</p>
-                </div>
+                searchParams.get('city') || searchParams.get('lat') ? (
+                  <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 80, marginBottom: 24 }}>😔</div>
+                    <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, marginBottom: 16 }}>
+                      "our service not started in your area yet !! soon we expand it in your area"
+                    </h2>
+                    <button className="btn btn-primary" style={{ marginTop: 24, padding: '12px 28px' }} onClick={() => {
+                      if (searchParams.get('lat')) localStorage.removeItem('jdkart_coords');
+                      navigate('/stores');
+                    }}>
+                      Try Again
+                    </button>
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <p>No stores found</p>
+                  </div>
+                )
               ) : (
                 <div className="vendor-grid">
                   {stores.map(s => <StoreCard key={s._id} store={s} />)}
