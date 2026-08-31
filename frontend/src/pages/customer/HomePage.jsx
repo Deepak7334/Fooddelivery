@@ -122,11 +122,18 @@ export default function HomePage() {
         setLocLoading(false);
         setTimeout(() => window.location.reload(), 500); // Reload to fetch nearby vendors
       },
-      () => {
-        toast.error('Could not get location. Please allow access or type manually.', { id: 'loc' });
+      err => {
         setLocLoading(false);
+        console.error("Location error:", err);
+        let msg = 'Failed to detect location';
+        if (err.code === 1) msg = 'Location access denied. Please allow it in your mobile browser settings.';
+        if (err.code === 2) msg = 'Location unavailable. Ensure GPS is on.';
+        if (err.code === 3) msg = 'Location request timed out. Try entering your city manually.';
+        toast.error(msg, { id: 'loc', duration: 4000 });
       },
-      { timeout: 10000 }
+      // Mobile optimization: false for high accuracy (uses fast wifi/cell triangulation instead of slow satellite GPS) 
+      // and increased timeout to 20 seconds for slower mobile networks.
+      { enableHighAccuracy: false, timeout: 20000, maximumAge: 0 }
     );
   };
 
