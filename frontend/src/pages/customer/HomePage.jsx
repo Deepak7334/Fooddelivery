@@ -144,7 +144,7 @@ export default function HomePage() {
         const rLat = r.location?.coordinates ? r.location.coordinates[1] : r.location?.lat;
         const rLng = r.location?.coordinates ? r.location.coordinates[0] : r.location?.lng;
         const d = getDistanceKm(userCoords.lat, userCoords.lng, rLat, rLng);
-        return d === null || d <= DELIVERY_RADIUS_KM;
+        return d !== null && d <= DELIVERY_RADIUS_KM;
       });
     }
     if (locationText.trim() && locationText !== '📍 Current Location') {
@@ -165,7 +165,7 @@ export default function HomePage() {
         const sLat = s.location?.coordinates ? s.location.coordinates[1] : s.location?.lat;
         const sLng = s.location?.coordinates ? s.location.coordinates[0] : s.location?.lng;
         const d = getDistanceKm(userCoords.lat, userCoords.lng, sLat, sLng);
-        return d === null || d <= DELIVERY_RADIUS_KM;
+        return d !== null && d <= DELIVERY_RADIUS_KM;
       });
     }
     if (locationText.trim() && locationText !== '📍 Current Location') {
