@@ -6,6 +6,7 @@ import NotificationBell from './components/NotificationBell';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 // ── Layouts (eager — always needed) ──────────────────────────────────────────
 import Navbar from './components/Navbar';
@@ -243,6 +244,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Analytics />
     </Suspense>
   );
 }
