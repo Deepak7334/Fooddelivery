@@ -90,7 +90,7 @@ JDkart Knowledge Base:
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999 }}>
+    <div style={{ position: 'fixed', bottom: 80, right: 20, zIndex: 9999 }}>
       {isOpen ? (
         <div style={{ width: 340, height: 480, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
           <div style={{ padding: '16px', background: 'var(--primary)', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -50,12 +50,15 @@ export default function RestaurantDetailPage() {
         const cats = Object.keys(cleanGrouped);
         if (cats.length) setActiveCategory(cats[0]);
         
-        // Calculate distance if location available
         const locStr = localStorage.getItem('jdkart_coords');
-        if (locStr && res.data.restaurant?.location?.lat && res.data.restaurant?.location?.lng) {
+        const rLoc = res.data.restaurant?.location;
+        const rLat = rLoc?.lat != null ? rLoc.lat : (rLoc?.coordinates ? rLoc.coordinates[1] : null);
+        const rLng = rLoc?.lng != null ? rLoc.lng : (rLoc?.coordinates ? rLoc.coordinates[0] : null);
+
+        if (locStr && rLat != null && rLng != null) {
           try {
             const loc = JSON.parse(locStr);
-            const d = calculateDistance(loc.lat, loc.lng, res.data.restaurant.location.lat, res.data.restaurant.location.lng);
+            const d = calculateDistance(loc.lat, loc.lng, rLat, rLng);
             setDistance(d);
           } catch {
             // ignore

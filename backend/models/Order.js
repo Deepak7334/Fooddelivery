@@ -111,6 +111,10 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  deliveryCoords: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
   deliveryAgentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

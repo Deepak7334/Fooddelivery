@@ -97,7 +97,14 @@ export default function RestaurantOrders() {
                     </div>
                     <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{order.customerId?.name || 'Customer'}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}> {order.customerId?.phone || order.customerPhone || '—'} · {order.customerId?.email || '—'}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}> {order.deliveryAddress}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span>{order.deliveryAddress}</span>
+                      {order.deliveryCoords && order.deliveryCoords.lat && (
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--primary)', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                           Open in Map
+                        </a>
+                      )}
+                    </div>
                     {order.specialInstructions && <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>{order.specialInstructions}</div>}
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -136,12 +143,12 @@ export default function RestaurantOrders() {
                 {/* Admin handoff note — restaurant's job ends at preparing */}
                 {order.status === 'preparing' && (
                   <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, fontSize: 12, color: '#A78BFA', fontWeight: 600 }}>
-                    ✅ Food ready. Admin will assign a delivery agent and dispatch the order.
+                     Food ready. Admin will assign a delivery agent and dispatch the order.
                   </div>
                 )}
                 {order.status === 'out_for_delivery' && (
                   <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 8, fontSize: 12, color: '#06B6D4', fontWeight: 600 }}>
-                    🚴 Out for delivery — Agent: {order.deliveryAgentId?.name || order.deliveryAgentName || '—'}
+                     Out for delivery — Agent: {order.deliveryAgentId?.name || order.deliveryAgentName || '—'}
                   </div>
                 )}
                 {order.status === 'delivered' && order.otpVerified && (

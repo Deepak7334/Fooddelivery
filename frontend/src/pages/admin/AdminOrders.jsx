@@ -129,7 +129,20 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
             { label: 'Customer', value: order.customerId?.name || '—' },
             { label: 'Phone', value: order.customerId?.phone || order.customerPhone || '—' },
             { label: 'Email', value: order.customerId?.email || order.customerEmail || '—', span: true },
-            { label: 'Address', value: order.deliveryAddress || '—', span: true },
+            { 
+              label: 'Address', 
+              value: (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span>{order.deliveryAddress || '—'}</span>
+                  {order.deliveryCoords && order.deliveryCoords.lat && (
+                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#3B82F6', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      🗺️ Open in Google Maps
+                    </a>
+                  )}
+                </div>
+              ), 
+              span: true 
+            },
             { label: 'Vendor', value: order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart' },
             { label: 'Status', value: <StatusBadge status={order.status} /> },
             { label: 'Placed At', value: new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), span: true },

@@ -1,14 +1,111 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
+import api from '../../lib/api';
+import toast from 'react-hot-toast';
+import { calculateDistance } from '../../utils/distance';
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, totalPrice, totalItems, clearCart } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, totalPrice, totalItems, clearCart, cartType, restaurantId, storeId } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   
+  const [userCoords, setUserCoords] = useState(null);
+  const [vendorLocation, setVendorLocation] = useState(null);
+  const [distance, setDistance] = useState(null);
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [locLoading, setLocLoading] = useState(false);
 
+  // Initialize location and fetch vendor details
+  useEffect(() => {
+    if (totalItems === 0) return;
+
+    let coordsObj = null;
+    try {
+      const stored = localStorage.getItem('jdkart_coords');
+      if (stored) {
+        coordsObj = JSON.parse(stored);
+        setUserCoords(coordsObj);
+      } else {
+        setShowLocationPrompt(true);
+      }
+    } catch (e) {
+      setShowLocationPrompt(true);
+    }
+
+    const fetchVendor = async () => {
+      try {
+        if (cartType === 'food' && restaurantId) {
+          const res = await api.get(`/customer/restaurants/${restaurantId}`);
+          const loc = res.data?.restaurant?.location;
+          if (loc) {
+            let lat = loc.lat != null ? loc.lat : (loc.coordinates ? loc.coordinates[1] : null);
+            let lng = loc.lng != null ? loc.lng : (loc.coordinates ? loc.coordinates[0] : null);
+            if (lat != null && lng != null) setVendorLocation({ lat, lng });
+          }
+        } else if (cartType === 'product' && storeId) {
+          const res = await api.get(`/store/stores/${storeId}`);
+          const loc = res.data?.store?.location;
+          if (loc) {
+            let lat = loc.lat != null ? loc.lat : (loc.coordinates ? loc.coordinates[1] : null);
+            let lng = loc.lng != null ? loc.lng : (loc.coordinates ? loc.coordinates[0] : null);
+            if (lat != null && lng != null) setVendorLocation({ lat, lng });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch vendor details", err);
+      }
+    };
+    fetchVendor();
+  }, [totalItems, cartType, restaurantId, storeId]);
+
+  // Compute distance
+  useEffect(() => {
+    if (userCoords && vendorLocation) {
+      const d = calculateDistance(userCoords.lat, userCoords.lng, vendorLocation.lat, vendorLocation.lng);
+      setDistance(d);
+    } else {
+      setDistance(null);
+    }
+  }, [userCoords, vendorLocation]);
+
+  const [manualMode, setManualMode] = useState(false);
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      setShowLocationPrompt(false);
+      return;
+    }
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoords(coords);
+        setManualMode(false);
+        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
+        setShowLocationPrompt(false);
+        setLocLoading(false);
+        toast.success("Location set successfully!");
+      },
+      err => {
+        setLocLoading(false);
+        toast.error('Unable to get location');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleManualEntrySelect = () => {
+    setManualMode(true);
+    setShowLocationPrompt(false);
+    toast.success("Proceeding with manual address entry");
+  };
+
+  const outOfService = !manualMode && distance !== null && distance > 5;
+  const minOrderRequired = (!manualMode && distance !== null && distance > 2 && distance <= 5) ? 100 : 0;
 
   // Delivery fee: < ₹30 → ₹5, ≥ ₹30 → ₹10
   const fee = totalPrice < 30 ? 5 : 10;
@@ -30,7 +127,17 @@ export default function CartPage() {
     <div className="page-wrapper">
       <div className="container">
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Your <span style={{ color: 'var(--primary)' }}>Cart</span></h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Review your items before checkout</p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: outOfService ? 16 : 32 }}>Review your items before checkout</p>
+
+        {outOfService && (
+          <div style={{ marginBottom: 32, padding: 24, background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', borderRadius: 16, border: '2px solid rgba(244,67,54,0.3)', textAlign: 'center', animation: 'fadeIn 0.5s ease' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🚨</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, color: 'var(--danger)' }}>
+              Our service has not started in your area yet !! 
+            </h2>
+            <p style={{ fontSize: 15, fontWeight: 600 }}>Soon we will expand it in your area. We currently do not deliver beyond 5km from this restaurant.</p>
+          </div>
+        )}
 
         <div className="cart-layout">
           {/* Cart Items */}
@@ -95,15 +202,59 @@ export default function CartPage() {
                 <span>Total</span><span style={{ color: 'var(--primary)' }}>₹{total}</span>
               </div>
             </div>
-            <button onClick={() => { if (!user) navigate('/login'); else navigate('/checkout'); }} className="btn btn-primary btn-full btn-lg">
+
+            {/* Delivery distance display removed to keep checkout clean */}
+
+            <button 
+              onClick={() => { if (!user) navigate('/login'); else navigate('/checkout'); }} 
+              disabled={outOfService || (minOrderRequired > 0 && totalPrice < minOrderRequired) || (!manualMode && distance === null)}
+              className="btn btn-primary btn-full btn-lg"
+              style={{ opacity: (outOfService || (minOrderRequired > 0 && totalPrice < minOrderRequired) || (!manualMode && distance === null)) ? 0.5 : 1, cursor: (outOfService || (minOrderRequired > 0 && totalPrice < minOrderRequired) || (!manualMode && distance === null)) ? 'not-allowed' : 'pointer' }}
+            >
               Proceed to Checkout →
             </button>
+
+            {/* Redundant small outOfService banner removed here because there is a large banner at the top of the page */}
+            
+            {!outOfService && minOrderRequired > 0 && totalPrice < minOrderRequired && (
+              <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(255,152,0,0.1)', color: '#FF9800', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid rgba(255,152,0,0.2)', textAlign: 'center' }}>
+                 Minimum order of ₹{minOrderRequired} applies for your area ({distance.toFixed(1)}km away). Add ₹{minOrderRequired - totalPrice} more to checkout!
+              </div>
+            )}
+
             <div style={{ marginTop: 16, padding: 12, background: 'rgba(76,175,80,0.08)', borderRadius: 8, border: '1px solid rgba(76,175,80,0.2)', fontSize: 12, color: 'var(--success)', textAlign: 'center' }}>
               Secure payment powered by Razorpay
             </div>
           </div>
         </div>
       </div>
+
+      {showLocationPrompt && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', padding: '32px 24px', borderRadius: 24, width: '90%', maxWidth: 400, textAlign: 'center', animation: 'scaleIn 0.3s ease' }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>📍</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Set Delivery Location</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 14 }}>
+              Where should we deliver your order?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button onClick={handleDetectLocation} disabled={locLoading} className="btn btn-primary btn-full btn-lg">
+                {locLoading ? 'Wait...' : ' Use My Live Location'}
+              </button>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0' }}>
+                <div className="divider" style={{ flex: 1, margin: 0 }} />
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>OR</span>
+                <div className="divider" style={{ flex: 1, margin: 0 }} />
+              </div>
+
+              <button onClick={handleManualEntrySelect} className="btn btn-secondary btn-full btn-lg">
+                 I will type my address
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

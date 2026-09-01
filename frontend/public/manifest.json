@@ -3,8 +3,8 @@
   "name": "JDkart - Food Delivery & Table Booking",
   "icons": [
     {
-      "src": "favicon.svg",
-      "type": "image/svg+xml",
+      "src": "logo.png",
+      "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
     }

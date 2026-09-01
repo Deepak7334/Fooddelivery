@@ -15,9 +15,9 @@ export default function Footer() {
           </div>
           <div>
             <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>Quick Links</div>
-            {[['Home', '/'], ['Restaurants', '/restaurants'], ['My Orders', '/orders'], ['Book a Table', '/restaurants']].map(([label, path]) => (
+            {[['Home', '/'], ['Order Food', '/restaurants'], ['Grocery & Stores', '/stores'], ['Book a Table', '/restaurants?action=book'], ['My Orders', '/orders']].map(([label, path]) => (
               <div key={label} style={{ marginBottom: 8 }}>
-                <Link to={path} style={{ fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                <Link to={path} onClick={() => window.scrollTo(0, 0)} style={{ fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}>
                   {label}

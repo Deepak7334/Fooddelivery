@@ -56,17 +56,47 @@ export default function HomePage() {
   const { user } = useAuth();
   const { addToCart, addProductToCart, cartItems, cartType, storeId: cartStoreId, updateQuantity } = useCart();
   const locationInputRef = useRef(null);
+  const searchContainerRef = useRef(null);
 
   useEffect(() => {
-    let qs = '';
-    let coordsObj = null;
-    try {
-      coordsObj = JSON.parse(localStorage.getItem('jdkart_coords'));
-      if (coordsObj && coordsObj.lat && coordsObj.lng) {
-        qs = `?lat=${coordsObj.lat}&lng=${coordsObj.lng}`;
-      }
-    } catch(e) {}
+    fetchData(userCoords);
+    // eslint-disable-next-line
+  }, [userCoords]);
 
+  useEffect(() => {
+    const handleRequestLoc = () => {
+      triggerLocationPrompt();
+    };
+    window.addEventListener('requestLocationPrompt', handleRequestLoc);
+    return () => window.removeEventListener('requestLocationPrompt', handleRequestLoc);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Dispatches true if the element is OUT OF VIEW and above the viewport
+        // Actually, if it's not intersecting, we show sticky nav.
+        const isPast = !entry.isIntersecting && entry.boundingClientRect.top < 100;
+        window.dispatchEvent(new CustomEvent('heroSearchVisibility', { detail: { showSticky: isPast } }));
+      },
+      { rootMargin: '-75px 0px 0px 0px', threshold: 0 }
+    );
+    if (searchContainerRef.current) {
+      observer.observe(searchContainerRef.current);
+    }
+    return () => {
+      observer.disconnect();
+      window.dispatchEvent(new CustomEvent('heroSearchVisibility', { detail: { showSticky: false } }));
+    };
+  }, []);
+
+  const fetchData = (coordsObj) => {
+    let qs = '';
+    if (coordsObj && coordsObj.lat && coordsObj.lng) {
+      qs = `?lat=${coordsObj.lat}&lng=${coordsObj.lng}`;
+    }
+
+    setLoading(true);
     Promise.all([
       api.get(`/customer/categories`).catch(() => ({ data: { categories: [] } })),
       api.get(`/customer/restaurants${qs}`).catch(() => ({ data: { restaurants: [] } })),
@@ -80,6 +110,14 @@ export default function HomePage() {
       setProducts(prodRes.data.products || []);
       setStores(storeRes.data.stores || []);
     }).catch(console.error).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    let coordsObj = null;
+    try {
+      coordsObj = JSON.parse(localStorage.getItem('jdkart_coords'));
+    } catch(e) {}
+    fetchData(coordsObj);
   }, []);
 
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
@@ -113,14 +151,16 @@ export default function HomePage() {
           }
           localStorage.setItem('jdkart_loc_name', locName);
           setLocationText(locName);
+          window.dispatchEvent(new Event('locationUpdated'));
         } catch(e) {
           localStorage.setItem('jdkart_loc_name', '📍 Current Location');
           setLocationText('📍 Current Location');
+          window.dispatchEvent(new Event('locationUpdated'));
         }
 
         toast.success('Location detected!', { id: 'loc' });
         setLocLoading(false);
-        setTimeout(() => window.location.reload(), 500); // Reload to fetch nearby vendors
+        fetchData(coords);
       },
       err => {
         setLocLoading(false);
@@ -205,6 +245,9 @@ export default function HomePage() {
     return products;
   }, [products]);
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const vegOnly = searchParams.get('veg') === 'true';
+
   const mixedItems = useMemo(() => {
     const allItems = [
       ...visibleFoods.map(f => ({ ...f, isProduct: false })),
@@ -213,6 +256,8 @@ export default function HomePage() {
     const searchLower = search.toLowerCase();
     return allItems
       .filter(item => {
+        if (vegOnly && item.isVeg === false) return false;
+        
         if (search) {
           if (
             !item.name.toLowerCase().includes(searchLower) &&
@@ -228,7 +273,7 @@ export default function HomePage() {
       })
       // Use a stable shuffle seeded once, not on every render
       .sort((a, b) => a._id > b._id ? 1 : -1);
-  }, [foods, products, search, activeCategory]);
+  }, [foods, products, search, activeCategory, vegOnly]);
 
   const handleAddToCart = (food) => {
     if (!user) { navigate('/login'); return; }
@@ -320,8 +365,9 @@ export default function HomePage() {
     localStorage.removeItem('jdkart_loc_name');
     setUserCoords(null);
     setLocationText('');
+    window.dispatchEvent(new Event('locationUpdated'));
     toast.success('Location cleared');
-    setTimeout(() => window.location.reload(), 500);
+    fetchData(null);
   };
 
   return (
@@ -351,7 +397,7 @@ export default function HomePage() {
             </p>
 
             {/* ── Search bar ── */}
-            <form onSubmit={handleSearch} className="search-form">
+            <form onSubmit={handleSearch} className="search-form" ref={searchContainerRef}>
               
               {/* Location input */}
               <div className="search-location">
@@ -433,7 +479,6 @@ export default function HomePage() {
                 background: 'rgba(244,67,54,0.12)', border: '1px solid rgba(244,67,54,0.3)',
                 color: '#F44336', fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
               }}>
-                <span style={{ fontSize: 22 }}>😔</span>
                 <span>
                   <strong>"We can't reach you — sorry! Very soon we expand in your Area!"</strong>
                   <button onClick={clearLocation} style={{ marginLeft: 10, background: 'transparent', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline', fontSize: 13, fontWeight: 700 }}>
@@ -505,9 +550,9 @@ export default function HomePage() {
               <div className="container">
                 <div className="section-header">
                   <h2 className="section-title">
-                    {userCoords || (locationText && locationText !== '📍 Current Location') ? 'Near' : 'Top'} <span>Restaurants & Stores</span>
+                    {userCoords || (locationText && locationText !== ' Current Location') ? 'Near' : 'Top'} <span>Restaurants & Stores</span>
                     {userCoords && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(within {DELIVERY_RADIUS_KM} km)</span>}
-                    {!userCoords && locationText && locationText !== '📍 Current Location' && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(near {locationText})</span>}
+                    {!userCoords && locationText && locationText !== ' Current Location' && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(near {locationText})</span>}
                   </h2>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Restaurants →</Link>
@@ -524,7 +569,7 @@ export default function HomePage() {
                   </div>
                 ) : !loading && (
                   <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 48, marginBottom: 12 }}>😔</div>
+                    
                     {(userCoords || (locationText && locationText !== '📍 Current Location')) ? (
                       <>
                         <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 800, marginBottom: 16, color: 'var(--text-primary)' }}>"our service not started in your area yet !! soon we expand it in your area"</h2>
@@ -609,27 +654,17 @@ export default function HomePage() {
           }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>📍</div>
             <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text-primary)' }}>
-              Enable Location
+              Set Delivery Location
             </h3>
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 28, lineHeight: 1.6 }}>
-              Allow us to access your location so we can instantly find the best restaurants and stores near you!
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+              Where should we deliver your order? Allow location access to see restaurants near you!
             </p>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button 
-                onClick={() => setShowLocationPrompt(false)}
-                style={{ flex: 1, padding: '14px', background: 'var(--bg-dark)', border: '1px solid var(--border)', borderRadius: 12, color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'var(--transition)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-dark)'}
-              >
-                Cancel
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button onClick={handleDetectLocation} disabled={locLoading} className="btn btn-primary btn-full btn-lg">
+                {locLoading ? 'Wait...' : '📍 Use My Live Location'}
               </button>
-              <button 
-                onClick={handleDetectLocation}
-                style={{ flex: 1, padding: '14px', background: 'var(--primary)', border: 'none', borderRadius: 12, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'var(--transition)', boxShadow: '0 4px 12px rgba(255,87,34,0.3)' }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                Allow
+              <button onClick={() => setShowLocationPrompt(false)} className="btn btn-secondary btn-full btn-lg" style={{ background: 'transparent', border: '1px solid var(--border)' }}>
+                Cancel
               </button>
             </div>
           </div>

@@ -78,7 +78,13 @@ export default function AdminRestaurants() {
 
   const openAdd = () => { setForm(emptyForm); setEditing(null); setShowModal(true); };
   const openEdit = (r) => {
-    setForm({ ...r, cuisine: r.cuisine?.join(', ') || '', addrHouse: r.address || '', addrArea: '', addrLandmark: '', addrPincode: '' });
+    let lat = '';
+    let lng = '';
+    if (r.location && r.location.coordinates) {
+      lat = r.location.coordinates[1];
+      lng = r.location.coordinates[0];
+    }
+    setForm({ ...r, cuisine: r.cuisine?.join(', ') || '', addrHouse: r.address || '', addrArea: '', addrLandmark: '', addrPincode: '', lat, lng });
     setEditing(r._id); setShowModal(true);
   };
 
@@ -261,6 +267,35 @@ export default function AdminRestaurants() {
               <F label="Delivery Time" field="deliveryTime" placeholder="30-40 mins" {...fProps} />
               <F label="Delivery Fee (₹)" field="deliveryFee" type="number" {...fProps} />
               <F label="Minimum Order (₹)" field="minOrder" type="number" {...fProps} />
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <label className="form-label" style={{ margin: 0 }}>GPS Coordinates (For Distance Calculation) *</label>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (!navigator.geolocation) return toast.error('Geolocation not supported by browser');
+                      const loadingToast = toast.loading('Detecting location...');
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          setForm({ ...form, lat: pos.coords.latitude, lng: pos.coords.longitude });
+                          toast.success('Coordinates auto-filled!', { id: loadingToast });
+                        },
+                        (err) => {
+                          toast.error('Failed to get location. Ensure GPS is on.', { id: loadingToast });
+                        }
+                      );
+                    }}
+                    style={{ fontSize: 12, padding: '4px 10px', background: 'rgba(255,87,34,0.1)', color: 'var(--primary)', border: '1px solid rgba(255,87,34,0.2)', borderRadius: 20, cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    📍 Auto-Detect My Location
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                  <input className="form-input" type="number" step="any" value={form.lat !== undefined ? form.lat : ''} onChange={e => setForm({ ...form, lat: e.target.value })} placeholder="Latitude (e.g. 24.966)" />
+                  <input className="form-input" type="number" step="any" value={form.lng !== undefined ? form.lng : ''} onChange={e => setForm({ ...form, lng: e.target.value })} placeholder="Longitude (e.g. 84.004)" />
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>Use the Auto-Detect button, or copy manually from Google Maps.</div>
+              </div>
             </div>
             {!editing && (
               <>

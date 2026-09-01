@@ -28,25 +28,117 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const searchParams = new URLSearchParams(location.search);
+  const vegOnly = searchParams.get('veg') === 'true';
+
+  const [scrolled, setScrolled] = useState(false);
+  const [locName, setLocName] = useState(localStorage.getItem('jdkart_loc_name') || '');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!isActive('/')) {
+        setScrolled(window.scrollY > 120);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check immediately
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleHeroVis = (e) => {
+      if (isActive('/')) {
+        setScrolled(e.detail.showSticky);
+      }
+    };
+    window.addEventListener('heroSearchVisibility', handleHeroVis);
+    return () => window.removeEventListener('heroSearchVisibility', handleHeroVis);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const updateLoc = () => setLocName(localStorage.getItem('jdkart_loc_name') || '');
+    window.addEventListener('locationUpdated', updateLoc);
+    return () => window.removeEventListener('locationUpdated', updateLoc);
+  }, []);
+
+  const handleVegToggle = () => {
+    const params = new URLSearchParams(location.search);
+    params.set('veg', (!vegOnly).toString());
+    navigate(`${location.pathname}?${params.toString()}`);
+  };
+
+  const handleMobileSearch = (e) => {
+    e.preventDefault();
+    const val = e.target.search.value;
+    const params = new URLSearchParams(location.search);
+    if (val.trim()) params.set('search', val.trim());
+    else params.delete('search');
+    navigate(`/${location.pathname === '/' ? 'restaurants' : location.pathname.substring(1)}?${params.toString()}`);
+  };
+
+  const showStickySearch = (
+    isActive('/') && scrolled
+  ) || (
+    (location.pathname.startsWith('/restaurants') || location.pathname.startsWith('/stores')) && 
+    (scrolled || searchParams.has('search'))
+  );
+
   return (
     <>
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 500,
         background: 'rgba(15,15,26,0.97)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
-        height: '70px', display: 'flex', alignItems: 'center',
+        display: 'flex', flexDirection: 'column',
       }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '70px' }}>
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 22, color: 'var(--primary)', textDecoration: 'none' }}>
             <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="desktop-nav">
-            <Link to="/" className={`btn btn-secondary btn-sm ${isActive('/') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Home</Link>
-            <Link to="/restaurants" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/restaurants') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Restaurants</Link>
-            <Link to="/stores" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/stores') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Stores</Link>
+          <div className="desktop-nav" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '0 20px' }}>
+            {showStickySearch ? (
+              <div style={{ display: 'flex', width: '100%', maxWidth: 720, gap: 12, alignItems: 'center' }}>
+                <form onSubmit={handleMobileSearch} className="search-form" style={{ flex: 1, margin: 0, padding: '4px 6px' }}>
+                  <div 
+                    className="search-location" 
+                    onClick={() => window.dispatchEvent(new Event('requestLocationPrompt'))}
+                    style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                  >
+                    <span style={{ fontSize: 18, color: 'var(--primary)', marginRight: 8, display: 'flex' }}>📍</span>
+                    <input
+                      type="text"
+                      className="search-input-field"
+                      placeholder="Enter city or detect"
+                      value={locName ? locName.replace('📍 ', '') : ''}
+                      readOnly
+                      style={{ color: 'var(--text-primary)', padding: '10px 0', fontSize: 14, cursor: 'pointer', pointerEvents: 'none' }}
+                    />
+                  </div>
+                  <div className="search-input-wrap">
+                    <input
+                      name="search"
+                      className="search-input-field"
+                      placeholder="Search restaurants, Foods, groceries…"
+                      defaultValue={searchParams.get('search') || ''}
+                      style={{ color: 'var(--text-primary)', padding: '10px 0', fontSize: 14 }}
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary search-submit-btn">
+                    Search
+                  </button>
+                </form>
+                
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <Link to="/" className={`btn btn-secondary btn-sm ${isActive('/') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Home</Link>
+                <Link to="/restaurants" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/restaurants') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Restaurants</Link>
+                <Link to="/stores" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/stores') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Stores</Link>
+              </div>
+            )}
           </div>
 
           {/* Right side */}
@@ -141,7 +233,51 @@ export default function Navbar() {
             </button>
           </div>
         </div>
+
+        {/* Mobile Extra (Search + Veg Toggle) */}
+        {showStickySearch && (
+          <div className="mobile-only" style={{ width: '100%', padding: '0 4px 4px 8px', display: 'flex' }}>
+            <div style={{ display: 'flex', width: '100%', gap: 4, alignItems: 'center' }}>
+              <form onSubmit={handleMobileSearch} className="search-form" style={{ flex: 1, margin: 0, padding: '2px 4px', display: 'flex', alignItems: 'center' }}>
+                <div 
+                  className="search-location" 
+                  onClick={() => window.dispatchEvent(new Event('requestLocationPrompt'))}
+                  style={{ display: 'flex', alignItems: 'center', padding: '0 4px', flex: '1 1 40px', minWidth: 0, borderRight: '1px solid var(--border)', cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: 12, color: 'var(--primary)', marginRight: 2, display: 'flex' }}>📍</span>
+                  <input
+                    type="text"
+                    className="search-input-field"
+                    placeholder="City"
+                    value={locName ? locName.replace('📍 ', '') : ''}
+                    readOnly
+                    style={{ pointerEvents: 'none', color: 'var(--text-primary)', padding: '4px 0', fontSize: 10, cursor: 'pointer', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', background: 'transparent', border: 'none', outline: 'none' }}
+                  />
+                </div>
+                <div className="search-input-wrap" style={{ display: 'flex', alignItems: 'center', padding: '0 4px', flex: '2 1 60px', minWidth: 0 }}>
+                  <input
+                    name="search"
+                    className="search-input-field"
+                    placeholder="Search restaurants, Foods, groceries…"
+                    defaultValue={searchParams.get('search') || ''}
+                    style={{ color: 'var(--text-primary)', padding: '4px 0', fontSize: 10, width: '100%', background: 'transparent', border: 'none', outline: 'none' }}
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: 10, borderRadius: 100, flexShrink: 0, margin: 0 }}>
+                  Search
+                </button>
+              </form>
+              
+              
+            </div>
+          </div>
+        )}
       </nav>
+
+      {/* Adjust padding for the navbar since it's now taller on mobile */}
+      {location.pathname.startsWith('/restaurants') && (
+        <div className="mobile-only" style={{ paddingTop: 60 }} />
+      )}
 
       {/* Mobile drawer overlay */}
       {mobileOpen && (

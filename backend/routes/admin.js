@@ -82,7 +82,7 @@ router.get('/restaurants', async (req, res) => {
 
 router.post('/restaurants', async (req, res) => {
   try {
-    const { name, description, cuisine, address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerPassword, ownerName } = req.body;
+    const { name, description, cuisine, address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerPassword, ownerName, lat, lng } = req.body;
     let ownerId = null;
     if (ownerEmail && ownerPassword) {
       const existing = await User.findOne({ email: ownerEmail });
@@ -91,7 +91,14 @@ router.post('/restaurants', async (req, res) => {
       const owner = await User.create({ name: ownerName || name + ' Owner', email: ownerEmail, password: hashed, role: 'restaurant', phone: phone || '', address: address || '' });
       ownerId = owner._id;
     }
-    const restaurant = await Restaurant.create({ name, description, cuisine: cuisine || [], address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerId });
+    
+    // Construct GeoJSON location if lat/lng are provided
+    let locationData = { type: 'Point', coordinates: [0, 0] };
+    if (lat !== undefined && lng !== undefined && lat !== '' && lng !== '') {
+      locationData.coordinates = [parseFloat(lng), parseFloat(lat)];
+    }
+
+    const restaurant = await Restaurant.create({ name, description, cuisine: cuisine || [], address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerId, location: locationData });
     if (ownerId) await User.findByIdAndUpdate(ownerId, { restaurantId: restaurant._id });
     res.status(201).json({ success: true, restaurant });
   } catch (err) {
@@ -101,7 +108,14 @@ router.post('/restaurants', async (req, res) => {
 
 router.put('/restaurants/:id', async (req, res) => {
   try {
-    const restaurant = await Restaurant.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    let updateData = { ...req.body };
+    if (updateData.lat !== undefined && updateData.lng !== undefined && updateData.lat !== '' && updateData.lng !== '') {
+      updateData.location = {
+        type: 'Point',
+        coordinates: [parseFloat(updateData.lng), parseFloat(updateData.lat)]
+      };
+    }
+    const restaurant = await Restaurant.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
     res.json({ success: true, restaurant });
   } catch (err) {

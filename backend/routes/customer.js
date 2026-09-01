@@ -135,7 +135,7 @@ router.get('/restaurants/:id', async (req, res) => {
 // Place order
 router.post('/orders', protect, authorize('customer'), async (req, res) => {
   try {
-    const { items, deliveryAddress, specialInstructions, paymentMethod } = req.body;
+    const { items, deliveryAddress, deliveryCoords, specialInstructions, paymentMethod } = req.body;
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
@@ -225,6 +225,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
         adminCommission,
         vendorPayout,
         deliveryAddress,
+        deliveryCoords,
         specialInstructions,
         paymentMethod: paymentMethod || 'razorpay',
         customerEmail: req.user.email,

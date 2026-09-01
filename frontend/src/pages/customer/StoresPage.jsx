@@ -84,79 +84,89 @@ export default function StoresPage() {
   return (
     <div className="page-wrapper">
       <div className="container">
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
-            All <span style={{ color: 'var(--primary)' }}>Stores</span>
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Browse top shops and daily essentials</p>
-        </div>
+        {/* Header - Hidden when searching via URL */}
+        {!searchParams.has('search') ? (
+          <div style={{ marginBottom: 32 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
+              All <span style={{ color: 'var(--primary)' }}>Stores</span>
+            </h1>
+            <p style={{ color: 'var(--text-secondary)' }}>Browse top shops and daily essentials</p>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 32 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
+              Search Results for <span style={{ color: 'var(--primary)' }}>"{searchParams.get('search')}"</span>
+            </h1>
+          </div>
+        )}
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 32, flexWrap: 'wrap', alignItems: 'center' }}>
-          <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: 0, flex: '1 1 300px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'visible', position: 'relative' }}>
-            <input
-              name="search"
-              type="text"
-              value={search}
-              onChange={e => { setSearch(e.target.value); setShowSuggestions(true); }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              placeholder="🔍 Search stores or products..."
-              style={{ flex: 1, padding: '12px 16px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
-            />
-            <button type="submit" className="btn btn-primary btn-sm" style={{ margin: 6, borderRadius: 8 }}>Search</button>
+        {/* Filters - Hidden when searching via URL to avoid redundant search boxes */}
+        {!searchParams.has('search') && (
+          <div style={{ display: 'flex', gap: 12, marginBottom: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+            <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: 0, flex: '1 1 300px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'visible', position: 'relative' }}>
+              <input
+                name="search"
+                type="text"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                placeholder="🔍 Search stores or products..."
+                style={{ flex: 1, padding: '12px 16px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+              />
+              <button type="submit" className="btn btn-primary btn-sm" style={{ margin: 6, borderRadius: 8 }}>Search</button>
 
-            {showSuggestions && searchSuggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, zIndex: 999, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                {searchSuggestions.map((s, i) => (
-                  <div key={i} onClick={() => {
-                    setSearch(s.name);
-                    setShowSuggestions(false);
-                  }} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: i < searchSuggestions.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <div style={{ fontSize: 18 }}>
-                      {s.itemType === 'product' ? '📦' : '🛒'}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                        {s.itemType.charAt(0).toUpperCase() + s.itemType.slice(1)} 
-                        {s.storeId?.name ? ` from ${s.storeId.name}` : ''}
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, zIndex: 999, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+                  {searchSuggestions.map((s, i) => (
+                    <div key={i} onClick={() => {
+                      setSearch(s.name);
+                      setShowSuggestions(false);
+                    }} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: i < searchSuggestions.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <div style={{ fontSize: 18 }}>
+                        {s.itemType === 'product' ? '📦' : '🛒'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                          {s.itemType.charAt(0).toUpperCase() + s.itemType.slice(1)} 
+                          {s.storeId?.name ? ` from ${s.storeId.name}` : ''}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+            </form>
+
+            <select value={sort} onChange={e => setSort(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
+              <option value="">Sort by</option>
+              <option value="rating">⭐ Rating</option>
+              <option value="deliveryTime">Delivery Time</option>
+              <option value="deliveryFee">Delivery Fee</option>
+            </select>
+
+            <select value={type} onChange={e => setType(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
+              <option value="">All Categories</option>
+              {STORE_TYPES.filter(t => t.key !== 'all').map(t => (
+                <option key={t.key} value={t.key}>{t.icon} {t.label}</option>
+              ))}
+            </select>
+
+            {type && type !== 'all' && (
+              <button onClick={() => setType('')} className="btn btn-secondary btn-sm">
+                {typeInfo?.label || type} ✕
+              </button>
             )}
-          </form>
-
-          <select value={sort} onChange={e => setSort(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
-            <option value="">Sort by</option>
-            <option value="rating">⭐ Rating</option>
-            <option value="deliveryTime">Delivery Time</option>
-            <option value="deliveryFee">Delivery Fee</option>
-          </select>
-
-          <select value={type} onChange={e => setType(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
-            <option value="">All Categories</option>
-            {STORE_TYPES.filter(t => t.key !== 'all').map(t => (
-              <option key={t.key} value={t.key}>{t.icon} {t.label}</option>
-            ))}
-          </select>
-
-          {type && type !== 'all' && (
-            <button onClick={() => setType('')} className="btn btn-secondary btn-sm">
-              {typeInfo?.label || type} ✕
-            </button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Stores Section */}
-          {(true) && (
-            <div style={{ order: search ? 2 : 1, marginBottom: 40 }}>
+          {(!searchParams.has('search') || stores.length > 0) && (
+            <div style={{ order: searchParams.has('search') ? 2 : 1, marginBottom: 40 }}>
               <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
-                {searchParams.get('city') ? `Stores near ${searchParams.get('city')}` : searchParams.get('lat') ? `Stores near you` : 'Top Stores'}
+                {searchParams.has('search') ? 'Matching Stores' : searchParams.get('city') ? `Stores near ${searchParams.get('city')}` : searchParams.get('lat') ? `Stores near you` : 'Top Stores'}
               </h2>
               {loading ? (
                 <div className="vendor-grid">
@@ -190,9 +200,11 @@ export default function StoresPage() {
           )}
 
           {/* Products Section */}
-          {(products.length > 0 || stores.length === 0) && (
-            <div style={{ order: search ? 1 : 2, marginBottom: 40 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Popular Products</h2>
+          {(products.length > 0 || !searchParams.has('search')) && (
+            <div style={{ order: searchParams.has('search') ? 1 : 2, marginBottom: 40 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
+                {searchParams.has('search') ? 'Matching Products' : 'Popular Products'}
+              </h2>
               {loading ? (
                 <div className="items-grid">
                   {Array(6).fill(0).map((_, i) => <div key={i} style={{ height: 160, borderRadius: 16 }} className="shimmer" />)}

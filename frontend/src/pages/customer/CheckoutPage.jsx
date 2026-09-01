@@ -10,10 +10,7 @@ import toast from 'react-hot-toast';
 // ==========================================
 // Add your specific village areas here (e.g. ['Area 1', 'Area 2'])
 // If this list has items, the Area field becomes a dropdown.
-const ALLOWED_AREAS = ['Tilokhar', 'Panduka','Parchha','Padariya',]; 
-
-// Add your allowed pincodes here (e.g. ['123456'])
-// If this list has items, we check the user's pincode against it.
+const ALLOWED_AREAS = ['Tilokhar', 'Panduka', 'Parchha', 'Padariya']; 
 const ALLOWED_PINCODES = ['821304'];
 const ALLOWED_DISTRIC = ['Rohtas'];
 const ALLOWED_STATE = ['Bihar']; 
@@ -133,6 +130,12 @@ export default function CheckoutPage() {
     setLoading(true);
     try {
       // 1. Create order
+      let deliveryCoords = null;
+      try {
+        const storedCoords = localStorage.getItem('jdkart_coords');
+        if (storedCoords) deliveryCoords = JSON.parse(storedCoords);
+      } catch(e) {}
+
       const orderRes = await api.post('/customer/orders', {
         items: cartItems.map(i => ({ 
           foodId: i.type === 'food' ? (i.foodId || i._id) : null,
@@ -146,6 +149,7 @@ export default function CheckoutPage() {
           image: i.image 
         })),
         deliveryAddress: address,
+        deliveryCoords,
         alternatePhone: alternatePhone,
         specialInstructions: instructions,
         paymentMethod: paymentMethod === 'upi' ? 'razorpay' : paymentMethod,

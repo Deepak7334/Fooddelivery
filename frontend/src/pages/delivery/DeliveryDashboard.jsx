@@ -18,10 +18,9 @@ const STATUS_CFG = {
 };
 
 const PROGRESS_STEPS = [
-  { key: 'accepted_by_driver', label: 'Go',      icon: '✅ ' },
-  { key: 'reached_restaurant', label: 'Arrived', icon: '✅ ' },
-  { key: 'picked_up',          label: 'Picked',  icon: '✅ ' },
-  { key: 'reached_customer',   label: 'Door',    icon: '✅ ' },
+  { key: 'accepted_by_driver', label: 'Accepted', icon: '✓ ' },
+  { key: 'on_the_way',         label: 'On Way',   icon: '🚚' },
+  { key: 'reached_customer',   label: 'Arrived',  icon: '📍' },
 ];
 
 const STATUS_ORDER = ['assignment_pending','out_for_delivery','accepted_by_driver','reached_restaurant','picked_up','on_the_way','reached_customer','delivered'];
@@ -237,7 +236,7 @@ export default function DeliveryDashboard() {
         {/* ── TOP BAR ── */}
         <header className="dd-topbar">
           <div className="dd-topbar-left">
-            <div className="dd-avatar">🚴</div>
+            <div className="dd-avatar"></div>
             <div>
               <div className="dd-name">{profile?.name || user?.name}</div>
               <div className="dd-vehicle">{profile?.vehicleNumber || 'Delivery Partner'}</div>
@@ -297,6 +296,11 @@ export default function DeliveryDashboard() {
                       <div className="dd-vendor-name">{vendorName}</div>
                       <div className="dd-delivery-addr">📦 {vendorAddress} (📞 {vendorPhone})</div>
                       <div className="dd-delivery-addr">📍 {order.deliveryAddress?.slice(0, 45)}…</div>
+                      {order.deliveryCoords && order.deliveryCoords.lat && (
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '4px 10px', background: 'rgba(33, 150, 243, 0.1)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 6 }}>
+                          Navigate to Customer
+                        </a>
+                      )}
                     </div>
                     <div className="dd-earn-pill">
                       <div className="dd-earn-pill-amt">₹{order.deliveryFee}</div>
@@ -407,6 +411,11 @@ export default function DeliveryDashboard() {
                     <div className="dd-info-detail">{order.deliveryAddress}</div>
                     <div className="dd-info-detail">📞 {order.customerId?.phone || order.customerPhone || 'N/A'}</div>
                     {order.alternatePhone && <div className="dd-info-detail"> Alt: {order.alternatePhone}</div>}
+                    {order.deliveryCoords && order.deliveryCoords.lat && (
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 12px', background: 'rgba(33, 150, 243, 0.1)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 6, fontWeight: 700 }}>
+                           Open in Google Maps
+                        </a>
+                    )}
                   </div>
 
                   {/* Order Items */}
@@ -437,28 +446,18 @@ export default function DeliveryDashboard() {
                   {/* Action Button */}
                   <div className="dd-action-row">
                     {order.status === 'accepted_by_driver' && (
-                      <button className="dd-action-btn teal" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'reached_restaurant')}>
-                        Reached Vendor
-                      </button>
-                    )}
-                    {order.status === 'reached_restaurant' && (
-                      <button className="dd-action-btn purple" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'picked_up')}>
-                        Confirm Pickup
-                      </button>
-                    )}
-                    {order.status === 'picked_up' && (
                       <button className="dd-action-btn cyan" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'on_the_way')}>
-                        Start for Customer
+                         Start for Customer (On the Way)
                       </button>
                     )}
                     {order.status === 'on_the_way' && (
                       <button className="dd-action-btn amber" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'reached_customer')}>
-                         Reached Customer
+                         Arrived at Customer
                       </button>
                     )}
                     {order.status === 'reached_customer' && (
                       <button className="dd-action-btn green" disabled={actionLoading} onClick={() => setOtpOrder(order)}>
-                        🔐 Verify OTP & Deliver
+                         Verify OTP & Deliver
                       </button>
                     )}
                   </div>
