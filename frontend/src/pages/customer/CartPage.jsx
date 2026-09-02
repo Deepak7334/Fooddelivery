@@ -100,6 +100,7 @@ export default function CartPage() {
 
   const handleManualEntrySelect = () => {
     setManualMode(true);
+    localStorage.removeItem('jdkart_coords');
     setShowLocationPrompt(false);
     toast.success("Proceeding with manual address entry");
   };

@@ -798,6 +798,8 @@ router.get('/payouts', async (req, res) => {
 
     const payouts = {};
     for (const order of orders) {
+      if (!order.restaurantId && !order.storeId) continue;
+      
       const isRestaurant = !!order.restaurantId;
       const vendorId = isRestaurant ? order.restaurantId._id : order.storeId._id;
       const vendorName = isRestaurant ? order.restaurantId.name : order.storeId.name;

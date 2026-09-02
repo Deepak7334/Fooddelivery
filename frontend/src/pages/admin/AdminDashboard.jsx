@@ -42,16 +42,32 @@ export default function AdminDashboard() {
 
   return (
     <div>
+      <style>{`
+        .ad-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+        .ad-qa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+        @media (max-width: 1024px) {
+          .ad-stats-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
+          .ad-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .ad-qa-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        .ad-settings-card { padding: 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; background: linear-gradient(135deg, rgba(255,152,0,0.05), transparent); border: 1px solid rgba(255,152,0,0.2); border-radius: 16px; }
+        @media (max-width: 600px) {
+          .ad-settings-card { flex-direction: column; align-items: stretch; gap: 16px; }
+        }
+      `}</style>
+
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800 }}>Admin <span style={{ color: 'var(--primary)' }}>Dashboard</span></h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>Welcome back, Admin</p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
+      <div className="ad-stats-grid">
         {statCards.map(card => (
           <Link to={card.link} key={card.label} style={{ textDecoration: 'none' }}>
-            <div className="stat-card" style={{ cursor: 'pointer', transition: 'var(--transition)' }}
+            <div className="stat-card" style={{ cursor: 'pointer', transition: 'var(--transition)', height: '100%' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = card.color + '44'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
               <div className="stat-icon" style={{ background: card.color + '22', color: card.color }}>
@@ -67,47 +83,57 @@ export default function AdminDashboard() {
       {/* Quick Actions */}
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Quick Actions</h2>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Link to="/admin/restaurants" className="btn btn-primary"><FiShoppingBag /> Add Restaurant</Link>
-          <Link to="/admin/stores" className="btn btn-primary" style={{ background: '#4CAF50' }}>Add Store</Link>
-          <Link to="/admin/bookings" className="btn btn-primary" style={{ background: '#FF9800' }}>Manage Bookings</Link>
-          <Link to="/admin/categories" className="btn btn-secondary"><span></span> Manage Categories</Link>
-          <Link to="/admin/orders" className="btn btn-secondary"><FiList /> View All Orders</Link>
-          <Link to="/admin/items" className="btn btn-primary" style={{ background: '#9C27B0' }}>View All Items</Link>
+        <div className="ad-qa-grid">
+          <Link to="/admin/restaurants" className="btn btn-primary" style={{ display: 'flex', justifyContent: 'center' }}><FiShoppingBag /> Add Restaurant</Link>
+          <Link to="/admin/stores" className="btn btn-primary" style={{ background: '#4CAF50', display: 'flex', justifyContent: 'center' }}>Add Store</Link>
+          <Link to="/admin/bookings" className="btn btn-primary" style={{ background: '#FF9800', display: 'flex', justifyContent: 'center' }}>Manage Bookings</Link>
+          <Link to="/admin/categories" className="btn btn-secondary" style={{ display: 'flex', justifyContent: 'center' }}>Manage Categories</Link>
+          <Link to="/admin/orders" className="btn btn-secondary" style={{ display: 'flex', justifyContent: 'center' }}><FiList /> View All Orders</Link>
+          <Link to="/admin/items" className="btn btn-primary" style={{ background: '#9C27B0', display: 'flex', justifyContent: 'center' }}>View All Items</Link>
         </div>
       </div>
 
       {/* Platform Settings */}
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Platform Settings</h2>
-        <div className="card" style={{ padding: 24, maxWidth: 500, display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Commission Rate (%)</label>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>This percentage is automatically deducted from all future orders as your platform fee.</p>
-            <input 
-              type="number" 
-              className="input-field" 
-              value={settings?.platformCommissionRate || 15}
-              onChange={(e) => setSettings({ ...settings, platformCommissionRate: Number(e.target.value) })}
-              min="0" max="100"
-              style={{ width: '100%', maxWidth: 200 }}
-            />
+        <div className="card ad-settings-card">
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flex: 1 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,152,0,0.1)', color: '#FF9800', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+              ⚙️
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Platform Commission Rate</label>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Automatically deducted from future orders as platform fee.</p>
+            </div>
           </div>
-          <button 
-            className="btn btn-primary"
-            disabled={savingSettings}
-            onClick={async () => {
-              setSavingSettings(true);
-              try {
-                await api.put('/admin/settings', settings);
-                toast.success('Commission rate updated successfully!');
-              } catch(e) { toast.error('Failed to update settings'); }
-              setSavingSettings(false);
-            }}
-            style={{ padding: '12px 24px' }}
-          >
-            {savingSettings ? 'Saving...' : 'Save Settings'}
-          </button>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ position: 'relative', width: 100 }}>
+              <input 
+                type="number" 
+                className="form-input" 
+                value={settings?.platformCommissionRate || 15}
+                onChange={(e) => setSettings({ ...settings, platformCommissionRate: Number(e.target.value) })}
+                min="0" max="100"
+                style={{ paddingRight: 30, fontSize: 16, fontWeight: 700, textAlign: 'center' }}
+              />
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700 }}>%</span>
+            </div>
+            <button 
+              className="btn btn-primary"
+              disabled={savingSettings}
+              onClick={async () => {
+                setSavingSettings(true);
+                try {
+                  await api.put('/admin/settings', settings);
+                  toast.success('Commission rate updated successfully!');
+                } catch(e) { toast.error('Failed to update settings'); }
+                setSavingSettings(false);
+              }}
+              style={{ padding: '0 20px', height: 42, whiteSpace: 'nowrap' }}
+            >
+              {savingSettings ? 'Saving...' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
 
