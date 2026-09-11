@@ -52,7 +52,17 @@ export default function CheckoutPage() {
   const address = getActiveAddressString();
 
   const [instructions, setInstructions] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [paymentMethod, setPaymentMethod] = useState('cod');
+  
+  const handlePaymentChange = (method) => {
+    if (method === 'upi' || method === 'razorpay') {
+      toast.error('Currently we are not accepting the online payment!! Plz use the cash on delivery..', { duration: 4000 });
+      setPaymentMethod('cod');
+    } else {
+      setPaymentMethod(method);
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
 
@@ -65,7 +75,7 @@ export default function CheckoutPage() {
     const restaurantIds = Array.from(new Set(cartItems.map(i => i.restaurantId || ctxRestaurantId).filter(isValidId)));
     const storeIds = Array.from(new Set(cartItems.map(i => i.storeId || ctxStoreId).filter(isValidId)));
 
-    api.post('/customer/checkout-info', { restaurantIds, storeIds })
+    api.post('/customer/checkout-info', { items: cartItems, restaurantIds, storeIds })
       .then(res => {
         setDeliveryFee(res.data.deliveryFees || 0);
       })
@@ -391,7 +401,7 @@ export default function CheckoutPage() {
                   { id: 'cod', label: 'Cash on Delivery', desc: 'Pay cash when your order arrives' },
                 ].map(pm => (
                   <label key={pm.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, background: paymentMethod === pm.id ? 'rgba(255,87,34,0.08)' : 'rgba(255,255,255,0.03)', borderRadius: 10, border: `1px solid ${paymentMethod === pm.id ? 'rgba(255,87,34,0.4)' : 'var(--border)'}`, cursor: 'pointer', transition: 'var(--transition)' }}>
-                    <input type="radio" name="payment" value={pm.id} checked={paymentMethod === pm.id} onChange={() => setPaymentMethod(pm.id)} style={{ marginTop: 2 }} />
+                    <input type="radio" name="payment" value={pm.id} checked={paymentMethod === pm.id} onChange={() => handlePaymentChange(pm.id)} style={{ marginTop: 2 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                         {pm.label}

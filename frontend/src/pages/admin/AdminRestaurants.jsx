@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiEye, FiEyeOff } from 'react-icons/fi';
 import ImageCropperModal from '../../components/ImageCropperModal';
 
-const emptyForm = { name: '', description: '', cuisine: '', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '' };
+const emptyForm = { name: '', description: '', cuisine: '', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '', customCommissionRate: '' };
 
 const F = ({ label, field, type = 'text', placeholder, form, setForm, onUpload, uploading }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -84,7 +84,7 @@ export default function AdminRestaurants() {
       lat = r.location.coordinates[1];
       lng = r.location.coordinates[0];
     }
-    setForm({ ...r, cuisine: r.cuisine?.join(', ') || '', addrHouse: r.address || '', addrArea: '', addrLandmark: '', addrPincode: '', lat, lng });
+    setForm({ ...r, cuisine: r.cuisine?.join(', ') || '', addrHouse: r.address || '', addrArea: '', addrLandmark: '', addrPincode: '', lat, lng, customCommissionRate: r.customCommissionRate !== null && r.customCommissionRate !== undefined ? r.customCommissionRate : '' });
     setEditing(r._id); setShowModal(true);
   };
 
@@ -209,9 +209,9 @@ export default function AdminRestaurants() {
       {loading ? <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div> : (
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>Restaurant</th><th>Owner Email</th><th>Cuisine</th><th>Rating</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Restaurant</th><th>Owner Email</th><th>Cuisine</th><th>Comm. %</th><th>Rating</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
-              {restaurants.length === 0 ? <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No restaurants yet. Add one!</td></tr>
+              {restaurants.length === 0 ? <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No restaurants yet. Add one!</td></tr>
                 : restaurants.map(r => (
                   <tr key={r._id}>
                     <td>
@@ -220,6 +220,7 @@ export default function AdminRestaurants() {
                     </td>
                     <td style={{ fontSize: 13 }}>{r.ownerEmail || '—'}</td>
                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.cuisine?.join(', ')}</td>
+                    <td style={{ fontSize: 13 }}>{r.customCommissionRate != null ? `${r.customCommissionRate}%` : <span style={{ color: 'var(--text-muted)' }}>Global</span>}</td>
                     <td><span style={{ color: '#FFD700' }}>⭐</span> {r.rating?.toFixed(1)}</td>
                     <td>
                       <button onClick={() => handleToggle(r._id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, color: r.isActive ? 'var(--success)' : 'var(--text-muted)' }}>
@@ -267,6 +268,7 @@ export default function AdminRestaurants() {
               <F label="Delivery Time" field="deliveryTime" placeholder="30-40 mins" {...fProps} />
               <F label="Delivery Fee (₹)" field="deliveryFee" type="number" {...fProps} />
               <F label="Minimum Order (₹)" field="minOrder" type="number" {...fProps} />
+              <F label="Custom Commission (%)" field="customCommissionRate" type="number" placeholder="Leave blank for global" {...fProps} />
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <label className="form-label" style={{ margin: 0 }}>GPS Coordinates (For Distance Calculation) *</label>

@@ -120,7 +120,7 @@ export default function AdminPayouts() {
                       {p.pendingOrdersCount} {p.pendingOrdersCount === 1 ? 'Order' : 'Orders'}
                     </td>
                     <td style={{ padding: '16px 20px', fontWeight: 800, color: 'var(--primary)', fontSize: 16 }}>
-                      ₹{p.totalOwed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      ₹{(p.totalOwed || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                       <button 
@@ -181,7 +181,7 @@ export default function AdminPayouts() {
                         {h.orderCount}
                       </td>
                       <td style={{ padding: '16px 20px', fontWeight: 800, color: 'var(--primary)', fontSize: 16, textAlign: 'right' }}>
-                        ₹{h.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{(h.amountPaid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}

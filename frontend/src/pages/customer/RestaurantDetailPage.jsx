@@ -224,6 +224,9 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: food.isVeg ? '#4CAF50' : '#F44336' }}></div>
           </div>
           <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+            {food.freeDelivery && (
+               <span style={{ background: '#22C55E', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🚚 FREE DELIVERY</span>
+            )}
             {food.offer ? (
               <span style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🏷️ {food.offer}</span>
             ) : discount > 0 ? (

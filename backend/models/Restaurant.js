@@ -82,6 +82,10 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  customCommissionRate: {
+    type: Number,
+    default: null,
+  },
 }, {
   timestamps: true
 });

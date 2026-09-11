@@ -25,10 +25,44 @@ router.get('/categories', async (req, res) => {
 // Get checkout info (delivery fees & global taxes)
 router.post('/checkout-info', async (req, res) => {
   try {
-    const { totalAmount = 0 } = req.body;
-    // Delivery fee rule: < ₹30 → ₹5, ≥ ₹30 → ₹10
-    const deliveryFees = Number(totalAmount) < 30 ? 5 : 10;
-    res.json({ success: true, deliveryFees, globalTaxRate: 0 });
+    const { items = [], totalAmount = 0 } = req.body;
+    
+    // Fallback if no items provided
+    if (items.length === 0) {
+      const deliveryFees = Number(totalAmount) < 30 ? 5 : 10;
+      return res.json({ success: true, deliveryFees, globalTaxRate: 0 });
+    }
+
+    const vendorGroups = {};
+    for (const item of items) {
+      const vendorId = item.restaurantId || item.storeId;
+      const vendorType = item.type === 'food' ? 'restaurant' : 'store';
+      if (!vendorId) continue;
+      const key = `${vendorType}_${vendorId}`;
+      if (!vendorGroups[key]) vendorGroups[key] = { items: [] };
+      vendorGroups[key].items.push(item);
+    }
+
+    let totalDeliveryFee = 0;
+
+    for (const key of Object.keys(vendorGroups)) {
+      const group = vendorGroups[key];
+      const hasFreeDelivery = group.items.some(i => i.freeDelivery === true);
+      if (hasFreeDelivery) continue;
+
+      const [type, id] = key.split('_');
+      let fee = 30; // default fallback
+      if (type === 'restaurant') {
+        const rest = await Restaurant.findById(id);
+        if (rest) fee = rest.deliveryFee || 0;
+      } else {
+        const store = await Store.findById(id);
+        if (store) fee = store.deliveryFee || 0;
+      }
+      totalDeliveryFee += fee;
+    }
+
+    res.json({ success: true, deliveryFees: totalDeliveryFee, globalTaxRate: 0 });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -162,17 +196,24 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       const group = vendorGroups[key];
       let vendorName = 'JDkart';
       let vendorCoords = null;
+      let vendorCustomCommission = null;
+      let vendorDeliveryFee = 30; // fallback
+
       if (group.vendorType === 'restaurant' && group.vendorId) {
         const rest = await Restaurant.findById(group.vendorId);
         if (rest) {
           vendorName = rest.name;
           if (rest.location && rest.location.coordinates) vendorCoords = rest.location.coordinates;
+          vendorCustomCommission = rest.customCommissionRate;
+          vendorDeliveryFee = rest.deliveryFee !== undefined ? rest.deliveryFee : 30;
         }
       } else if (group.vendorType === 'store' && group.vendorId) {
         const store = await Store.findById(group.vendorId);
         if (store) {
           vendorName = store.name;
           if (store.location && store.location.coordinates) vendorCoords = store.location.coordinates;
+          vendorCustomCommission = store.customCommissionRate;
+          vendorDeliveryFee = store.deliveryFee !== undefined ? store.deliveryFee : 30;
         }
       }
 
@@ -202,12 +243,19 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       // Calculate total delivery fee for this vendor group
    
       const totalAmount = group.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      // Delivery fee based on order amount (consistent rule)
-      const groupDeliveryFee = Number(totalAmount) < 30 ? 5 : 10;
+      
+      const hasFreeDelivery = group.items.some(item => item.freeDelivery === true);
+      
+      // Use vendor's specific delivery fee, overridden if free delivery is enabled
+      let groupDeliveryFee = vendorDeliveryFee;
+      if (hasFreeDelivery) {
+        groupDeliveryFee = 0;
+      }
+      
       const finalAmount = totalAmount + groupDeliveryFee;
       
       const settings = await Settings.findOne();
-      const platformRate = settings?.platformCommissionRate ?? 15;
+      const platformRate = vendorCustomCommission !== null && vendorCustomCommission !== undefined ? vendorCustomCommission : (settings?.platformCommissionRate ?? 15);
       const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));
       const vendorPayout = Number((totalAmount - adminCommission).toFixed(2));
 
@@ -382,12 +430,18 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
     const store = await Store.findById(storeId);
     if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
 
-    // Delivery fee rule: < ₹30 → ₹5, ≥ ₹30 → ₹10
-    const deliveryFee = Number(totalAmount) < 30 ? 5 : 10;
+    // Delivery fee rule
+    const hasFreeDelivery = items.some(item => item.freeDelivery === true);
+    
+    let deliveryFee = store.deliveryFee !== undefined ? store.deliveryFee : 30;
+    if (hasFreeDelivery) {
+      deliveryFee = 0;
+    }
     const finalAmount = Number(totalAmount) + deliveryFee;
 
     const settings = await Settings.findOne();
-    const platformRate = settings?.platformCommissionRate ?? 15;
+    const vendorCustomCommission = store.customCommissionRate;
+    const platformRate = vendorCustomCommission !== null && vendorCustomCommission !== undefined ? vendorCustomCommission : (settings?.platformCommissionRate ?? 15);
     const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));
     const vendorPayout = Number((totalAmount - adminCommission).toFixed(2));
 

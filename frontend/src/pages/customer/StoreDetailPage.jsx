@@ -270,6 +270,11 @@ function ProductCard({ product, qty, onAdd, onBuy }) {
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📦</div>
           )}
           <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+            {product.freeDelivery && (
+              <div style={{ background: '#22C55E', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                🚚 FREE DELIVERY
+              </div>
+            )}
             {product.offer ? (
               <div style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>
                 🏷️ {product.offer}

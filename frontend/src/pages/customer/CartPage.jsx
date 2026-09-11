@@ -233,14 +233,14 @@ export default function CartPage() {
       {showLocationPrompt && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--bg-card)', padding: '32px 24px', borderRadius: 24, width: '90%', maxWidth: 400, textAlign: 'center', animation: 'scaleIn 0.3s ease' }}>
-            <div style={{ fontSize: 64, marginBottom: 16 }}>📍</div>
+            <div style={{ fontSize: 64, marginBottom: 16 }}></div>
             <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12 }}>Set Delivery Location</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 14 }}>
               Where should we deliver your order?
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <button onClick={handleDetectLocation} disabled={locLoading} className="btn btn-primary btn-full btn-lg">
-                {locLoading ? 'Wait...' : ' Use My Live Location'}
+                {locLoading ? 'Wait...' : ' Use Current Location'}
               </button>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0' }}>
@@ -250,7 +250,7 @@ export default function CartPage() {
               </div>
 
               <button onClick={handleManualEntrySelect} className="btn btn-secondary btn-full btn-lg">
-                 I will type my address
+                 Enter Your Address
               </button>
             </div>
           </div>

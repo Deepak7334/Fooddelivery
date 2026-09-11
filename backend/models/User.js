@@ -92,6 +92,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  rating: {
+    type: Number,
+    default: 4.0,
+  },
+  totalRatings: {
+    type: Number,
+    default: 0,
+  },
   fcmToken: {
     type: String,
     default: null,

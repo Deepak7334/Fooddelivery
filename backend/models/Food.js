@@ -56,6 +56,10 @@ const foodSchema = new mongoose.Schema({
     type: Number,
     default: 4.0,
   },
+  totalRatings: {
+    type: Number,
+    default: 0,
+  },
   preparationTime: {
     type: String,
     default: '15-20 mins',
@@ -80,7 +84,11 @@ const foodSchema = new mongoose.Schema({
   }],
   spiceLevels: [{
     type: String // e.g. "Mild", "Medium", "Spicy"
-  }]
+  }],
+  freeDelivery: {
+    type: Boolean,
+    default: false,
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Food', foodSchema);

@@ -324,7 +324,7 @@ export default function HomePage() {
     e.preventDefault();
     const q = [];
     if (search.trim()) q.push(`search=${encodeURIComponent(search)}`);
-    if (locationText.trim() && locationText !== '📍 Current Location') {
+    if (locationText.trim() && locationText !== ' Current Location') {
       q.push(`city=${encodeURIComponent(locationText)}`);
     }
     if (!search.trim()) {
@@ -654,14 +654,14 @@ export default function HomePage() {
           }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>📍</div>
             <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text-primary)' }}>
-              Set Delivery Location
+              Enter the Delivery Location
             </h3>
             <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
               Where should we deliver your order? Allow location access to see restaurants near you!
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <button onClick={handleDetectLocation} disabled={locLoading} className="btn btn-primary btn-full btn-lg">
-                {locLoading ? 'Wait...' : '📍 Use My Live Location'}
+                {locLoading ? 'Wait...' : ' Use My Live Location'}
               </button>
               <button onClick={() => setShowLocationPrompt(false)} className="btn btn-secondary btn-full btn-lg" style={{ background: 'transparent', border: '1px solid var(--border)' }}>
                 Cancel

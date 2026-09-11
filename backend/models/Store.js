@@ -28,6 +28,7 @@ const storeSchema = new mongoose.Schema({
   isOpen: { type: Boolean, default: true },
   offers: [{ type: String }],
   tags: [{ type: String }],
+  customCommissionRate: { type: Number, default: null },
 }, { timestamps: true });
 
 storeSchema.index({ location: '2dsphere' });

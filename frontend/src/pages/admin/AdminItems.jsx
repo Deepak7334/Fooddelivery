@@ -12,6 +12,7 @@ function EditDrawer({ item, onClose, onSave, saving }) {
   const [offer, setOffer]             = useState(item.offer || '');
   const [description, setDescription] = useState(item.description || '');
   const [available, setAvailable]     = useState(item.isAvailable !== false);
+  const [freeDelivery, setFreeDelivery] = useState(item.freeDelivery || false);
 
   return (
     <div className="ai-drawer-backdrop" onClick={onClose}>
@@ -57,6 +58,16 @@ function EditDrawer({ item, onClose, onSave, saving }) {
           <input type="text" value={offer} onChange={e => setOffer(e.target.value)} className="ai-input" placeholder="e.g. 20% OFF" />
 
           <label className="ai-toggle-row">
+            <span>Free Delivery</span>
+            <span
+              className={`ai-toggle ${freeDelivery ? 'on' : ''}`}
+              onClick={() => setFreeDelivery(v => !v)}
+            >
+              <span className="ai-toggle-knob" />
+            </span>
+          </label>
+
+          <label className="ai-toggle-row">
             <span>Item is available</span>
             <span
               className={`ai-toggle ${available ? 'on' : ''}`}
@@ -72,7 +83,7 @@ function EditDrawer({ item, onClose, onSave, saving }) {
           <button
             className="ai-btn-save"
             disabled={saving}
-            onClick={() => onSave(item._id, item.itemType, { price, discountedPrice, offer, description, isAvailable: available })}
+            onClick={() => onSave(item._id, item.itemType, { price, discountedPrice, offer, description, isAvailable: available, freeDelivery })}
           >
             {saving ? 'Saving…' : '✓ Save Changes'}
           </button>
@@ -91,6 +102,12 @@ export default function AdminItems() {
   const [editingItem, setEditingItem] = useState(null);
   const [saving, setSaving]     = useState(false);
   const [view, setView]         = useState('grid'); // grid | table
+  
+  // Bulk actions state
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkOffer, setBulkOffer] = useState('');
+  const [bulkFreeDelivery, setBulkFreeDelivery] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   useEffect(() => { fetchItems(); }, []);
 
@@ -115,13 +132,47 @@ export default function AdminItems() {
       toast.success('Item updated successfully!');
     } catch (err) {
       console.error('Update error:', err);
-      if (err.response) {
-         toast.error(`Backend error: ${err.response.status} - ${err.response.data.message || JSON.stringify(err.response.data)}`);
-      } else {
-         toast.error(`Network error: ${err.message}`);
-      }
+      toast.error(err.response?.data?.message || 'Network error');
     } finally {
       setSaving(false);
+    }
+  };
+  
+  const handleBulkApply = async () => {
+    if (selectedIds.size === 0) return toast.error('No items selected');
+    setBulkSaving(true);
+    try {
+      const payload = { itemIds: Array.from(selectedIds) };
+      if (bulkOffer) payload.offer = bulkOffer;
+      
+      // Always send freeDelivery to allow toggling it OFF in bulk
+      payload.freeDelivery = bulkFreeDelivery;
+      
+      await api.post('/admin/manage-items/bulk', payload);
+      toast.success('Bulk update applied successfully!');
+      setSelectedIds(new Set());
+      setBulkOffer('');
+      setBulkFreeDelivery(false);
+      fetchItems(); // refresh items
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to apply bulk update');
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const toggleSelection = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+  
+  const toggleAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(i => i._id)));
     }
   };
 
@@ -225,6 +276,52 @@ export default function AdminItems() {
           </div>
         </div>
 
+        {/* ── Bulk Actions Bar ── */}
+        {filtered.length > 0 && (
+          <div className="ai-bulk-bar">
+            <div className="ai-bulk-left">
+              <label className="ai-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === filtered.length && filtered.length > 0}
+                  onChange={toggleAll}
+                  className="ai-checkbox"
+                />
+                <span>Select All ({selectedIds.size})</span>
+              </label>
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="ai-bulk-actions">
+                <label className="ai-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={bulkFreeDelivery}
+                    onChange={(e) => setBulkFreeDelivery(e.target.checked)}
+                    className="ai-checkbox"
+                  />
+                  <span>Free Delivery</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Offer (e.g. 20% OFF)"
+                  value={bulkOffer}
+                  onChange={(e) => setBulkOffer(e.target.value)}
+                  className="ai-input ai-input-small"
+                  style={{ width: '150px' }}
+                />
+                <button
+                  className="ai-btn-save"
+                  style={{ padding: '6px 12px', fontSize: '12px' }}
+                  onClick={handleBulkApply}
+                  disabled={bulkSaving}
+                >
+                  {bulkSaving ? 'Applying...' : 'Apply Bulk'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Empty state ── */}
         {filtered.length === 0 ? (
           <div className="ai-empty">
@@ -236,11 +333,15 @@ export default function AdminItems() {
           /* ── GRID VIEW ── */
           <div className="ai-grid">
             {filtered.map(item => (
-              <div key={item._id} className="ai-card">
+              <div key={item._id} className={`ai-card ${selectedIds.has(item._id) ? 'selected' : ''}`}>
                 <div className="ai-card-img-wrap">
+                  <div className="ai-card-checkbox">
+                    <input type="checkbox" className="ai-checkbox" checked={selectedIds.has(item._id)} onChange={() => toggleSelection(item._id)} />
+                  </div>
                   <img src={item.image || 'https://via.placeholder.com/400'} alt={item.name} className="ai-card-img" />
                   <span className="ai-type-badge">{item.itemType}</span>
                   {item.offer && <span className="ai-offer-badge">{item.offer}</span>}
+                  {item.freeDelivery && <span className="ai-free-badge">FREE DELIVERY</span>}
                   {item.isAvailable === false && (
                     <div className="ai-unavailable-overlay">Unavailable</div>
                   )}
@@ -274,18 +375,22 @@ export default function AdminItems() {
             <table className="ai-table">
               <thead>
                 <tr>
+                  <th style={{ width: '40px' }}></th>
                   <th>Item</th>
                   <th>Type</th>
                   <th>Vendor</th>
                   <th>Price</th>
-                  <th>Offer</th>
+                  <th>Offer & Delivery</th>
                   <th>Status</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(item => (
-                  <tr key={item._id}>
+                  <tr key={item._id} className={selectedIds.has(item._id) ? 'selected-row' : ''}>
+                    <td>
+                      <input type="checkbox" className="ai-checkbox" checked={selectedIds.has(item._id)} onChange={() => toggleSelection(item._id)} />
+                    </td>
                     <td>
                       <div className="ai-table-item">
                         <img src={item.image || 'https://via.placeholder.com/60'} alt={item.name} className="ai-table-img" />
@@ -305,7 +410,12 @@ export default function AdminItems() {
                         </>
                       ) : formatINR(item.price)}
                     </td>
-                    <td>{item.offer ? <span className="ai-offer-pill">{item.offer}</span> : <span className="ai-muted">—</span>}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        {item.offer ? <span className="ai-offer-pill">{item.offer}</span> : <span className="ai-muted">—</span>}
+                        {item.freeDelivery && <span className="ai-free-badge-table">FREE DELIVERY</span>}
+                      </div>
+                    </td>
                     <td>
                       {item.isAvailable === false
                         ? <span className="ai-status-pill off">Unavailable</span>
@@ -378,9 +488,20 @@ const CSS = `
 
 .ai-card-img-wrap { height: 140px; width: 100%; position: relative; background: #1c222b; flex-shrink: 0; }
 .ai-card-img { width: 100%; height: 100%; object-fit: cover; }
+.ai-card-checkbox { position: absolute; top: 10px; left: 10px; z-index: 10; }
 .ai-type-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 100px; font-size: 10px; font-weight: 700; color: #fff; text-transform: capitalize; }
 .ai-offer-badge { position: absolute; bottom: 10px; left: 10px; background: #F97316; color: #fff; padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 800; }
+.ai-free-badge { position: absolute; bottom: 10px; right: 10px; background: #22C55E; color: #fff; padding: 4px 9px; border-radius: 7px; font-size: 10px; font-weight: 800; }
+.ai-free-badge-table { background: rgba(34, 197, 94, 0.15); color: #22C55E; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; }
 .ai-unavailable-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: #EF4444; font-weight: 800; font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+.ai-bulk-bar { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; }
+.ai-bulk-left { display: flex; align-items: center; gap: 12px; }
+.ai-bulk-actions { display: flex; align-items: center; gap: 12px; }
+.ai-checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #D1D5DB; cursor: pointer; }
+.ai-checkbox { width: 16px; height: 16px; accent-color: #F97316; cursor: pointer; }
+.ai-card.selected { border-color: #F97316; }
+.ai-table tr.selected-row td { background: rgba(249,115,22,0.05); }
 
 .ai-card-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .ai-card-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }

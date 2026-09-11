@@ -15,6 +15,8 @@ const productSchema = new mongoose.Schema({
   stock: { type: Number, default: -1 },         // -1 = unlimited
   isAvailable: { type: Boolean, default: true },
   isFeatured: { type: Boolean, default: false },
+  rating: { type: Number, default: 4.0 },
+  totalRatings: { type: Number, default: 0 },
   tags: [{ type: String }],
   // --- New Advanced PDP Fields ---
   images: [{ type: String }],
@@ -30,6 +32,7 @@ const productSchema = new mongoose.Schema({
   ingredients: { type: String, default: '' },
   nutritionalInfo: { type: String, default: '' },
   storageInstructions: { type: String, default: '' },
+  freeDelivery: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

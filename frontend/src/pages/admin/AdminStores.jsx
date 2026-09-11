@@ -11,7 +11,7 @@ const EMPTY = {
   name: '', description: '', storeType: 'grocery', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '',
   image: '', coverImage: '', phone: '', deliveryTime: '30-45 mins', deliveryFee: '30',
   minOrder: '100', isActive: true, isOpen: true, offers: '',
-  ownerEmail: '', ownerName: '', ownerPassword: '',
+  ownerEmail: '', ownerName: '', ownerPassword: '', customCommissionRate: ''
 };
 
 export default function AdminStores() {
@@ -41,7 +41,7 @@ export default function AdminStores() {
 
   const openAdd = () => { setForm(EMPTY); setModal('add'); };
   const openEdit = (s) => {
-    setForm({ ...EMPTY, ...s, deliveryFee: String(s.deliveryFee), minOrder: String(s.minOrder), offers: (s.offers || []).join(', '), ownerEmail: '', ownerName: '', ownerPassword: '', addrHouse: s.address || '' });
+    setForm({ ...EMPTY, ...s, deliveryFee: String(s.deliveryFee), minOrder: String(s.minOrder), offers: (s.offers || []).join(', '), ownerEmail: '', ownerName: '', ownerPassword: '', addrHouse: s.address || '', customCommissionRate: s.customCommissionRate !== null && s.customCommissionRate !== undefined ? s.customCommissionRate : '' });
     setModal('edit');
   };
 
@@ -155,7 +155,7 @@ export default function AdminStores() {
       ) : (
         <div className="table-wrapper">
           <table>
-            <thead><tr><th>Store</th><th>Type</th><th>City</th><th>Owner</th><th>Delivery</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Store</th><th>Type</th><th>City</th><th>Owner</th><th>Comm. %</th><th>Delivery</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {stores.map(store => (
                 <tr key={store._id}>
@@ -171,6 +171,7 @@ export default function AdminStores() {
                   <td><span style={{ background: 'rgba(255,87,34,0.1)', color: 'var(--primary)', padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700 }}>{TYPE_ICONS[store.storeType]} {store.storeType}</span></td>
                   <td style={{ fontSize: 13 }}>{store.city || '—'}</td>
                   <td style={{ fontSize: 13 }}>{store.ownerId?.name || store.ownerEmail || '—'}</td>
+                  <td style={{ fontSize: 13 }}>{store.customCommissionRate != null ? `${store.customCommissionRate}%` : <span style={{ color: 'var(--text-muted)' }}>Global</span>}</td>
                   <td style={{ fontSize: 13 }}>₹{store.deliveryFee} · {store.deliveryTime}</td>
                   <td>
                     <button onClick={() => toggleStatus(store)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: store.isActive ? 'var(--success)' : 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
@@ -213,6 +214,7 @@ export default function AdminStores() {
                   { label: 'Delivery Time', key: 'deliveryTime', col: 1, placeholder: '30-45 mins' },
                   { label: 'Delivery Fee (₹)', key: 'deliveryFee', type: 'number', col: 1 },
                   { label: 'Min Order (₹)', key: 'minOrder', type: 'number', col: 1 },
+                  { label: 'Custom Commission (%)', key: 'customCommissionRate', type: 'number', col: 1, placeholder: 'Leave blank for global' },
                   { label: 'Image URL', key: 'image', col: 2 },
                   { label: 'Cover Image URL', key: 'coverImage', col: 2 },
                   { label: 'Offers (comma separated)', key: 'offers', col: 2 },

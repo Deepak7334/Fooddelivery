@@ -98,7 +98,14 @@ router.post('/restaurants', async (req, res) => {
       locationData.coordinates = [parseFloat(lng), parseFloat(lat)];
     }
 
-    const restaurant = await Restaurant.create({ name, description, cuisine: cuisine || [], address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerId, location: locationData });
+    const restaurantData = { name, description, cuisine: cuisine || [], address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerId, location: locationData };
+    if (req.body.customCommissionRate !== undefined && req.body.customCommissionRate !== '') {
+      restaurantData.customCommissionRate = Number(req.body.customCommissionRate);
+    } else if (req.body.customCommissionRate === '') {
+      restaurantData.customCommissionRate = null;
+    }
+
+    const restaurant = await Restaurant.create(restaurantData);
     if (ownerId) await User.findByIdAndUpdate(ownerId, { restaurantId: restaurant._id });
     res.status(201).json({ success: true, restaurant });
   } catch (err) {
@@ -114,6 +121,11 @@ router.put('/restaurants/:id', async (req, res) => {
         type: 'Point',
         coordinates: [parseFloat(updateData.lng), parseFloat(updateData.lat)]
       };
+    }
+    if (updateData.customCommissionRate === '') {
+      updateData.customCommissionRate = null;
+    } else if (updateData.customCommissionRate !== undefined) {
+      updateData.customCommissionRate = Number(updateData.customCommissionRate);
     }
     const restaurant = await Restaurant.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
@@ -672,6 +684,12 @@ router.post('/stores', async (req, res) => {
       }
       ownerId = owner._id;
     }
+    
+    if (storeData.customCommissionRate === '') {
+      storeData.customCommissionRate = null;
+    } else if (storeData.customCommissionRate !== undefined) {
+      storeData.customCommissionRate = Number(storeData.customCommissionRate);
+    }
 
     const store = await Store.create({ ...storeData, ownerId, ownerEmail: ownerEmail || '' });
 
@@ -686,7 +704,13 @@ router.post('/stores', async (req, res) => {
 
 router.put('/stores/:id', async (req, res) => {
   try {
-    const store = await Store.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    let updateData = { ...req.body };
+    if (updateData.customCommissionRate === '') {
+      updateData.customCommissionRate = null;
+    } else if (updateData.customCommissionRate !== undefined) {
+      updateData.customCommissionRate = Number(updateData.customCommissionRate);
+    }
+    const store = await Store.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
     res.json({ success: true, store });
   } catch (err) {
@@ -722,7 +746,7 @@ router.get('/manage-items', async (req, res) => {
 // Admin: Update Item (Food or Product)
 router.patch('/manage-items/:id', async (req, res) => {
   try {
-    const { itemType, price, discountedPrice, offer, description, isAvailable } = req.body;
+    const { itemType, price, discountedPrice, offer, description, isAvailable, freeDelivery } = req.body;
     
     if (!itemType || !['food', 'product'].includes(itemType)) {
       return res.status(400).json({ success: false, message: 'Invalid or missing itemType' });
@@ -758,6 +782,10 @@ router.patch('/manage-items/:id', async (req, res) => {
     if (typeof isAvailable !== 'undefined') {
       updateData.isAvailable = Boolean(isAvailable);
     }
+    
+    if (typeof freeDelivery !== 'undefined') {
+      updateData.freeDelivery = Boolean(freeDelivery);
+    }
 
     let updatedItem;
     if (itemType === 'food') {
@@ -771,6 +799,41 @@ router.patch('/manage-items/:id', async (req, res) => {
     res.json({ success: true, item: { ...updatedItem.toObject(), itemType } });
   } catch (err) {
     console.error('Update item error:', err);
+    res.status(500).json({ success: false, message: 'Backend error: ' + err.message });
+  }
+});
+
+// Admin: Bulk update items (Offers & Free Delivery)
+router.post('/manage-items/bulk', async (req, res) => {
+  try {
+    const { itemIds, freeDelivery, offer } = req.body;
+    if (!Array.isArray(itemIds) || itemIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No items selected' });
+    }
+
+    const updateData = {};
+    if (typeof freeDelivery !== 'undefined') {
+      updateData.freeDelivery = Boolean(freeDelivery);
+    }
+    if (offer !== undefined) {
+      updateData.offer = offer;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid update fields provided' });
+    }
+
+    // We don't know which IDs belong to Food and which to Product without checking, 
+    // but we can just run updateMany on both collections.
+    const foodUpdate = await Food.updateMany({ _id: { $in: itemIds } }, { $set: updateData });
+    const productUpdate = await Product.updateMany({ _id: { $in: itemIds } }, { $set: updateData });
+
+    res.json({ 
+      success: true, 
+      message: `Successfully updated ${foodUpdate.modifiedCount + productUpdate.modifiedCount} items.` 
+    });
+  } catch (err) {
+    console.error('Bulk update item error:', err);
     res.status(500).json({ success: false, message: 'Backend error: ' + err.message });
   }
 });
@@ -791,6 +854,7 @@ router.get('/users/:id/audit-log', async (req, res) => {
 router.get('/payouts', async (req, res) => {
   try {
     const orders = await Order.find({
+      status: 'delivered',
       paymentStatus: 'paid',
       vendorPayoutStatus: 'pending',
       $or: [{ restaurantId: { $ne: null } }, { storeId: { $ne: null } }]
@@ -801,8 +865,8 @@ router.get('/payouts', async (req, res) => {
       if (!order.restaurantId && !order.storeId) continue;
       
       const isRestaurant = !!order.restaurantId;
-      const vendorId = isRestaurant ? order.restaurantId._id : order.storeId._id;
-      const vendorName = isRestaurant ? order.restaurantId.name : order.storeId.name;
+      const vendorId = isRestaurant ? (order.restaurantId._id || order.restaurantId) : (order.storeId._id || order.storeId);
+      const vendorName = isRestaurant ? (order.restaurantId.name || 'Unknown Restaurant') : (order.storeId.name || 'Unknown Store');
       const key = `${isRestaurant ? 'restaurant' : 'store'}_${vendorId}`;
       
       if (!payouts[key]) {
@@ -830,6 +894,7 @@ router.post('/payouts/settle', async (req, res) => {
     if (!vendorId || !vendorType) return res.status(400).json({ success: false, message: 'Vendor ID and Type required' });
 
     const filter = {
+      status: 'delivered',
       paymentStatus: 'paid',
       vendorPayoutStatus: 'pending'
     };
