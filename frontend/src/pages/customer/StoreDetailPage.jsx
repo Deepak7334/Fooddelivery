@@ -271,12 +271,12 @@ function ProductCard({ product, qty, onAdd, onBuy }) {
           )}
           <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
             {product.freeDelivery && (
-              <div style={{ background: '#22C55E', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                🚚 FREE DELIVERY
+              <div style={{ background: 'linear-gradient(90deg, #ECFDF5 0%, #D1FAE5 100%)', color: '#059669', padding: '3px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                Free Delivery
               </div>
             )}
             {product.offer ? (
-              <div style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ background: 'linear-gradient(90deg, #F0F9FF 0%, #E0F2FE 100%)', color: '#0369A1', border: '1px dashed #7DD3FC', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 🏷️ {product.offer}
               </div>
             ) : discount > 0 ? (

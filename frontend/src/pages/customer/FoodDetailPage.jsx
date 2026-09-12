@@ -145,17 +145,20 @@ export default function FoodDetailPage() {
 
             <div style={{ marginTop: 16 }}>
               <div style={{ color: 'var(--success)', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Price for {selectedVariant ? selectedVariant.name : '1 item'}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)' }}>₹{basePrice}</span>
-                {(originalPrice > basePrice) && (
-                  <span style={{ fontSize: 16, color: '#878787', textDecoration: 'line-through' }}>₹{originalPrice}</span>
-                )}
-                {food.offer ? (
-                  <span style={{ background: '#388E3C', color: '#fff', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🏷️ {food.offer}</span>
-                ) : discountPercent > 0 ? (
-                  <span style={{ color: '#388E3C', fontSize: 16, fontWeight: 600 }}>{discountPercent}% off</span>
-                ) : null}
-              </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)' }}>₹{basePrice}</span>
+                  {(originalPrice > basePrice) && (
+                    <span style={{ fontSize: 16, color: '#878787', textDecoration: 'line-through' }}>₹{originalPrice}</span>
+                  )}
+                  {food.freeDelivery && (
+                    <span style={{ background: 'linear-gradient(90deg, #ECFDF5 0%, #D1FAE5 100%)', color: '#059669', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}> Free Delivery</span>
+                  )}
+                  {food.offer ? (
+                    <span style={{ background: 'linear-gradient(90deg, #F0F9FF 0%, #E0F2FE 100%)', color: '#0369A1', border: '1px dashed #7DD3FC', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>🏷️ {food.offer}</span>
+                  ) : discountPercent > 0 ? (
+                    <span style={{ color: '#388E3C', fontSize: 16, fontWeight: 600 }}>{discountPercent}% off</span>
+                  ) : null}
+                </div>
             </div>
 
             {/* Warranty & Delivery */}

@@ -738,13 +738,16 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
     <div className="card item-card" style={{ display: 'flex', flexDirection: 'column', padding: 14 }}>
       <Link to={`/food/${food._id}`} className="item-link" style={{ display: 'flex', gap: 14, marginBottom: 14, textDecoration: 'none', color: 'inherit' }}>
         <div className="item-text" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 10, border: `2px solid ${food.isVeg ? 'var(--success)' : 'var(--danger)'}`, width: 15, height: 15, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: food.isVeg ? 'var(--success)' : 'var(--danger)', display: 'block' }} />
             </span>
             {food.isBestseller && <span style={{ fontSize: 10, color: '#FF8F00', fontWeight: 700 }}>★ Bestseller</span>}
+            {food.freeDelivery && (
+              <span style={{ background: 'linear-gradient(90deg, #ECFDF5 0%, #D1FAE5 100%)', color: '#059669', padding: '3px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}> Free Delivery</span>
+            )}
             {food.offer ? (
-              <span style={{ fontSize: 10, background: '#388E3C', color: '#fff', padding: '3px 8px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.02em', display: 'inline-flex', alignItems: 'center' }}>🏷️ {food.offer}</span>
+              <span style={{ background: 'linear-gradient(90deg, #F0F9FF 0%, #E0F2FE 100%)', color: '#0369A1', border: '1px dashed #7DD3FC', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>🏷️ {food.offer}</span>
             ) : discount > 0 ? (
               <span style={{ fontSize: 10, color: '#388E3C', fontWeight: 700 }}>{discount}% off</span>
             ) : null}
@@ -824,12 +827,15 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
     <div className="card item-card" style={{ display: 'flex', flexDirection: 'column', padding: 14 }}>
       <Link to={`/product/${product._id}`} className="item-link" style={{ display: 'flex', gap: 14, marginBottom: 14, textDecoration: 'none', color: 'inherit' }}>
         <div className="item-text" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-            <span style={{ fontSize: 10, background: 'rgba(33,150,243,0.1)', color: '#2196F3', padding: '3px 8px', borderRadius: 4, fontWeight: 700 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, background: 'rgba(33,150,243,0.1)', color: '#2196F3', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
               Store Product
             </span>
+            {product.freeDelivery && (
+              <span style={{ background: 'linear-gradient(90deg, #ECFDF5 0%, #D1FAE5 100%)', color: '#059669', padding: '3px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}> Free Delivery</span>
+            )}
             {product.offer ? (
-              <span style={{ fontSize: 10, background: '#388E3C', color: '#fff', padding: '3px 8px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.02em', display: 'inline-flex', alignItems: 'center' }}>🏷️ {product.offer}</span>
+              <span style={{ background: 'linear-gradient(90deg, #F0F9FF 0%, #E0F2FE 100%)', color: '#0369A1', border: '1px dashed #7DD3FC', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>🏷️ {product.offer}</span>
             ) : discount > 0 ? (
               <span style={{ fontSize: 10, color: '#388E3C', fontWeight: 700 }}>{discount}% off</span>
             ) : null}

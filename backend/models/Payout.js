@@ -18,6 +18,10 @@ const payoutSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  totalOrderAmount: {
+    type: Number,
+    default: 0,
+  },
   orderCount: {
     type: Number,
     required: true,

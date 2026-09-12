@@ -95,6 +95,7 @@ export default function AdminPayouts() {
                   <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Vendor Name</th>
                   <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Type</th>
                   <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Pending Orders</th>
+                  <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Total Amount</th>
                   <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Total Owed</th>
                   <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', textAlign: 'right' }}>Action</th>
                 </tr>
@@ -118,6 +119,9 @@ export default function AdminPayouts() {
                     </td>
                     <td style={{ padding: '16px 20px', color: 'var(--text-secondary)' }}>
                       {p.pendingOrdersCount} {p.pendingOrdersCount === 1 ? 'Order' : 'Orders'}
+                    </td>
+                    <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      ₹{(p.totalOrderAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     <td style={{ padding: '16px 20px', fontWeight: 800, color: 'var(--primary)', fontSize: 16 }}>
                       ₹{(p.totalOwed || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -154,6 +158,7 @@ export default function AdminPayouts() {
                     <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Vendor Name</th>
                     <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Type</th>
                     <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Orders Settled</th>
+                    <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', textAlign: 'right' }}>Total Amount</th>
                     <th style={{ padding: '16px 20px', fontWeight: 600, fontSize: 13, textTransform: 'uppercase', textAlign: 'right' }}>Amount Paid</th>
                   </tr>
                 </thead>
@@ -179,6 +184,9 @@ export default function AdminPayouts() {
                       </td>
                       <td style={{ padding: '16px 20px', color: 'var(--text-secondary)' }}>
                         {h.orderCount}
+                      </td>
+                      <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right' }}>
+                        ₹{(h.totalOrderAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                       <td style={{ padding: '16px 20px', fontWeight: 800, color: 'var(--primary)', fontSize: 16, textAlign: 'right' }}>
                         ₹{(h.amountPaid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}

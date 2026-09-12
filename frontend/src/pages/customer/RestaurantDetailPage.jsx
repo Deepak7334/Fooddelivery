@@ -223,16 +223,16 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
           <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: '#fff', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${food.isVeg ? '#4CAF50' : '#F44336'}` }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: food.isVeg ? '#4CAF50' : '#F44336' }}></div>
           </div>
-          <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-            {food.freeDelivery && (
-               <span style={{ background: '#22C55E', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🚚 FREE DELIVERY</span>
-            )}
-            {food.offer ? (
-              <span style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>🏷️ {food.offer}</span>
-            ) : discount > 0 ? (
-              <span style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4 }}>{discount}% off</span>
-            ) : null}
-          </div>
+            <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+              {food.freeDelivery && (
+                 <span style={{ background: 'linear-gradient(90deg, #ECFDF5 0%, #D1FAE5 100%)', color: '#059669', padding: '3px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}> Free Delivery</span>
+              )}
+              {food.offer ? (
+                <span style={{ background: 'linear-gradient(90deg, #F0F9FF 0%, #E0F2FE 100%)', color: '#0369A1', border: '1px dashed #7DD3FC', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>🏷️ {food.offer}</span>
+              ) : discount > 0 ? (
+                <span style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4 }}>{discount}% off</span>
+              ) : null}
+            </div>
         </div>
 
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{food.name}</div>

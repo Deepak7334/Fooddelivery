@@ -876,10 +876,12 @@ router.get('/payouts', async (req, res) => {
           vendorType: isRestaurant ? 'restaurant' : 'store',
           pendingOrdersCount: 0,
           totalOwed: 0,
+          totalOrderAmount: 0
         };
       }
       payouts[key].pendingOrdersCount += 1;
       payouts[key].totalOwed += (order.vendorPayout || 0);
+      payouts[key].totalOrderAmount += (order.totalAmount || 0);
     }
 
     res.json({ success: true, payouts: Object.values(payouts) });
@@ -907,6 +909,7 @@ router.post('/payouts/settle', async (req, res) => {
     }
 
     const totalOwed = pendingOrders.reduce((sum, order) => sum + (order.vendorPayout || 0), 0);
+    const totalOrderAmount = pendingOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const orderIds = pendingOrders.map(order => order._id);
 
     // Create Payout Record
@@ -914,8 +917,9 @@ router.post('/payouts/settle', async (req, res) => {
     await Payout.create({
       vendorId,
       vendorType,
-      vendorName: vendorName || 'Vendor',
+      vendorName,
       amountPaid: totalOwed,
+      totalOrderAmount: totalOrderAmount,
       orderCount: pendingOrders.length,
       orderIds
     });
