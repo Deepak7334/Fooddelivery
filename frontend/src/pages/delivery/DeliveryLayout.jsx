@@ -112,7 +112,7 @@ const CSS = `
   width: 230px;
   flex-shrink: 0;
   background: #111827;
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -128,7 +128,7 @@ const CSS = `
   align-items: center;
   gap: 11px;
   padding: 22px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--glass-border);
 }
 .dl-brand-logo {
   width: 38px; height: 38px;
@@ -164,7 +164,7 @@ const CSS = `
 }
 .dl-nav-link:hover {
   color: #E5E7EB;
-  background: rgba(255,255,255,0.05);
+  background: var(--glass-border);
 }
 .dl-nav-link.active {
   color: #F97316;
@@ -176,7 +176,7 @@ const CSS = `
 /* Footer */
 .dl-sidebar-footer {
   padding: 16px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -235,15 +235,15 @@ const CSS = `
   justify-content: space-between;
   padding: 13px 16px;
   background: #111827;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--glass-border);
   position: sticky;
   top: 0;
   z-index: 100;
 }
 .dl-hamburger {
   width: 36px; height: 36px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--glass-border);
+  border: 1px solid var(--glass-border);
   border-radius: 9px;
   color: #E5E7EB;
   font-size: 17px;

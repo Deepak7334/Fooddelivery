@@ -514,7 +514,7 @@ const CSS = `
   justify-content: space-between;
   align-items: center;
   background: #111827;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
   padding: 14px 16px;
   margin-bottom: 14px;
@@ -566,7 +566,7 @@ const CSS = `
 .dd-earnings-strip {
   display: flex;
   background: #111827;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 18px;
@@ -574,7 +574,7 @@ const CSS = `
 }
 .dd-earn-card { flex: 1; text-align: center; }
 .dd-earn-divider {
-  width: 1px; background: rgba(255,255,255,0.07);
+  width: 1px; background: var(--glass-border);
   align-self: stretch; margin: 0 4px;
 }
 .dd-earn-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #4B5563; margin-bottom: 5px; }
@@ -684,7 +684,7 @@ const CSS = `
 .dd-step-circle {
   width: 32px; height: 32px; border-radius: 50%;
   background: rgba(255,255,255,0.04);
-  border: 2px solid rgba(255,255,255,0.1);
+  border: 2px solid var(--glass-border);
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 700;
   transition: all 0.3s;
@@ -704,7 +704,7 @@ const CSS = `
   top: 16px; left: calc(50% + 16px);
   width: calc(100% - 32px);
   height: 2px;
-  background: rgba(255,255,255,0.07);
+  background: var(--glass-border);
   transition: background 0.3s;
 }
 .dd-step-connector.done { }
@@ -797,7 +797,7 @@ const CSS = `
 .dd-empty-state {
   text-align: center; padding: 36px 20px;
   background: rgba(255,255,255,0.025);
-  border: 1px dashed rgba(255,255,255,0.08);
+  border: 1px dashed var(--glass-border);
   border-radius: 16px;
 }
 .dd-empty-icon  { font-size: 44px; margin-bottom: 10px; }
@@ -824,7 +824,7 @@ const CSS = `
 }
 .dd-modal {
   background: #111827;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--glass-border);
   border-radius: 24px;
   padding: 32px 24px;
   width: 100%; max-width: 380px;
@@ -844,8 +844,8 @@ const CSS = `
   text-align: center;
   font-size: 26px; font-weight: 900;
   font-family: 'JetBrains Mono', monospace;
-  background: rgba(255,255,255,0.05);
-  border: 2px solid rgba(255,255,255,0.1);
+  background: var(--glass-border);
+  border: 2px solid var(--glass-border);
   border-radius: 12px; color: #E5E7EB;
   outline: none; transition: all 0.2s;
 }
@@ -854,14 +854,14 @@ const CSS = `
 .dd-modal-actions  { display: flex; gap: 10px; }
 .dd-btn-ghost {
   flex: 1; padding: 13px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--glass-border);
+  border: 1px solid var(--glass-border);
   border-radius: 12px; color: #9CA3AF;
   font-size: 14px; font-weight: 700;
   cursor: pointer; font-family: 'Inter', sans-serif;
   transition: background 0.15s;
 }
-.dd-btn-ghost:hover { background: rgba(255,255,255,0.1); }
+.dd-btn-ghost:hover { background: var(--glass-border); }
 .dd-btn-confirm {
   flex: 2; padding: 13px;
   background: #22C55E; border: none;

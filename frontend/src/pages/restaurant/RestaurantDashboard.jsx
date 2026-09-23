@@ -220,7 +220,7 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
 
 const ms = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  modal: { background: '#1A2030', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 500, maxHeight: '92vh', overflowY: 'auto' },
+  modal: { background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 500, maxHeight: '92vh', overflowY: 'auto' },
 };
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
@@ -461,7 +461,7 @@ export default function RestaurantDashboard() {
         )}
 
         {/* ── Tabs ───────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 18, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 18, borderBottom: '1px solid var(--glass-border)' }}>
           {[['overview', 'Overview'], ['orders', 'Orders']].map(([t, l]) => (
             <button key={t} className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>{l}</button>
           ))}
@@ -483,7 +483,7 @@ export default function RestaurantDashboard() {
                       <span style={{ fontSize: 13, color: '#D1D5DB' }}>{cfg.label}</span>
                       <span style={{ fontSize: 13, color: cfg.color, fontWeight: 700 }}>{count}</span>
                     </div>
-                    <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: 6, background: 'var(--glass-border)', borderRadius: 3, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: cfg.color, borderRadius: 3, transition: 'width 0.8s ease' }} />
                     </div>
                   </div>
@@ -548,7 +548,7 @@ export default function RestaurantDashboard() {
             </div>
 
             {/* Summary */}
-            <div style={{ display: 'flex', gap: 20, padding: '8px 0 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 13, color: '#9CA3AF', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 20, padding: '8px 0 14px', borderBottom: '1px solid var(--glass-border)', fontSize: 13, color: '#9CA3AF', flexWrap: 'wrap' }}>
               <span><b style={{ color: '#E5E7EB' }}>{displayOrders.length}</b> orders</span>
               <span><b style={{ color: '#22C55E' }}>₹{displayOrders.reduce((s, o) => s + (o.finalAmount || 0), 0).toLocaleString('en-IN')}</b> revenue</span>
               <span><b style={{ color: '#F59E0B' }}>{displayOrders.filter(o => o.status === 'pending').length}</b> pending</span>
@@ -560,7 +560,7 @@ export default function RestaurantDashboard() {
                 <thead>
                   <tr>
                     {['Order ID', 'Customer', 'Items', 'Amount', 'Status', 'Time', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#4B5563', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#4B5563', borderBottom: '1px solid var(--glass-border)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -666,16 +666,16 @@ const CSS = `
 
 /* Stat Cards */
 .stat-card {
-  background:#161B22;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;
+  background:var(--bg-card);border:1px solid var(--glass-border);border-radius:14px;padding:16px;
   position:relative;overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;animation:fadeIn 0.4s ease both;
 }
 .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.45);}
 
 /* Panel */
-.panel{background:#161B22;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:18px;animation:fadeIn 0.4s ease both;}
+.panel{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:14px;padding:18px;animation:fadeIn 0.4s ease both;}
 
 /* Pending Card */
-.pending-card{background:#1A2030;border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:14px;
+.pending-card{background:var(--bg-card);border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:14px;
   min-width:220px;max-width:240px;flex-shrink:0;cursor:pointer;transition:transform 0.2s,border-color 0.2s,box-shadow 0.2s;}
 .pending-card:hover{transform:translateY(-3px);border-color:rgba(245,158,11,0.6);box-shadow:0 8px 24px rgba(245,158,11,0.14);}
 .pending-glow{border-color:rgba(245,158,11,0.35)!important;}
@@ -718,16 +718,16 @@ const CSS = `
 .acbtn-sm.accept:hover{background:rgba(249,115,22,0.28);}
 .acbtn-sm.reject{background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.25);}
 .acbtn-sm.reject:hover{background:rgba(239,68,68,0.2);}
-.acbtn-sm.info{background:rgba(255,255,255,0.05);color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);}
-.acbtn-sm.info:hover{color:#E5E7EB;background:rgba(255,255,255,0.1);}
+.acbtn-sm.info{background:var(--glass-border);color:#9CA3AF;border:1px solid var(--glass-border);}
+.acbtn-sm.info:hover{color:#E5E7EB;background:var(--glass-border);}
 .acbtn-sm:disabled{opacity:0.5;cursor:not-allowed;}
 
 /* Inputs */
-.filter-input{padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+.filter-input{padding:9px 12px;background:var(--glass-border);border:1px solid var(--glass-border);
   border-radius:8px;color:#E5E7EB;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;}
 .filter-input::placeholder{color:#4B5563;}
 .filter-input:focus{border-color:rgba(249,115,22,0.5);}
-.filter-select{padding:9px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+.filter-select{padding:9px 10px;background:var(--glass-border);border:1px solid var(--glass-border);
   border-radius:8px;color:#E5E7EB;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;outline:none;}
 .filter-select option{background:#1F2937;}
 
@@ -745,7 +745,7 @@ const CSS = `
 
 /* Mobile Cards */
 .mobile-cards{display:none;flex-direction:column;gap:10px;margin-top:12px;}
-.mobile-order-card{background:#1A2030;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;cursor:pointer;transition:border-color 0.2s;animation:fadeIn 0.25s ease both;}
+.mobile-order-card{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:12px;padding:14px;cursor:pointer;transition:border-color 0.2s;animation:fadeIn 0.25s ease both;}
 .mobile-order-card:hover{border-color:rgba(249,115,22,0.3);}
 
 /* Responsive */

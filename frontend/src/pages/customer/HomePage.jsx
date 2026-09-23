@@ -374,7 +374,7 @@ export default function HomePage() {
     <div>
       {/* ── HERO SECTION ── */}
       <section style={{
-        background: 'linear-gradient(135deg, #0f0f1a 0%, #1a0a0a 50%, #0f0f1a 100%)',
+        background: 'linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-card) 50%, var(--bg-dark) 100%)',
         padding: 'clamp(48px,8vw,80px) 0 clamp(36px,6vw,60px)',
         position: 'relative', overflow: 'hidden',
       }}>
@@ -450,7 +450,7 @@ export default function HomePage() {
                       <div key={i} onClick={() => {
                         setSearch(s.name);
                         setShowSuggestions(false);
-                      }} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: i < searchSuggestions.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      }} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: i < searchSuggestions.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-border)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <div style={{ fontSize: 18 }}>
                           {s.itemType === 'food' ? '🍽️' : s.itemType === 'product' ? '📦' : s.itemType === 'restaurant' ? '🏪' : '🛒'}
                         </div>
@@ -685,7 +685,7 @@ function RestaurantCard({ restaurant, userCoords }) {
         {restaurant.image ? (
           <img src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'var(--transition)' }} />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, background: 'linear-gradient(135deg, #1a1a2e, #16213e)' }}>🍽️</div>
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, background: 'linear-gradient(135deg, var(--bg-card), var(--bg-card2))' }}>🍽️</div>
         )}
         {!restaurant.isOpen && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>
@@ -905,7 +905,7 @@ function StoreCard({ store }) {
 
   return (
     <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none', overflow: 'hidden' }}>
-      <div style={{ position: 'relative', height: 160, background: 'linear-gradient(135deg, #1a1a2e, #16213e)', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: 160, background: 'linear-gradient(135deg, var(--bg-card), var(--bg-card2))', overflow: 'hidden' }}>
         {store.image ? (
           <img src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (

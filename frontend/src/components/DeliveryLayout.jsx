@@ -17,12 +17,12 @@ export default function DeliveryLayout({ children }) {
   const isActive = (to, exact) => exact ? location.pathname === to : location.pathname.startsWith(to);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0F1117', fontFamily: "'DM Sans',sans-serif", color: '#E5E7EB' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0F1117', fontFamily: "'DM Sans',sans-serif", color: 'var(--text-primary)' }}>
       <style>{CSS}</style>
 
       {/* Sidebar (desktop) */}
       <aside className={`delivery-sidebar ${open ? 'open' : ''}`}>
-        <div style={{ padding: '24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ padding: '24px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 900, fontSize: 18, color: '#F97316' }}>JDkart</div>
           <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: 600 }}>Delivery Partner</div>
         </div>
@@ -34,11 +34,11 @@ export default function DeliveryLayout({ children }) {
             </Link>
           ))}
         </nav>
-        <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#E5E7EB', marginBottom: 4 }}>{user?.name}</div>
+        <div style={{ padding: '16px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{user?.name}</div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>{user?.phone}</div>
           <Link to="/profile" 
-            style={{ display: 'block', width: '100%', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#E5E7EB', fontWeight: 600, fontSize: 13, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', marginBottom: 8, fontFamily: 'inherit' }}>
+            style={{ display: 'block', width: '100%', padding: '9px', background: 'transparent', border: '1px solid var(--glass-border)', borderRadius: 8, color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', marginBottom: 8, fontFamily: 'inherit' }}>
              Profile Settings
           </Link>
           <button onClick={() => { logout(); navigate('/login'); }}
@@ -59,7 +59,7 @@ export default function DeliveryLayout({ children }) {
             <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <NotificationBell />
-            <button onClick={() => setOpen(true)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#E5E7EB', width: 36, height: 36, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
+            <button onClick={() => setOpen(true)} style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: 8, color: 'var(--text-primary)', width: 36, height: 36, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>☰</button>
           </div>
         </div>
 
@@ -76,8 +76,8 @@ export default function DeliveryLayout({ children }) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
 * { box-sizing: border-box; }
-.delivery-sidebar { width: 220px; background: #161B22; border-right: 1px solid rgba(255,255,255,0.07); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; flex-shrink: 0; z-index: 99; }
-.delivery-topbar { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: #161B22; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.delivery-sidebar { width: 220px; background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; flex-shrink: 0; z-index: 99; }
+.delivery-topbar { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
 
 @media (max-width: 640px) {
   .delivery-sidebar { position: fixed; left: -220px; top: 0; height: 100%; transition: left 0.28s ease; z-index: 99; }

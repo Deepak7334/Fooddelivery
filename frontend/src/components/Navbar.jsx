@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiList, FiCalendar, FiShoppingBag } from 'react-icons/fi';
+import { useTheme } from '../context/ThemeContext';
+import { FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiList, FiCalendar, FiShoppingBag, FiSun, FiMoon } from 'react-icons/fi';
 import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { totalItems } = useCart();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -87,8 +89,8 @@ export default function Navbar() {
     <>
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 500,
-        background: 'rgba(15,15,26,0.97)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--bg-dark)', backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column',
       }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '70px' }}>
@@ -143,11 +145,16 @@ export default function Navbar() {
 
           {/* Right side */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Theme Toggle */}
+            <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: 'var(--glass)', color: 'var(--text-primary)', transition: 'var(--transition)', border: '1px solid var(--glass-border)', cursor: 'pointer' }} aria-label="Toggle theme">
+              {theme === 'dark' ? <FiSun size={18} /> : <FiMoon size={18} />}
+            </button>
+
             {/* Notifications */}
             {user && <NotificationBell />}
 
             {/* Cart */}
-            <Link to="/cart" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)', transition: 'var(--transition)' }}>
+            <Link to="/cart" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: 'var(--glass)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', transition: 'var(--transition)' }}>
               <FiShoppingCart size={18} />
               {totalItems > 0 && (
                 <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--primary)', color: 'white', fontSize: 10, fontWeight: 700, width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -83,11 +83,11 @@ function QRDisplay({ value }) {
       const key = `${r},${c}`;
       let fill = '#fff';
       if (corners.has(key) && !cornerRim.has(key)) {
-        fill = cornerInner.has(key) ? '#fff' : '#1a1a2e';
+        fill = cornerInner.has(key) ? '#fff' : 'var(--bg-card)';
       } else if (!cornerRim.has(key)) {
         // pseudorandom fill from hash
         const v = (hash * (r * size + c + 1)) % 17;
-        fill = v < 9 ? '#1a1a2e' : '#fff';
+        fill = v < 9 ? 'var(--bg-card)' : '#fff';
       }
       cells.push(
         <rect key={key} x={c * 5} y={r * 5} width="5" height="5" fill={fill} />
@@ -358,7 +358,7 @@ export default function UpiPaymentPage() {
                       })}
                       style={{
                         padding: '4px 10px', borderRadius: 999, fontSize: 11,
-                        background: 'rgba(255,255,255,0.06)',
+                        background: 'var(--glass-border)',
                         border: '1px solid var(--border)',
                         color: 'var(--text-secondary)', cursor: 'pointer',
                         transition: 'all 0.2s',

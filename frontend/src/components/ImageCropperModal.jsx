@@ -101,7 +101,7 @@ export default function ImageCropperModal({ imageSrc, aspect = 16 / 9, onCancel,
         overflow: 'hidden', display: 'flex', flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
       }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Adjust Image</h3>
           <button onClick={onCancel} style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer' }}><FiX size={24} /></button>
         </div>

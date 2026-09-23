@@ -51,7 +51,7 @@ function AgentModal({ agent, onClose, onSave }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#1A2030', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, padding: 24, width: '100%', maxWidth: 440 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 18, padding: 24, width: '100%', maxWidth: 440 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{isEdit ? '✏️ Edit Agent' : '➕ Add Delivery Agent'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 22, cursor: 'pointer' }}>✕</button>
@@ -67,14 +67,14 @@ function AgentModal({ agent, onClose, onSave }) {
             <div key={key} style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</label>
               <input type={type} placeholder={placeholder} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
           ))}
           {isEdit && (
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Status</label>
               <select value={form.deliveryStatus} onChange={e => setForm(f => ({ ...f, deliveryStatus: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none' }}>
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none' }}>
                 <option value="available">Available</option>
                 <option value="busy">Busy</option>
                 <option value="offline">Offline</option>
@@ -82,7 +82,7 @@ function AgentModal({ agent, onClose, onSave }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#9CA3AF', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#9CA3AF', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
             <button type="submit" disabled={saving} style={{ flex: 2, padding: '12px', background: '#F97316', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 15, opacity: saving ? 0.7 : 1 }}>
               {saving ? 'Saving…' : isEdit ? 'Update Agent' : 'Add Agent'}
             </button>
@@ -142,10 +142,10 @@ function AgentDetailsModal({ agentId, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
-      <div style={{ background: '#12151C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, width: '100%', maxWidth: 900, height: '90vh', maxHeight: 800, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#12151C', border: '1px solid var(--glass-border)', borderRadius: 24, width: '100%', maxWidth: 900, height: '90vh', maxHeight: 800, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ padding: '24px 32px', background: 'linear-gradient(to right, #1A2030, #161B22)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '24px 32px', background: 'linear-gradient(to right, var(--bg-card), var(--bg-card))', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${STATUS_COLOR[agent.deliveryStatus] || '#6B7280'}, ${STATUS_COLOR[agent.deliveryStatus] || '#6B7280'}88)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>🚴</div>
             <div>
@@ -155,13 +155,13 @@ function AgentDetailsModal({ agentId, onClose }) {
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%', width: 40, height: 40, color: '#9CA3AF', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>✕</button>
+          <button onClick={onClose} style={{ background: 'var(--glass-border)', border: '1px solid var(--glass-border)', borderRadius: '50%', width: 40, height: 40, color: '#9CA3AF', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'var(--glass-border)'} onMouseOut={e => e.currentTarget.style.background = 'var(--glass-border)'}>✕</button>
         </div>
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
           {/* Left Panel: Map & Stats */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.05)', minWidth: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--glass-border)', minWidth: 0 }}>
             <div style={{ padding: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {[
                 { label: 'Total Assigned', value: stats.totalAssigned, color: '#3B82F6' },
@@ -176,7 +176,7 @@ function AgentDetailsModal({ agentId, onClose }) {
               ))}
             </div>
 
-            <div style={{ flex: 1, background: '#0F1117', position: 'relative', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ flex: 1, background: '#0F1117', position: 'relative', borderTop: '1px solid var(--glass-border)' }}>
               <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 1000, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: '#14B8A6', border: '1px solid rgba(20,184,166,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#14B8A6', boxShadow: '0 0 8px #14B8A6' }}></div> Live Tracking
               </div>
@@ -201,8 +201,8 @@ function AgentDetailsModal({ agentId, onClose }) {
           </div>
 
           {/* Right Panel: Delivery History */}
-          <div style={{ width: 380, display: 'flex', flexDirection: 'column', background: '#161B22', flexShrink: 0 }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontWeight: 800, color: '#E5E7EB', fontSize: 15 }}>
+          <div style={{ width: 380, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', flexShrink: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', fontWeight: 800, color: '#E5E7EB', fontSize: 15 }}>
               Delivery History
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
@@ -211,19 +211,19 @@ function AgentDetailsModal({ agentId, onClose }) {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {orders.map(o => (
-                    <div key={o._id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 14 }}>
+                    <div key={o._id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 14 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <span style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 13 }}>#{o._id.slice(-8).toUpperCase()}</span>
                         <span style={{ fontSize: 11, color: '#9CA3AF' }}>{new Date(o.createdAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 12 }}>
-                        <div style={{ width: 2, background: 'rgba(255,255,255,0.1)', borderRadius: 2 }} />
+                        <div style={{ width: 2, background: 'var(--glass-border)', borderRadius: 2 }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, color: '#E5E7EB', fontWeight: 600, marginBottom: 2 }}>{o.restaurantId?.name || 'Restaurant'}</div>
                           <div style={{ fontSize: 12, color: '#9CA3AF' }}>to {o.customerId?.name || 'Customer'}</div>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--glass-border)', paddingTop: 10 }}>
                         <span style={{ fontSize: 14, fontWeight: 800, color: '#10B981' }}>₹{o.finalAmount}</span>
                         <span style={{ fontSize: 10, fontWeight: 800, padding: '4px 10px', borderRadius: 12, background: o.status === 'delivered' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)', color: o.status === 'delivered' ? '#22C55E' : '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           {o.status.replace(/_/g, ' ')}
@@ -347,7 +347,7 @@ export default function AdminDeliveryAgents() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state" style={{ background: '#11141A', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 24 }}>
+        <div className="empty-state" style={{ background: '#11141A', border: '1px solid var(--glass-border)', borderRadius: 24 }}>
           <div className="empty-state-icon" style={{ fontSize: 48, marginBottom: 16 }}></div>
           <h3 style={{ color: '#F3F4F6' }}>No delivery partners found</h3>
           <p style={{ color: '#9CA3AF' }}>Recruit and add your first delivery partner to start dispatching orders.</p>
@@ -404,8 +404,8 @@ export default function AdminDeliveryAgents() {
 
 const CSS = `
 .da-wrapper { flex: 1; padding: 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-.da-header { background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.06); padding: 24px 32px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
-.da-input { padding: 12px 18px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; color: #E5E7EB; font-size: 14px; outline: none; width: 260px; transition: all 0.2s; }
+.da-header { background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--glass-border); padding: 24px 32px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+.da-input { padding: 12px 18px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 12px; color: #E5E7EB; font-size: 14px; outline: none; width: 260px; transition: all 0.2s; }
 .da-input:focus { border-color: #F97316; background: rgba(0,0,0,0.4); box-shadow: 0 0 0 2px rgba(249,115,22,0.15); }
 .da-btn-add { padding: 12px 24px; background: linear-gradient(135deg, #F97316, #EA580C); border: none; border-radius: 12px; color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 16px rgba(234,88,12,0.3); }
 .da-btn-add:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(234,88,12,0.4); }
@@ -418,8 +418,8 @@ const CSS = `
 .da-stat-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; opacity: 0.9; }
 
 .da-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
-.da-card { background: #11141A; border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
-.da-card:hover { transform: translateY(-6px); border-color: rgba(255,255,255,0.1); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
+.da-card { background: #11141A; border: 1px solid var(--glass-border); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+.da-card:hover { transform: translateY(-6px); border-color: var(--glass-border); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
 .da-card-inactive { opacity: 0.6; filter: grayscale(0.5); }
 .da-card-header { padding: 20px 24px; display: flex; gap: 16px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); background: rgba(255,255,255,0.015); }
 .da-avatar { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
@@ -433,7 +433,7 @@ const CSS = `
 
 .da-actions { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; background: rgba(255,255,255,0.01); }
 .da-btn-row { display: flex; gap: 10px; }
-.da-btn { flex: 1; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+.da-btn { flex: 1; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: inset 0 1px 0 var(--glass-border); }
 .da-btn.details { background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.3); color: #14B8A6; flex: 100%; box-shadow: 0 4px 12px rgba(20,184,166,0.1); }
 .da-btn.details:hover { background: rgba(20,184,166,0.22); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(20,184,166,0.15); }
 .da-btn.edit { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); color: #60A5FA; }

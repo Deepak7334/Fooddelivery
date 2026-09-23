@@ -200,7 +200,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
               <select
                 value={selectedAgent}
                 onChange={e => setSelectedAgent(e.target.value)}
-                style={{ flex: 1, padding: '9px 10px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#E5E7EB', fontSize: 13 }}>
+                style={{ flex: 1, padding: '9px 10px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#E5E7EB', fontSize: 13 }}>
                 <option value="">— Select agent —</option>
                 {availableAgents.map(a => (
                   <option key={a._id} value={a._id}>{a.name} ({a.phone}) — {a.deliveryStatus}</option>
@@ -238,7 +238,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
       {showMap && (
         <div style={{ ...ms.overlay, zIndex: 1100 }} onClick={(e) => { e.stopPropagation(); setShowMap(false); }}>
           <div style={{ ...ms.modal, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '80vh' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '16px 20px', background: '#161B22', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '16px 20px', background: 'var(--bg-card)', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontWeight: 800, color: '#E5E7EB', fontSize: 16 }}>Live Location Tracking</div>
                 <div style={{ fontSize: 12, color: '#9CA3AF' }}>Agent: {order.deliveryAgentId?.name}</div>
@@ -277,7 +277,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
 
 const ms = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  modal: { background: '#1A2030', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 520, maxHeight: '93vh', overflowY: 'auto' },
+  modal: { background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 520, maxHeight: '93vh', overflowY: 'auto' },
 };
 
 // ── Main Page ──────────────────────────────────────────────────────────────
@@ -508,16 +508,16 @@ export default function AdminOrders() {
 }
 
 const CSS = `
-.ao-input { padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#E5E7EB;font-size:13px;outline:none;width:180px; }
-.ao-select { padding:9px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#E5E7EB;font-size:13px;cursor:pointer;outline:none; }
+.ao-input { padding:9px 12px;background:var(--glass-border);border:1px solid var(--glass-border);border-radius:8px;color:#E5E7EB;font-size:13px;outline:none;width:180px; }
+.ao-select { padding:9px 10px;background:var(--glass-border);border:1px solid var(--glass-border);border-radius:8px;color:#E5E7EB;font-size:13px;cursor:pointer;outline:none; }
 .ao-select option { background:#1F2937; }
-.ao-btn { padding:8px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#D1D5DB;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
+.ao-btn { padding:8px 14px;background:var(--glass-border);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#D1D5DB;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
 .ao-btn:hover { background:rgba(255,255,255,0.12); }
 .ao-btn-primary { padding:6px 12px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);border-radius:6px;color:#F97316;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap; }
 .ao-btn-primary:hover { background:rgba(249,115,22,0.28); }
 .ao-btn-primary:disabled { opacity:0.5;cursor:not-allowed; }
 .ao-mobile { display:none;flex-direction:column;gap:10px; }
-.ao-card { background:#161B22;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;cursor:pointer;transition:border-color 0.2s; }
+.ao-card { background:var(--bg-card);border:1px solid var(--glass-border);border-radius:12px;padding:14px;cursor:pointer;transition:border-color 0.2s; }
 .ao-card:hover { border-color:rgba(249,115,22,0.3); }
 @media(max-width:768px) { .table-wrapper { display:none; } .ao-mobile { display:flex; } }
 `;

@@ -104,7 +104,7 @@ export default function StoreDetailPage() {
   return (
     <div style={{ paddingTop: 70, minHeight: '100vh' }}>
       {/* Store Header */}
-      <div style={{ position: 'relative', height: 200, background: 'linear-gradient(135deg, #0a1628, #16213e)', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: 200, background: 'linear-gradient(135deg, var(--bg-dark), var(--bg-card2))', overflow: 'hidden' }}>
         {store.coverImage || store.image ? (
           <img src={store.coverImage || store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
         ) : (
@@ -177,7 +177,7 @@ export default function StoreDetailPage() {
               {categories.map(cat => (
                 <button key={cat} onClick={() => scrollToCategory(cat)} style={{
                   padding: '7px 14px', borderRadius: 100, whiteSpace: 'nowrap', fontWeight: 600, fontSize: 12,
-                  background: activeCategory === cat ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
+                  background: activeCategory === cat ? 'var(--primary)' : 'var(--glass-border)',
                   color: activeCategory === cat ? '#fff' : 'var(--text-secondary)',
                   border: 'none', cursor: 'pointer', transition: 'all 0.15s',
                 }}>

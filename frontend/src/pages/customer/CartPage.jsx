@@ -153,7 +153,7 @@ export default function CartPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>
                         {item.name}
-                        {item.variantName && <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4, marginLeft: 8 }}>{item.variantName}</span>}
+                        {item.variantName && <span style={{ fontSize: 11, background: 'var(--glass-border)', padding: '2px 6px', borderRadius: 4, marginLeft: 8 }}>{item.variantName}</span>}
                       </div>
                       {item.spiceLevel && <div style={{ fontSize: 11, color: '#FF9800', marginBottom: 2 }}>🌶️ {item.spiceLevel}</div>}
                       {item.addOns && item.addOns.length > 0 && (

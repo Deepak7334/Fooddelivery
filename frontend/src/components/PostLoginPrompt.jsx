@@ -72,7 +72,7 @@ export default function PostLoginPrompt() {
           onClick={handleDismiss}
           style={{
             position: 'absolute', top: '16px', right: '16px',
-            background: 'rgba(255,255,255,0.05)', border: 'none',
+            background: 'var(--glass)', border: 'none',
             color: 'var(--text-secondary)', padding: '8px',
             borderRadius: '50%', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center'

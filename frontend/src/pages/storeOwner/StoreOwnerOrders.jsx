@@ -45,7 +45,7 @@ export default function StoreOwnerOrders() {
           <button key={s} onClick={() => setFilter(s)} style={{
             padding: '7px 16px', borderRadius: 100, fontWeight: 600, fontSize: 12, cursor: 'pointer',
             border: filter === s ? `2px solid ${STATUS_COLORS[s] || 'var(--primary)'}` : '2px solid transparent',
-            background: filter === s ? `${STATUS_COLORS[s] || 'var(--primary)'}22` : 'rgba(255,255,255,0.05)',
+            background: filter === s ? `${STATUS_COLORS[s] || 'var(--primary)'}22` : 'var(--glass-border)',
             color: filter === s ? (STATUS_COLORS[s] || 'var(--primary)') : 'var(--text-secondary)',
           }}>
             {s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}

@@ -38,7 +38,7 @@ function OTPModal({ order, onVerify, onClose, loading }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#1A2030', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 22, padding: 28, width: '100%', maxWidth: 380 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 22, padding: 28, width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>🔐</div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Enter Delivery OTP</h2>
@@ -53,12 +53,12 @@ function OTPModal({ order, onVerify, onClose, loading }) {
               onChange={e => handleInput(i, e.target.value)}
               onKeyDown={e => handleKeyDown(i, e)}
               maxLength={1}
-              style={{ width: 46, height: 54, textAlign: 'center', fontSize: 24, fontWeight: 800, fontFamily: 'monospace', background: 'rgba(255,255,255,0.06)', border: `2px solid ${d ? '#F97316' : 'rgba(255,255,255,0.12)'}`, borderRadius: 10, color: '#E5E7EB', outline: 'none', transition: 'border-color 0.2s' }}
+              style={{ width: 46, height: 54, textAlign: 'center', fontSize: 24, fontWeight: 800, fontFamily: 'monospace', background: 'var(--glass-border)', border: `2px solid ${d ? '#F97316' : 'rgba(255,255,255,0.12)'}`, borderRadius: 10, color: '#E5E7EB', outline: 'none', transition: 'border-color 0.2s' }}
             />
           ))}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: 13, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#9CA3AF', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onClose} style={{ flex: 1, padding: 13, background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#9CA3AF', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
           <button onClick={submitOtp} disabled={loading || otp.join('').length !== 6}
             style={{ flex: 2, padding: 13, background: '#22C55E', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 800, fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
             {loading ? 'Verifying…' : '✅ Confirm Delivery'}
@@ -199,7 +199,7 @@ export default function DeliveryOrderPage() {
 
               return (
                 <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.07)', border: `2px solid ${done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.15)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: 'all 0.3s', boxShadow: active ? `0 0 12px ${STATUS_CFG[s]?.color}60` : 'none' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? STATUS_CFG[s]?.color || '#F97316' : 'var(--glass-border)', border: `2px solid ${done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.15)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: 'all 0.3s', boxShadow: active ? `0 0 12px ${STATUS_CFG[s]?.color}60` : 'none' }}>
                     {done ? '✓' : i + 1}
                   </div>
                   <div style={{ fontSize: 9, color: done ? '#E5E7EB' : '#4B5563', marginTop: 4, textAlign: 'center', fontWeight: done ? 700 : 400 }}>
@@ -307,9 +307,9 @@ const CSS = `
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
 * { box-sizing: border-box; }
 
-.active-card { background: #161B22; border: 1px solid rgba(249,115,22,0.3); border-radius: 18px; padding: 20px; animation: fadeIn 0.3s ease; box-shadow: 0 0 24px rgba(249,115,22,0.08); }
+.active-card { background: var(--bg-card); border: 1px solid rgba(249,115,22,0.3); border-radius: 18px; padding: 20px; animation: fadeIn 0.3s ease; box-shadow: 0 0 24px rgba(249,115,22,0.08); }
 .progress-steps { display: flex; align-items: flex-start; gap: 0; margin-bottom: 18px; }
-.info-section { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.info-section { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 
 .map-btn { padding: 12px; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); border-radius: 10px; color: #3B82F6; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
 .map-btn:hover { background: rgba(59,130,246,0.22); }
