@@ -45,6 +45,7 @@ const AdminBookings        = lazy(() => import('./pages/admin/AdminBookings'));
 const AdminItems           = lazy(() => import('./pages/admin/AdminItems'));
 const AdminStores          = lazy(() => import('./pages/admin/AdminStores'));
 const AdminPayouts         = lazy(() => import('./pages/admin/AdminPayouts'));
+const AdminServiceAreas    = lazy(() => import('./pages/admin/AdminServiceAreas'));
 
 // ── Restaurant Pages (lazy) ───────────────────────────────────────────────────
 const RestaurantDashboard  = lazy(() => import('./pages/restaurant/RestaurantDashboard'));
@@ -79,12 +80,16 @@ const PrivateRoute = ({ children, role }) => {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (role && user.role !== role) {
-    if (user.role === 'admin') return <Navigate to="/admin" replace />;
-    if (user.role === 'restaurant') return <Navigate to="/restaurant" replace />;
-    if (user.role === 'store_owner') return <Navigate to="/store-owner" replace />;
-    if (user.role === 'delivery') return <Navigate to="/delivery" replace />;
-    return <Navigate to="/" replace />;
+  if (role) {
+    if (role === 'admin' && user.role === 'sub_admin') {
+      // sub_admin is allowed in admin routes
+    } else if (user.role !== role) {
+      if (user.role === 'admin' || user.role === 'sub_admin') return <Navigate to="/admin" replace />;
+      if (user.role === 'restaurant') return <Navigate to="/restaurant" replace />;
+      if (user.role === 'store_owner') return <Navigate to="/store-owner" replace />;
+      if (user.role === 'delivery') return <Navigate to="/delivery" replace />;
+      return <Navigate to="/" replace />;
+    }
   }
   return children;
 };
@@ -223,6 +228,7 @@ export default function App() {
         <Route path="/admin/categories"         element={<PrivateRoute role="admin"><AdminLayout><AdminCategories /></AdminLayout></PrivateRoute>} />
         <Route path="/admin/items"              element={<PrivateRoute role="admin"><AdminLayout><AdminItems /></AdminLayout></PrivateRoute>} />
         <Route path="/admin/payouts"            element={<PrivateRoute role="admin"><AdminLayout><AdminPayouts /></AdminLayout></PrivateRoute>} />
+        <Route path="/admin/service-areas"      element={<PrivateRoute role="admin"><AdminLayout><AdminServiceAreas /></AdminLayout></PrivateRoute>} />
 
         {/* Restaurant Routes */}
         <Route path="/restaurant"                element={<PrivateRoute role="restaurant"><RestaurantLayout><RestaurantDashboard /></RestaurantLayout></PrivateRoute>} />

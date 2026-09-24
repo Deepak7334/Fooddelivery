@@ -74,6 +74,10 @@ app.use('/api/booking', require('./routes/booking'));
 app.use('/api/store', require('./routes/store'));
 app.use('/api/store-owner', require('./routes/storeOwner'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/service-areas', require('./routes/serviceArea'));
+app.use('/api/home-feed', require('./routes/homeFeed'));
+app.use('/api/serviceability', require('./routes/serviceability'));
+app.use('/api/addresses', require('./routes/address'));
 
 // Socket.io
 io.on('connection', (socket) => {
@@ -126,6 +130,7 @@ mongoose.connect(cleanMongoUri, {
     console.log('✅ MongoDB Connected');
     await seedAdmin();
     await seedCategories();
+    await seedServiceAreas();
   })
   .catch((err) => {
     if (err.message.includes('authentication failed')) {
@@ -182,6 +187,39 @@ async function seedCategories() {
       { name: 'Pasta', icon: '🍝' },
     ]);
     console.log('✅ Categories seeded');
+  }
+}
+
+// Seed initial service areas
+async function seedServiceAreas() {
+  const ServiceArea = require('./models/ServiceArea');
+  const count = await ServiceArea.countDocuments();
+  if (count === 0) {
+    await ServiceArea.insertMany([
+      {
+        name: 'Area 1 (Central)',
+        code: 'AREA_1',
+        city: 'Metropolis',
+        state: 'State',
+        pincodes: ['100001', '100002'],
+        deliveryFee: 20,
+        minimumOrderValue: 99,
+        estimatedDeliveryTime: '25-35 min',
+        status: 'ACTIVE'
+      },
+      {
+        name: 'Area 2 (North)',
+        code: 'AREA_2',
+        city: 'Metropolis',
+        state: 'State',
+        pincodes: ['200001', '200002'],
+        deliveryFee: 30,
+        minimumOrderValue: 149,
+        estimatedDeliveryTime: '30-45 min',
+        status: 'ACTIVE'
+      }
+    ]);
+    console.log('✅ Service Areas seeded');
   }
 }
 

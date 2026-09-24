@@ -15,7 +15,26 @@ const generateOTP = require('../utils/generateOTP');
 const sendEmail = require('../utils/sendEmail');
 
 // All admin routes require auth + admin role
-router.use(protect, authorize('admin'));
+// All admin routes require auth + admin or sub_admin role
+router.use(protect, authorize('admin', 'sub_admin'));
+
+// Middleware to scope sub_admin to their service areas
+router.use((req, res, next) => {
+  req.adminFilter = {};
+  req.adminOrderFilter = {};
+  if (req.user.role === 'sub_admin') {
+    if (req.user.serviceAreaIds && req.user.serviceAreaIds.length > 0) {
+      req.adminFilter = { serviceAreaIds: { $in: req.user.serviceAreaIds } };
+      req.adminOrderFilter = { serviceAreaId: { $in: req.user.serviceAreaIds } };
+    } else {
+      // Sub-admin with no area assigned gets nothing
+      req.adminFilter = { _id: null };
+      req.adminOrderFilter = { _id: null };
+    }
+  }
+  next();
+});
+
 
 // ========== DASHBOARD STATS ==========
 router.get('/stats', async (req, res) => {
@@ -24,12 +43,12 @@ router.get('/stats', async (req, res) => {
     const Store = require('../models/Store');
     const [totalUsers, totalRestaurants, totalStores, totalOrders, revenueAgg, totalDeliveryAgents, totalBookings] = await Promise.all([
       User.countDocuments({ role: 'customer' }),
-      Restaurant.countDocuments(),
-      Store.countDocuments(),
-      Order.countDocuments(),
+      Restaurant.countDocuments(req.adminFilter),
+      Store.countDocuments(req.adminFilter),
+      Order.countDocuments(req.adminOrderFilter),
       Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$finalAmount' }, adminEarnings: { $sum: '$adminCommission' }, vendorPayouts: { $sum: '$vendorPayout' } } }]),
-      User.countDocuments({ role: 'delivery' }),
-      Booking.countDocuments(),
+      User.countDocuments({ role: 'delivery', ...req.adminFilter }),
+      Booking.countDocuments(req.adminFilter),
     ]);
     const recentOrders = await Order.find().sort({ createdAt: -1 }).limit(10)
       .populate('customerId', 'name email phone')
@@ -73,7 +92,7 @@ router.put('/settings', async (req, res) => {
 // ========== RESTAURANT MANAGEMENT ==========
 router.get('/restaurants', async (req, res) => {
   try {
-    const restaurants = await Restaurant.find().populate('ownerId', 'name email');
+    const restaurants = await Restaurant.find(req.adminFilter).populate('ownerId', 'name email');
     res.json({ success: true, restaurants });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -165,6 +184,30 @@ router.get('/users', async (req, res) => {
   try {
     const users = await User.find({ role: { $ne: 'admin' } }).select('-password');
     res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
+// ========== SUB ADMIN MANAGEMENT ==========
+router.post('/sub-admins', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Only Super Admin can create Sub-Admins' });
+    const { name, email, password, phone, serviceAreaId } = req.body;
+    if (!name || !email || !password || !serviceAreaId) return res.status(400).json({ success: false, message: 'All fields are required' });
+    
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ success: false, message: 'Email already exists' });
+    
+    const bcrypt = require('bcryptjs');
+    const hashed = await bcrypt.hash(password, 10);
+    
+    const newSubAdmin = await User.create({
+      name, email, password: hashed, phone, role: 'sub_admin', serviceAreaIds: [serviceAreaId]
+    });
+    
+    res.status(201).json({ success: true, user: { _id: newSubAdmin._id, name, email, role: 'sub_admin' } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -266,7 +309,7 @@ router.delete('/users/:id', async (req, res) => {
 
 router.get('/delivery-agents', async (req, res) => {
   try {
-    const agents = await User.find({ role: 'delivery' }).select('-password').sort({ createdAt: -1 });
+    const agents = await User.find({ role: 'delivery', ...req.adminFilter }).select('-password').sort({ createdAt: -1 });
     const agentIds = agents.map(a => a._id);
     const activeCounts = await Order.aggregate([
       { $match: { deliveryAgentId: { $in: agentIds }, status: 'out_for_delivery' } },
@@ -282,12 +325,16 @@ router.get('/delivery-agents', async (req, res) => {
 
 router.post('/delivery-agents', async (req, res) => {
   try {
-    const { name, email, password, phone, vehicleNumber } = req.body;
+    const { name, email, password, phone, vehicleNumber, serviceAreaIds } = req.body;
     if (!name || !email || !password) return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ success: false, message: 'Email already in use' });
     const hashed = await bcrypt.hash(password, 10);
-    const agent = await User.create({ name, email, password: hashed, role: 'delivery', phone: phone || '', vehicleNumber: vehicleNumber || '', deliveryStatus: 'available' });
+    const agent = await User.create({ 
+      name, email, password: hashed, role: 'delivery', 
+      phone: phone || '', vehicleNumber: vehicleNumber || '', deliveryStatus: 'available',
+      serviceAreaIds: serviceAreaIds || []
+    });
     const { password: _p, ...agentData } = agent.toObject();
     res.status(201).json({ success: true, agent: agentData });
   } catch (err) {
@@ -297,10 +344,12 @@ router.post('/delivery-agents', async (req, res) => {
 
 router.put('/delivery-agents/:id', async (req, res) => {
   try {
-    const { name, phone, vehicleNumber, deliveryStatus } = req.body;
+    const { name, phone, vehicleNumber, deliveryStatus, serviceAreaIds } = req.body;
+    let updateObj = { name, phone, vehicleNumber, deliveryStatus };
+    if (serviceAreaIds !== undefined) updateObj.serviceAreaIds = serviceAreaIds;
     const agent = await User.findOneAndUpdate(
       { _id: req.params.id, role: 'delivery' },
-      { name, phone, vehicleNumber, deliveryStatus },
+      updateObj,
       { new: true }
     ).select('-password');
     if (!agent) return res.status(404).json({ success: false, message: 'Delivery agent not found' });
@@ -361,7 +410,7 @@ router.get('/delivery-agents/:id/details', async (req, res) => {
 router.get('/orders', async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
-    const filter = status ? { status } : {};
+    const filter = status ? { status, ...req.adminOrderFilter } : { ...req.adminOrderFilter };
     const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)

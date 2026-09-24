@@ -6,15 +6,13 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 // ==========================================
-// 📍 DELIVERY AREA SETTINGS
+// 📍 DYNAMIC DELIVERY AREA SETTINGS
+// Delivery validation is now handled dynamically by the backend Serviceability Engine.
 // ==========================================
-// Add your specific village areas here (e.g. ['Area 1', 'Area 2'])
-// If this list has items, the Area field becomes a dropdown.
-const ALLOWED_AREAS = ['Tilokhar', 'Panduka', 'Parchha', 'Padariya']; 
-const ALLOWED_PINCODES = ['821304'];
-const ALLOWED_DISTRIC = ['Rohtas'];
-const ALLOWED_STATE = ['Bihar']; 
-// ==========================================
+const ALLOWED_AREAS = []; 
+const ALLOWED_PINCODES = [];
+const ALLOWED_DISTRIC = [];
+const ALLOWED_STATE = [];
 
 export default function CheckoutPage() {
   const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId } = useCart();
@@ -109,27 +107,9 @@ export default function CheckoutPage() {
       
       if (!hasGPS) {
         if (!addrArea.trim()) { toast.error('Please select or enter your Area/Locality'); return; }
-        if (!addrDistrict.trim()) { toast.error('Please select or enter your District'); return; }
+        if (!addrDistrict.trim()) { toast.error('Please select or enter your District/City'); return; }
         if (!addrState.trim()) { toast.error('Please select or enter your State'); return; }
         if (!addrPincode.trim()) { toast.error('Please enter your Pincode'); return; }
-        
-        // --- LOCATION RESTRICTION CHECK ---
-        if (ALLOWED_PINCODES.length > 0 && !ALLOWED_PINCODES.includes(addrPincode.trim())) {
-          toast.error("Sorry, currently our service is not available in your Entered Pincode.");
-          return;
-        }
-        if (ALLOWED_AREAS.length > 0 && !ALLOWED_AREAS.includes(addrArea.trim())) {
-          toast.error('Sorry, currently our service is not available in your selected area.');
-          return;
-        }
-        if (ALLOWED_DISTRIC.length > 0 && !ALLOWED_DISTRIC.includes(addrDistrict.trim())) {
-          toast.error('Sorry, currently our service is not available in your selected district.');
-          return;
-        }
-        if (ALLOWED_STATE.length > 0 && !ALLOWED_STATE.includes(addrState.trim())) {
-          toast.error('Sorry, currently our service is not available in your selected state.');
-          return;
-        }
       }
 
       if (!alternatePhone.trim()) { toast.error('Please enter a Delivery Mobile Number'); return; }
@@ -148,13 +128,49 @@ export default function CheckoutPage() {
     if (cartItems.length === 0) { toast.error('Cart is empty'); return; }
     setLoading(true);
     try {
-      // 1. Create order
       let deliveryCoords = null;
       try {
         const storedCoords = localStorage.getItem('jdkart_coords');
         if (storedCoords) deliveryCoords = JSON.parse(storedCoords);
       } catch(e) {}
 
+      // Build Address Object
+      let deliveryAddressObj = {};
+      if (!showNewAddressForm && selectedAddressIndex >= 0 && savedAddresses[selectedAddressIndex]) {
+         const sa = savedAddresses[selectedAddressIndex];
+         deliveryAddressObj = {
+           addressLine1: sa.addressLine1 || sa.address || getActiveAddressString(),
+           landmark: sa.landmark || '',
+           area: sa.area || '',
+           city: sa.city || sa.district || '',
+           state: sa.state || '',
+           pincode: sa.pincode || '',
+           latitude: sa.latitude || deliveryCoords?.lat,
+           longitude: sa.longitude || deliveryCoords?.lng
+         };
+      } else {
+         deliveryAddressObj = {
+           addressLine1: addrHouse,
+           landmark: addrLandmark,
+           area: addrArea,
+           city: addrDistrict,
+           state: addrState,
+           pincode: addrPincode,
+           latitude: deliveryCoords?.lat,
+           longitude: deliveryCoords?.lng
+         };
+      }
+
+      // Perform Serviceability Check
+      const servRes = await api.post('/serviceability/check', { address: deliveryAddressObj });
+      if (!servRes.data.serviceable) {
+        toast.error(servRes.data.message);
+        setLoading(false);
+        return;
+      }
+      const serviceAreaId = servRes.data.serviceAreaId;
+
+      // 1. Create order
       const orderRes = await api.post('/customer/orders', {
         items: cartItems.map(i => ({ 
           foodId: i.type === 'food' ? (i.foodId || i._id) : null,
@@ -167,7 +183,8 @@ export default function CheckoutPage() {
           quantity: i.quantity, 
           image: i.image 
         })),
-        deliveryAddress: address,
+        deliveryAddress: deliveryAddressObj,
+        serviceAreaId,
         deliveryCoords,
         alternatePhone: alternatePhone,
         specialInstructions: instructions,
@@ -176,18 +193,18 @@ export default function CheckoutPage() {
 
       // Update user profile if new address was filled or name was missing
       if (showNewAddressForm) {
-        await api.put('/auth/profile', {
-          ...(customerName !== user.name ? { name: customerName } : {}),
-          newAddress: {
-            label: addrLabel,
-            name: customerName,
-            address: address,
-            district: addrDistrict,
-            state: addrState,
-            pincode: addrPincode,
-            landmark: addrLandmark,
-            alternatePhone: alternatePhone
-          }
+        await api.post('/addresses', {
+          label: addrLabel,
+          addressLine1: addrHouse,
+          addressLine2: '',
+          landmark: addrLandmark,
+          area: addrArea,
+          city: addrDistrict,
+          state: addrState,
+          pincode: addrPincode,
+          latitude: deliveryCoords?.lat,
+          longitude: deliveryCoords?.lng,
+          isDefault: true
         }).catch(() => {});
       }
       
@@ -195,7 +212,11 @@ export default function CheckoutPage() {
 
       if (paymentMethod === 'cod') {
         clearCart();
-        toast.success('Order placed! Pay on delivery. ');
+        if (orderRes.data.autoRouted) {
+          toast.success('Order placed! For faster delivery, some items were routed to the nearest branch.', { duration: 5000 });
+        } else {
+          toast.success('Order placed! Pay on delivery.');
+        }
         navigate(`/orders/${order._id}/track`);
         return;
       }
@@ -217,7 +238,11 @@ export default function CheckoutPage() {
           razorpaySignature: 'mock',
         });
         clearCart();
-        toast.success('Payment successful! 🎉');
+        if (orderRes.data.autoRouted) {
+          toast.success('Payment successful! For faster delivery, some items were routed to the nearest branch.', { duration: 5000 });
+        } else {
+          toast.success('Payment successful! 🎉');
+        }
         navigate(`/orders/${order._id}/track`);
         return;
       }
@@ -237,7 +262,11 @@ export default function CheckoutPage() {
             razorpaySignature: response.razorpay_signature,
           });
           clearCart();
-          toast.success('Payment successful! ');
+          if (orderRes.data.autoRouted) {
+            toast.success('Payment successful! 🚚 For faster delivery, some items were routed to the nearest branch.', { duration: 5000 });
+          } else {
+            toast.success('Payment successful! 🎉');
+          }
           navigate(`/orders/${order._id}/track`);
         },
         prefill: { name: user.name, email: user.email, contact: user.phone },
@@ -449,3 +478,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

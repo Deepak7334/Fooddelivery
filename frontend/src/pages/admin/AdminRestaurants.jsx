@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiEye, FiEyeOff } from 'react-icons/fi';
@@ -62,6 +62,7 @@ export default function AdminRestaurants() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [cropConfig, setCropConfig] = useState(null);
+  const [serviceAreas, setServiceAreas] = useState([]);
 
   // Table Management State
   const [tablesModal, setTablesModal] = useState(false);
@@ -72,6 +73,7 @@ export default function AdminRestaurants() {
 
   const fetchRestaurants = () => {
     api.get('/admin/restaurants').then(res => setRestaurants(res.data.restaurants || [])).catch(console.error).finally(() => setLoading(false));
+    api.get('/service-areas').then(res => setServiceAreas(res.data)).catch(console.error);
   };
 
   useEffect(() => { fetchRestaurants(); }, []);
@@ -196,7 +198,7 @@ export default function AdminRestaurants() {
     setEditingTable(t._id);
   };
 
-  // ✅ Shorthand props passer for cleaner JSX
+  // âœ… Shorthand props passer for cleaner JSX
   const fProps = { form, setForm };
 
   return (
@@ -216,12 +218,12 @@ export default function AdminRestaurants() {
                   <tr key={r._id}>
                     <td>
                       <div style={{ fontWeight: 700 }}>{r.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.city} · {r.deliveryTime}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.city} Â· {r.deliveryTime}</div>
                     </td>
-                    <td style={{ fontSize: 13 }}>{r.ownerEmail || '—'}</td>
+                    <td style={{ fontSize: 13 }}>{r.ownerEmail || 'â€”'}</td>
                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.cuisine?.join(', ')}</td>
                     <td style={{ fontSize: 13 }}>{r.customCommissionRate != null ? `${r.customCommissionRate}%` : <span style={{ color: 'var(--text-muted)' }}>Global</span>}</td>
-                    <td><span style={{ color: '#FFD700' }}>⭐</span> {r.rating?.toFixed(1)}</td>
+                    <td><span style={{ color: '#FFD700' }}>â­</span> {r.rating?.toFixed(1)}</td>
                     <td>
                       <button onClick={() => handleToggle(r._id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, color: r.isActive ? 'var(--success)' : 'var(--text-muted)' }}>
                         {r.isActive ? <FiToggleRight /> : <FiToggleLeft />}
@@ -229,7 +231,7 @@ export default function AdminRestaurants() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => openTables(r)} className="btn btn-primary btn-sm" title="Manage Tables">🪑</button>
+                        <button onClick={() => openTables(r)} className="btn btn-primary btn-sm" title="Manage Tables">ðŸª‘</button>
                         <button onClick={() => openEdit(r)} className="btn btn-secondary btn-sm"><FiEdit2 /></button>
                         <button onClick={() => handleDelete(r._id)} className="btn btn-danger btn-sm"><FiTrash2 /></button>
                       </div>
@@ -266,8 +268,15 @@ export default function AdminRestaurants() {
               </div>
               <F label="Image URL" field="image" type="image-upload" onUpload={handleImageUpload} uploading={uploadingImage} placeholder="https://..." {...fProps} />
               <F label="Delivery Time" field="deliveryTime" placeholder="30-40 mins" {...fProps} />
-              <F label="Delivery Fee (₹)" field="deliveryFee" type="number" {...fProps} />
-              <F label="Minimum Order (₹)" field="minOrder" type="number" {...fProps} />
+              <F label="Delivery Fee (Rs)" field="deliveryFee" type="number" {...fProps} />
+              <F label="Minimum Order (Rs)" field="minOrder" type="number" {...fProps} />
+              <div className="form-group">
+                <label className="form-label">Service Area</label>
+                <select className="form-input" value={form.serviceAreaId || ''} onChange={e => setForm({...form, serviceAreaId: e.target.value})}>
+                  <option value="">Unassigned</option>
+                  {serviceAreas?.map(area => <option key={area._id} value={area._id}>{area.name}</option>)}
+                </select>
+              </div>
               <F label="Custom Commission (%)" field="customCommissionRate" type="number" placeholder="Leave blank for global" {...fProps} />
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -289,7 +298,7 @@ export default function AdminRestaurants() {
                     }}
                     style={{ fontSize: 12, padding: '4px 10px', background: 'rgba(255,87,34,0.1)', color: 'var(--primary)', border: '1px solid rgba(255,87,34,0.2)', borderRadius: 20, cursor: 'pointer', fontWeight: 600 }}
                   >
-                    📍 Auto-Detect My Location
+                    ðŸ“ Auto-Detect My Location
                   </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
@@ -303,7 +312,7 @@ export default function AdminRestaurants() {
               <>
                 <div className="divider" />
                 <div style={{ padding: '12px 16px', background: 'rgba(255,87,34,0.08)', borderRadius: 10, border: '1px solid rgba(255,87,34,0.2)', marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  🔐 <strong>Owner Credentials</strong> — The restaurant owner will use these to login.
+                  ðŸ” <strong>Owner Credentials</strong> â€” The restaurant owner will use these to login.
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0 16px' }}>
                   <F label="Owner Name" field="ownerName" placeholder="John Doe" {...fProps} />
@@ -326,7 +335,7 @@ export default function AdminRestaurants() {
       {tablesModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setTablesModal(false)}>
           <div className="modal-box responsive-modal" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="modal-title">🪑 Manage Tables</h2>
+            <h2 className="modal-title">ðŸª‘ Manage Tables</h2>
             <p className="modal-subtitle">For {selectedRestaurant?.name}</p>
             
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, marginBottom: 24, border: '1px solid var(--border)' }}>

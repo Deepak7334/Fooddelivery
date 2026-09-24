@@ -13,14 +13,22 @@ const navLinks = [
   { to: '/admin/delivery-agents', icon: <FiTruck />, label: 'Delivery Agents' },
   { to: '/admin/categories', icon: <FiTag />, label: 'Categories' },
   { to: '/admin/items', icon: <FiList />, label: 'Manage Items' },
+  { to: '/admin/service-areas', icon: <FiTag />, label: 'Service Areas' },
 ];
 
 export default function AdminSidebar({ open, onClose }) {
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
   const isActive = (to, exact) => exact ? location.pathname === to : location.pathname.startsWith(to);
+  
+  const filteredLinks = navLinks.filter(link => {
+    if (user?.role === 'sub_admin') {
+      return !['/admin/payouts', '/admin/categories', '/admin/service-areas'].includes(link.to);
+    }
+    return true;
+  });
 
   return (
     <>
@@ -41,7 +49,7 @@ export default function AdminSidebar({ open, onClose }) {
           <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400, display: 'block' }}>Admin Panel</span>
         </div>
         <nav className="sidebar-nav">
-          {navLinks.map(link => (
+          {filteredLinks.map(link => (
             <Link key={link.to} to={link.to} className={`sidebar-link ${isActive(link.to, link.exact) ? 'active' : ''}`} onClick={onClose}>
               {link.icon} {link.label}
             </Link>

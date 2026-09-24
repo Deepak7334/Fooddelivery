@@ -38,14 +38,16 @@ function AgentBadge({ status }) {
 
 function AgentModal({ agent, onClose, onSave }) {
   const isEdit = !!agent?._id;
-  const [form, setForm] = useState({ name: agent?.name || '', email: agent?.email || '', password: '', phone: agent?.phone || '', vehicleNumber: agent?.vehicleNumber || '', deliveryStatus: agent?.deliveryStatus || 'available' });
+  const [form, setForm] = useState({ name: agent?.name || '', email: agent?.email || '', password: '', phone: agent?.phone || '', vehicleNumber: agent?.vehicleNumber || '', deliveryStatus: agent?.deliveryStatus || 'available', serviceAreaId: agent?.serviceAreaIds?.[0] || '' });
   const [saving, setSaving] = useState(false);
+  const [serviceAreas, setServiceAreas] = useState([]);
+  useEffect(() => { api.get('/service-areas').then(res => setServiceAreas(res.data)).catch(console.error); }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await onSave(form, isEdit ? agent._id : null);
+      const payload = { ...form }; if (payload.serviceAreaId) { payload.serviceAreaIds = [payload.serviceAreaId]; } else { payload.serviceAreaIds = []; } await onSave(payload, isEdit ? agent._id : null);
     } finally { setSaving(false); }
   };
 
@@ -70,7 +72,15 @@ function AgentModal({ agent, onClose, onSave }) {
                 style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
           ))}
-          {isEdit && (
+          <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Service Area</label>
+              <select value={form.serviceAreaId || ''} onChange={e => setForm(f => ({ ...f, serviceAreaId: e.target.value }))}
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none' }}>
+                <option value="">Unassigned</option>
+                {serviceAreas?.map(area => <option key={area._id} value={area._id}>{area.name}</option>)}
+              </select>
+            </div>
+            {isEdit && (
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Status</label>
               <select value={form.deliveryStatus} onChange={e => setForm(f => ({ ...f, deliveryStatus: e.target.value }))}

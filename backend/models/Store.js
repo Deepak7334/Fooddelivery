@@ -28,6 +28,10 @@ const storeSchema = new mongoose.Schema({
   isOpen: { type: Boolean, default: true },
   offers: [{ type: String }],
   tags: [{ type: String }],
+  serviceAreaIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceArea'
+  }],
   customCommissionRate: { type: Number, default: null },
 }, { timestamps: true });
 

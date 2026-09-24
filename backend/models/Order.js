@@ -108,12 +108,20 @@ const orderSchema = new mongoose.Schema({
     default: '',
   },
   deliveryAddress: {
-    type: String,
-    required: true,
+    addressLine1: String,
+    addressLine2: String,
+    landmark: String,
+    area: String,
+    city: String,
+    state: String,
+    pincode: String,
+    latitude: Number,
+    longitude: Number
   },
-  deliveryCoords: {
-    lat: { type: Number },
-    lng: { type: Number }
+  serviceAreaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceArea',
+    default: null
   },
   deliveryAgentId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -170,5 +178,16 @@ const orderSchema = new mongoose.Schema({
     default: false
   }
 }, { timestamps: true });
+
+orderSchema.set('toJSON', {
+  virtuals: true,
+  transform: function(doc, ret) {
+    if (ret.deliveryAddress && typeof ret.deliveryAddress === 'object') {
+      const { addressLine1, addressLine2, landmark, area, city, state, pincode } = ret.deliveryAddress;
+      ret.deliveryAddress = [addressLine1, addressLine2, landmark, area, city, state, pincode].filter(Boolean).join(', ');
+    }
+    return ret;
+  }
+});
 
 module.exports = mongoose.model('Order', orderSchema);

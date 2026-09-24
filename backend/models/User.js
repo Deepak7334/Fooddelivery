@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['customer', 'restaurant', 'admin', 'delivery', 'store_owner'],
+    enum: ['customer', 'restaurant', 'admin', 'sub_admin', 'delivery', 'store_owner'],
     default: 'customer',
   },
   phone: {
@@ -46,14 +46,21 @@ const userSchema = new mongoose.Schema({
     default: null,
   },
   addresses: [{
-    label: { type: String, enum: ['Home', 'Work', 'Other'], default: 'Other' },
-    name: String,
-    address: String, // Full address string
-    district: String,
+    label: { type: String, enum: ['HOME', 'WORK', 'OTHER'], default: 'OTHER' },
+    addressLine1: String,
+    addressLine2: String,
+    landmark: String,
+    area: String,
+    city: String,
     state: String,
     pincode: String,
-    alternatePhone: String,
-    landmark: String,
+    latitude: Number,
+    longitude: Number,
+    isDefault: { type: Boolean, default: false }
+  }],
+  serviceAreaIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceArea'
   }],
   address: {
     type: String,

@@ -20,6 +20,11 @@ const bookingSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  serviceAreaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceArea',
+    default: null
+  },
   customerName: {
     type: String,
     required: true

@@ -86,6 +86,10 @@ const restaurantSchema = new mongoose.Schema({
     type: Number,
     default: null,
   },
+  serviceAreaIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceArea'
+  }],
 }, {
   timestamps: true
 });

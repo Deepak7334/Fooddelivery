@@ -71,8 +71,19 @@ router.post('/checkout-info', async (req, res) => {
 // Get popular foods
 router.get('/foods', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, serviceAreaId } = req.query;
     let filter = { isAvailable: true };
+    
+    if (serviceAreaId) {
+      const Restaurant = require('../models/Restaurant');
+      const serviceableRestaurants = await Restaurant.find({
+        isActive: true,
+        serviceAreaIds: serviceAreaId
+      }).select('_id');
+      const restaurantIds = serviceableRestaurants.map(r => r._id);
+      filter.restaurantId = { $in: restaurantIds };
+    }
+
     if (search) {
       filter.$or = [
         { name: new RegExp(search, 'i') },
@@ -90,8 +101,14 @@ router.get('/foods', async (req, res) => {
 // Get all restaurants (with search & filter)
 router.get('/restaurants', async (req, res) => {
   try {
-    const { search, cuisine, sort, city, lat, lng } = req.query;
+    const { search, cuisine, sort, city, lat, lng, serviceAreaId } = req.query;
     let andConditions = [{ isActive: true }];
+
+    if (serviceAreaId) {
+      andConditions.push({
+        serviceAreaIds: serviceAreaId
+      });
+    }
     
     if (lat && lng) {
       andConditions.push({
@@ -169,14 +186,78 @@ router.get('/restaurants/:id', async (req, res) => {
 // Place order
 router.post('/orders', protect, authorize('customer'), async (req, res) => {
   try {
-    const { items, deliveryAddress, deliveryCoords, specialInstructions, paymentMethod } = req.body;
+    const { items, deliveryAddress, deliveryCoords, specialInstructions, paymentMethod, serviceAreaId } = req.body;
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
+    
+    // Check serviceability
+    if (!deliveryAddress || !serviceAreaId) {
+       return res.status(400).json({ success: false, message: 'Delivery address and service area are required.' });
+    }
+
+    const { checkVendorServiceability } = require('../utils/serviceabilityEngine');
 
     const Restaurant = require('../models/Restaurant');
     const Store = require('../models/Store');
+    const Food = require('../models/Food');
+    const Product = require('../models/Product');
     
+    let wasAutoRouted = false;
+
+    // --- Dynamic Auto-Routing (Cloud Kitchen Model) ---
+    for (let i = 0; i < items.length; i++) {
+      let item = items[i];
+      const vendorId = item.restaurantId || item.storeId;
+      const vendorType = item.type === 'food' ? 'restaurant' : 'store';
+      
+      const isVendorServiceable = await checkVendorServiceability(vendorType, vendorId, serviceAreaId);
+      
+      if (!isVendorServiceable) {
+        if (vendorType === 'restaurant') {
+           const localRestaurants = await Restaurant.find({ isActive: true, serviceAreaIds: serviceAreaId }).select('_id');
+           const localRestIds = localRestaurants.map(r => r._id);
+           
+           const localAlternative = await Food.findOne({
+             name: new RegExp('^' + item.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+             restaurantId: { $in: localRestIds },
+             isAvailable: true
+           });
+           
+           if (localAlternative) {
+             // Auto-route item to the local restaurant
+             item.restaurantId = localAlternative.restaurantId;
+             if (item.foodId) item.foodId = localAlternative._id;
+             item._id = localAlternative._id;
+             item.price = localAlternative.price; 
+             wasAutoRouted = true;
+           } else {
+             return res.status(400).json({ success: false, message: `The item "${item.name}" from the selected restaurant cannot be delivered to your area, and no nearby restaurants offer it.` });
+           }
+        } else {
+           // Same logic for stores/products
+           const localStores = await Store.find({ isActive: true, serviceAreaIds: serviceAreaId }).select('_id');
+           const localStoreIds = localStores.map(s => s._id);
+           
+           const localAlternative = await Product.findOne({
+             name: new RegExp('^' + item.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
+             storeId: { $in: localStoreIds },
+             isAvailable: true
+           });
+           
+           if (localAlternative) {
+             item.storeId = localAlternative.storeId;
+             if (item.productId) item.productId = localAlternative._id;
+             item._id = localAlternative._id;
+             item.price = localAlternative.price;
+             wasAutoRouted = true;
+           } else {
+             return res.status(400).json({ success: false, message: `The product "${item.name}" cannot be delivered to your area, and no nearby stores have it.` });
+           }
+        }
+      }
+    }
+
     // Group items by vendor
     const vendorGroups = {};
     for (const item of items) {
@@ -199,6 +280,12 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       let vendorCustomCommission = null;
       let vendorDeliveryFee = 30; // fallback
 
+      // Validate vendor serviceability for this area
+      const isVendorServiceable = await checkVendorServiceability(group.vendorType, group.vendorId, serviceAreaId);
+      if (!isVendorServiceable) {
+         return res.status(400).json({ success: false, message: `One or more items in your cart cannot be delivered to this area.` });
+      }
+
       if (group.vendorType === 'restaurant' && group.vendorId) {
         const rest = await Restaurant.findById(group.vendorId);
         if (rest) {
@@ -217,7 +304,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
         }
       }
 
-      // Auto-assign closest available rider
+      // Auto-assign closest available rider in the same service area
       let assignedAgentId = null;
       if (vendorCoords && vendorCoords.length === 2 && vendorCoords[0] !== 0) {
         const User = require('../models/User');
@@ -225,6 +312,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
           role: 'delivery',
           isActive: true,
           deliveryStatus: 'available',
+          serviceAreaIds: serviceAreaId, // filter by service area
           location: {
             $near: {
               $geometry: {
@@ -273,6 +361,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
         adminCommission,
         vendorPayout,
         deliveryAddress,
+        serviceAreaId,
         deliveryCoords,
         specialInstructions,
         paymentMethod: paymentMethod || 'razorpay',
@@ -329,7 +418,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       }
     }
 
-    res.status(201).json({ success: true, orders: createdOrders });
+    res.status(201).json({ success: true, orders: createdOrders, autoRouted: wasAutoRouted });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -424,8 +513,19 @@ router.patch('/orders/:id/cancel', protect, authorize('customer'), async (req, r
 // ========== STORE ORDER PLACEMENT ==========
 router.post('/store-orders', protect, authorize('customer'), async (req, res) => {
   try {
-    const { storeId, items, deliveryAddress, paymentMethod, totalAmount, specialInstructions } = req.body;
+    const { storeId, items, deliveryAddress, paymentMethod, totalAmount, specialInstructions, serviceAreaId } = req.body;
     if (!storeId || !items?.length) return res.status(400).json({ success: false, message: 'storeId and items are required' });
+    
+    // Check serviceability
+    if (!deliveryAddress || !serviceAreaId) {
+       return res.status(400).json({ success: false, message: 'Delivery address and service area are required.' });
+    }
+
+    const { checkVendorServiceability } = require('../utils/serviceabilityEngine');
+    const isVendorServiceable = await checkVendorServiceability('store', storeId, serviceAreaId);
+    if (!isVendorServiceable) {
+       return res.status(400).json({ success: false, message: `This store cannot deliver to the selected area.` });
+    }
 
     const store = await Store.findById(storeId);
     if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
@@ -457,6 +557,7 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
       adminCommission,
       vendorPayout,
       deliveryAddress,
+      serviceAreaId,
       paymentMethod: paymentMethod || 'cod',
       paymentStatus: 'pending',
       specialInstructions: specialInstructions || '',

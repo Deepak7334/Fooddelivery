@@ -8,6 +8,26 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [viewUser, setViewUser] = useState(null);
+  const [showSubAdminModal, setShowSubAdminModal] = useState(false);
+  const [serviceAreas, setServiceAreas] = useState([]);
+  const [saForm, setSaForm] = useState({ name: '', email: '', password: '', phone: '', serviceAreaId: '' });
+  
+  useEffect(() => {
+    api.get('/service-areas').then(res => setServiceAreas(res.data)).catch(console.error);
+  }, []);
+  
+  const handleCreateSubAdmin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/admin/sub-admins', saForm);
+      setUsers([res.data.user, ...users]);
+      setShowSubAdminModal(false);
+      toast.success('Sub-Admin created successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create Sub-Admin');
+    }
+  };
+
 
   useEffect(() => {
     api.get('/admin/users').then(res => setUsers(res.data.users || [])).catch(console.error).finally(() => setLoading(false));
@@ -39,12 +59,13 @@ export default function AdminUsers() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
         <h1 style={{ fontSize: 26, fontWeight: 800 }}> User <span style={{ color: 'var(--primary)' }}>Management</span></h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['all', 'customer', 'restaurant', 'store_owner'].map(f => (
+          {['all', 'customer', 'sub_admin', 'restaurant', 'store_owner'].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}>
               {f === 'all' ? 'All' : f.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </button>
           ))}
         </div>
+        <button onClick={() => setShowSubAdminModal(true)} className="btn btn-primary btn-sm">+ Create Sub-Admin</button>
       </div>
       <div style={{ marginBottom: 16, fontSize: 14, color: 'var(--text-secondary)' }}>{filtered.length} users</div>
       {loading ? <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div> : (
@@ -153,6 +174,44 @@ export default function AdminUsers() {
           </div>
         </div>
       )}
+
+      {showSubAdminModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', padding: 24, borderRadius: 16, width: '100%', maxWidth: 400 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>Create Sub-Admin</h2>
+            <form onSubmit={handleCreateSubAdmin}>
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input required className="form-input" value={saForm.name} onChange={e => setSaForm({...saForm, name: e.target.value})} placeholder="Area Manager Name" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Login Email ID</label>
+                <input required type="email" className="form-input" value={saForm.email} onChange={e => setSaForm({...saForm, email: e.target.value})} placeholder="manager@jdkart.com" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input required type="password" className="form-input" value={saForm.password} onChange={e => setSaForm({...saForm, password: e.target.value})} placeholder="Secret Password" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Phone</label>
+                <input required className="form-input" value={saForm.phone} onChange={e => setSaForm({...saForm, phone: e.target.value})} placeholder="Phone Number" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Assign Service Area</label>
+                <select required className="form-input" value={saForm.serviceAreaId} onChange={e => setSaForm({...saForm, serviceAreaId: e.target.value})}>
+                  <option value="">-- Select City / Area --</option>
+                  {serviceAreas.map(a => <option key={a._id} value={a._id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+                <button type="button" onClick={() => setShowSubAdminModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create Account</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

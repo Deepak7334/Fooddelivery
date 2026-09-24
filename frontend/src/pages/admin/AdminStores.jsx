@@ -24,12 +24,14 @@ export default function AdminStores() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [cropConfig, setCropConfig] = useState(null);
+  const [serviceAreas, setServiceAreas] = useState([]);
 
   const load = () => {
     setLoading(true);
     const params = {};
     if (typeFilter !== 'all') params.type = typeFilter;
     if (search) params.search = search;
+    api.get('/service-areas').then(res => setServiceAreas(res.data)).catch(console.error);
     api.get('/admin/stores', { params })
       .then(res => setStores(res.data.stores || []))
       .catch(console.error)
@@ -41,7 +43,7 @@ export default function AdminStores() {
 
   const openAdd = () => { setForm(EMPTY); setModal('add'); };
   const openEdit = (s) => {
-    setForm({ ...EMPTY, ...s, deliveryFee: String(s.deliveryFee), minOrder: String(s.minOrder), offers: (s.offers || []).join(', '), ownerEmail: '', ownerName: '', ownerPassword: '', addrHouse: s.address || '', customCommissionRate: s.customCommissionRate !== null && s.customCommissionRate !== undefined ? s.customCommissionRate : '' });
+    setForm({ ...EMPTY, ...s, deliveryFee: String(s.deliveryFee), minOrder: String(s.minOrder), offers: (s.offers || []).join(', '), ownerEmail: '', ownerName: '', ownerPassword: '', addrHouse: s.address || '', customCommissionRate: s.customCommissionRate !== null && s.customCommissionRate !== undefined ? s.customCommissionRate : '', serviceAreaId: s.serviceAreaIds?.[0] || '' });
     setModal('edit');
   };
 
