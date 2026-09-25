@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiEye, FiEyeOff } from 'react-icons/fi';
@@ -133,6 +133,12 @@ export default function AdminRestaurants() {
     setSaving(true);
     try {
       const payload = { ...form, address: fullAddress, cuisine: form.cuisine.split(',').map(s => s.trim()).filter(Boolean) };
+      if (form.lat && form.lng) {
+        payload.location = {
+          type: 'Point',
+          coordinates: [parseFloat(form.lng), parseFloat(form.lat)]
+        };
+      }
       if (editing) {
         await api.put(`/admin/restaurants/${editing}`, payload);
         toast.success('Restaurant updated!');
@@ -220,10 +226,10 @@ export default function AdminRestaurants() {
                       <div style={{ fontWeight: 700 }}>{r.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.city} Â· {r.deliveryTime}</div>
                     </td>
-                    <td style={{ fontSize: 13 }}>{r.ownerEmail || 'â€”'}</td>
+                    <td style={{ fontSize: 13 }}>{r.ownerEmail || ''}</td>
                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.cuisine?.join(', ')}</td>
                     <td style={{ fontSize: 13 }}>{r.customCommissionRate != null ? `${r.customCommissionRate}%` : <span style={{ color: 'var(--text-muted)' }}>Global</span>}</td>
-                    <td><span style={{ color: '#FFD700' }}>â­</span> {r.rating?.toFixed(1)}</td>
+                    <td><span style={{ color: '#FFD700' }}></span> {r.rating?.toFixed(1)}</td>
                     <td>
                       <button onClick={() => handleToggle(r._id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, color: r.isActive ? 'var(--success)' : 'var(--text-muted)' }}>
                         {r.isActive ? <FiToggleRight /> : <FiToggleLeft />}
@@ -298,7 +304,7 @@ export default function AdminRestaurants() {
                     }}
                     style={{ fontSize: 12, padding: '4px 10px', background: 'rgba(255,87,34,0.1)', color: 'var(--primary)', border: '1px solid rgba(255,87,34,0.2)', borderRadius: 20, cursor: 'pointer', fontWeight: 600 }}
                   >
-                    ðŸ“ Auto-Detect My Location
+                       Auto-Detect My Location
                   </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
@@ -312,7 +318,7 @@ export default function AdminRestaurants() {
               <>
                 <div className="divider" />
                 <div style={{ padding: '12px 16px', background: 'rgba(255,87,34,0.08)', borderRadius: 10, border: '1px solid rgba(255,87,34,0.2)', marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  ðŸ” <strong>Owner Credentials</strong> â€” The restaurant owner will use these to login.
+                 <strong>Owner Credentials</strong>  The restaurant owner will use these to login.
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0 16px' }}>
                   <F label="Owner Name" field="ownerName" placeholder="John Doe" {...fProps} />

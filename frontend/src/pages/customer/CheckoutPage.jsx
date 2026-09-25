@@ -23,6 +23,7 @@ export default function CheckoutPage() {
   const savedAddresses = user?.addresses || [];
   const [selectedAddressIndex, setSelectedAddressIndex] = useState(savedAddresses.length > 0 ? 0 : -1);
   const [showNewAddressForm, setShowNewAddressForm] = useState(savedAddresses.length === 0);
+  const [showZoneError, setShowZoneError] = useState(false);
 
   // New Address / Missing Info Form State
   const [customerName, setCustomerName] = useState(user?.name || '');
@@ -275,7 +276,12 @@ export default function CheckoutPage() {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to place order');
+      const errMsg = err.response?.data?.message || '';
+      if (errMsg.includes('cannot be delivered to your area') || errMsg.includes('no nearby')) {
+        setShowZoneError(true);
+      } else {
+        toast.error(errMsg || 'Failed to place order');
+      }
     } finally {
       setLoading(false);
     }
@@ -475,6 +481,39 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* OUT OF ZONE MODAL */}
+      {showZoneError && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', maxWidth: '400px', width: '90%', textAlign: 'center', border: '1px solid var(--border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📍</div>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '22px', fontWeight: 800 }}>Out of Delivery Zone</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '15px', lineHeight: '1.6' }}>
+              The items in your cart cannot be delivered to this address, and no nearby branches offer them. Would you like to clear your cart and browse restaurants that deliver to you?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                onClick={() => {
+                  clearCart();
+                  setShowZoneError(false);
+                  navigate('/restaurants');
+                }}
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: 700 }}
+              >
+                Clear Cart & Show Local
+              </button>
+              <button 
+                onClick={() => setShowZoneError(false)}
+                className="btn btn-secondary"
+                style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid var(--border)', fontSize: '15px', fontWeight: 600 }}
+              >
+                Change Address
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
