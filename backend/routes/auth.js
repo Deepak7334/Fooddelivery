@@ -326,6 +326,11 @@ router.put('/profile', require('../middleware/auth').protect, async (req, res) =
         updateFields.phone = newAddress.alternatePhone;
       }
     }
+    
+    // Support full array replacement (for edit/delete)
+    if (req.body.addresses !== undefined) {
+      updateFields.addresses = req.body.addresses;
+    }
 
     // Perform update if there are changes
     if (Object.keys(updateFields).length > 0) {

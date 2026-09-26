@@ -15,7 +15,8 @@ const ALLOWED_DISTRIC = [];
 const ALLOWED_STATE = [];
 
 export default function CheckoutPage() {
-  const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId } = useCart();
+  const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId, restaurantName, storeName } = useCart();
+  const cartVendorName = restaurantName || storeName || 'Restaurant';
   const { user, login } = useAuth(); // we don't need login, but need user
   const navigate = useNavigate();
 
@@ -24,6 +25,8 @@ export default function CheckoutPage() {
   const [selectedAddressIndex, setSelectedAddressIndex] = useState(savedAddresses.length > 0 ? 0 : -1);
   const [showNewAddressForm, setShowNewAddressForm] = useState(savedAddresses.length === 0);
   const [showZoneError, setShowZoneError] = useState(false);
+  const [localRestaurants, setLocalRestaurants] = useState([]);
+  const [loadingLocal, setLoadingLocal] = useState(false);
 
   // New Address / Missing Info Form State
   const [customerName, setCustomerName] = useState(user?.name || '');
@@ -36,11 +39,32 @@ export default function CheckoutPage() {
   const [addrLandmark, setAddrLandmark] = useState('');
   const [alternatePhone, setAlternatePhone] = useState(user?.phone || '');
 
+  const [editingAddressIndex, setEditingAddressIndex] = useState(-1);
+
+  useEffect(() => {
+    if (showNewAddressForm) {
+      try {
+        const last = JSON.parse(localStorage.getItem('jdkart_last_address'));
+        if (last) {
+          if (last.customerName && !user?.name) setCustomerName(last.customerName);
+          if (last.addrHouse && !addrHouse) setAddrHouse(last.addrHouse);
+          if (last.addrArea && !addrArea) setAddrArea(last.addrArea);
+          if (last.addrDistrict && !addrDistrict) setAddrDistrict(last.addrDistrict);
+          if (last.addrState && !addrState) setAddrState(last.addrState);
+          if (last.addrPincode && !addrPincode) setAddrPincode(last.addrPincode);
+          if (last.addrLandmark && !addrLandmark) setAddrLandmark(last.addrLandmark);
+          if (last.alternatePhone && !user?.phone) setAlternatePhone(last.alternatePhone);
+        }
+      } catch (e) {}
+    }
+  }, [showNewAddressForm]);
+
   const hasGPS = !!localStorage.getItem('jdkart_coords');
 
   const getActiveAddressString = () => {
     if (!showNewAddressForm && selectedAddressIndex >= 0 && savedAddresses[selectedAddressIndex]) {
-      return savedAddresses[selectedAddressIndex].address;
+      const sa = savedAddresses[selectedAddressIndex];
+      return sa.address || [sa.addressLine1, sa.area, sa.city, sa.state, sa.pincode].filter(Boolean).join(', ');
     }
     if (hasGPS) {
       return [addrHouse, addrLandmark].filter(Boolean).join(', ');
@@ -86,12 +110,99 @@ export default function CheckoutPage() {
       .finally(() => setCalculating(false));
   }, [cartItems]);
 
-  const handleSaveAddress = async () => {
-    if (!address.trim()) return toast.error('Address cannot be empty');
-    setSavingAddress(true);
+  const getActiveCity = () => {
+    if (!showNewAddressForm && selectedAddressIndex >= 0 && savedAddresses[selectedAddressIndex]) {
+      const sa = savedAddresses[selectedAddressIndex];
+      return sa.city || sa.district || sa.area || '';
+    }
+    return addrDistrict;
+  };
+
+  // Pre-fetch local restaurants so the modal loads instantly if needed
+  useEffect(() => {
+    let qs = '';
     try {
-      await api.put('/auth/profile', { address });
-      toast.success('Address saved to profile!');
+      const storedCoords = localStorage.getItem('jdkart_coords');
+      if (storedCoords) {
+        const coords = JSON.parse(storedCoords);
+        if (coords.lat && coords.lng) qs = `?lat=${coords.lat}&lng=${coords.lng}`;
+      }
+    } catch(e) {}
+    
+    const activeCity = getActiveCity();
+    if (!qs && activeCity) {
+      qs = `?city=${activeCity}`;
+    } else if (!qs) {
+      qs = `?city=unknown_location`; // Prevent fetching all if no GPS and no city yet
+    }
+
+    api.get(`/customer/restaurants${qs}`).then(res => {
+      setLocalRestaurants(res.data.restaurants || []);
+    }).catch(() => {});
+  }, [selectedAddressIndex, showNewAddressForm, addrDistrict]);
+
+  const handleEditAddress = (e, idx) => {
+    e.stopPropagation();
+    const addr = savedAddresses[idx];
+    setEditingAddressIndex(idx);
+    setAddrLabel(addr.label?.charAt(0).toUpperCase() + addr.label?.slice(1).toLowerCase() || 'Other');
+    setCustomerName(addr.name || user?.name || '');
+    setAddrHouse(addr.addressLine1 || addr.address || '');
+    setAddrLandmark(addr.landmark || '');
+    setAddrArea(addr.area || '');
+    setAddrDistrict(addr.city || addr.district || '');
+    setAddrState(addr.state || '');
+    setAddrPincode(addr.pincode || '');
+    setAlternatePhone(addr.alternatePhone || user?.phone || '');
+    setShowNewAddressForm(true);
+  };
+
+  const handleSaveAddressStandalone = async () => {
+    if (!addrHouse.trim()) { toast.error('House/Flat no is required'); return; }
+    
+    let deliveryCoords = null;
+    try {
+      const c = localStorage.getItem('jdkart_coords');
+      if (c) deliveryCoords = JSON.parse(c);
+    } catch(e){}
+
+    if (!deliveryCoords) {
+      if (!addrArea.trim() || !addrDistrict.trim() || !addrState.trim() || !addrPincode.trim()) {
+        toast.error('Complete address details are required'); return;
+      }
+    }
+
+    setSavingAddress(true);
+    const updatedAddrObj = {
+      label: addrLabel.toUpperCase(),
+      name: customerName,
+      address: getActiveAddressString(),
+      addressLine1: addrHouse,
+      addressLine2: '',
+      landmark: addrLandmark,
+      area: addrArea,
+      city: addrDistrict,
+      district: addrDistrict,
+      state: addrState,
+      pincode: addrPincode,
+      latitude: deliveryCoords?.lat,
+      longitude: deliveryCoords?.lng,
+      alternatePhone: alternatePhone,
+      isDefault: true
+    };
+
+    try {
+      if (editingAddressIndex >= 0) {
+        const updatedArray = [...savedAddresses];
+        updatedArray[editingAddressIndex] = { ...updatedArray[editingAddressIndex], ...updatedAddrObj };
+        await api.put('/auth/profile', { addresses: updatedArray });
+        toast.success('Address updated successfully!');
+      } else {
+        await api.put('/auth/profile', { newAddress: updatedAddrObj });
+        toast.success('New address saved!');
+      }
+      
+      setTimeout(() => window.location.reload(), 1000); 
     } catch (err) {
       toast.error('Failed to save address');
     } finally {
@@ -114,6 +225,11 @@ export default function CheckoutPage() {
       }
 
       if (!alternatePhone.trim()) { toast.error('Please enter a Delivery Mobile Number'); return; }
+
+      // Save last used address to local storage for autofill next time
+      localStorage.setItem('jdkart_last_address', JSON.stringify({
+        customerName, addrHouse, addrArea, addrDistrict, addrState, addrPincode, addrLandmark, alternatePhone
+      }));
     }
 
     if (!address.trim()) { toast.error('Please enter delivery address'); return; }
@@ -193,19 +309,25 @@ export default function CheckoutPage() {
       });
 
       // Update user profile if new address was filled or name was missing
-      if (showNewAddressForm) {
-        await api.post('/addresses', {
-          label: addrLabel,
-          addressLine1: addrHouse,
-          addressLine2: '',
-          landmark: addrLandmark,
-          area: addrArea,
-          city: addrDistrict,
-          state: addrState,
-          pincode: addrPincode,
-          latitude: deliveryCoords?.lat,
-          longitude: deliveryCoords?.lng,
-          isDefault: true
+      if (showNewAddressForm && user) {
+        await api.put('/auth/profile', {
+          newAddress: {
+            label: addrLabel.toUpperCase(),
+            name: customerName,
+            address: getActiveAddressString(),
+            addressLine1: addrHouse,
+            addressLine2: '',
+            landmark: addrLandmark,
+            area: addrArea,
+            city: addrDistrict,
+            district: addrDistrict,
+            state: addrState,
+            pincode: addrPincode,
+            latitude: deliveryCoords?.lat,
+            longitude: deliveryCoords?.lng,
+            alternatePhone: alternatePhone,
+            isDefault: true
+          }
         }).catch(() => {});
       }
       
@@ -279,6 +401,28 @@ export default function CheckoutPage() {
       const errMsg = err.response?.data?.message || '';
       if (errMsg.includes('cannot be delivered to your area') || errMsg.includes('no nearby')) {
         setShowZoneError(true);
+        // Fetch local restaurants
+        setLoadingLocal(true);
+        let qs = '';
+        // Attempt to get coords again
+        let fallbackLat, fallbackLng;
+        try {
+          const storedCoords = localStorage.getItem('jdkart_coords');
+          if (storedCoords) {
+             const c = JSON.parse(storedCoords);
+             fallbackLat = c.lat; fallbackLng = c.lng;
+          }
+        } catch(e){}
+
+        if (fallbackLat && fallbackLng) {
+          qs = `?lat=${fallbackLat}&lng=${fallbackLng}`;
+        } else {
+          const activeCity = getActiveCity();
+          qs = `?city=${activeCity || 'unknown'}`; 
+        }
+        api.get(`/customer/restaurants${qs}`).then(res => {
+          setLocalRestaurants(res.data.restaurants || []);
+        }).catch(console.error).finally(() => setLoadingLocal(false));
       } else {
         toast.error(errMsg || 'Failed to place order');
       }
@@ -301,9 +445,9 @@ export default function CheckoutPage() {
             <div className="card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h3 style={{ fontWeight: 700, fontSize: 17, margin: 0 }}> Delivery Address</h3>
-                {savedAddresses.length > 0 && (
-                  <button type="button" onClick={() => setShowNewAddressForm(!showNewAddressForm)} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: 12 }}>
-                    {showNewAddressForm ? 'Select Saved Address' : 'Add New Address'}
+                {showNewAddressForm && savedAddresses.length > 0 && (
+                  <button type="button" onClick={() => setShowNewAddressForm(false)} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: 12 }}>
+                    Cancel
                   </button>
                 )}
               </div>
@@ -319,16 +463,44 @@ export default function CheckoutPage() {
                         borderRadius: 12, cursor: 'pointer', background: selectedAddressIndex === idx ? 'rgba(255,87,34,0.05)' : 'var(--bg-card)' 
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 14 }}>{addr.label || 'Other'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 700, fontSize: 14 }}>
+                            {addr.label ? addr.label.charAt(0).toUpperCase() + addr.label.slice(1).toLowerCase() : 'Other'}
+                          </span>
+                        </div>
+                        <button type="button" onClick={(e) => handleEditAddress(e, idx)} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Edit</button>
                       </div>
                       <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text)' }}>{addr.name}</div>
-                        <div>{addr.address}</div>
-                        <div>{addr.alternatePhone && `Phone: ${addr.alternatePhone}`}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--text)' }}>{addr.name || user?.name || 'Customer'}</div>
+                        <div style={{ marginTop: 4 }}>{addr.address || [addr.addressLine1, addr.area, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ')}</div>
+                        <div style={{ marginTop: 4 }}>{addr.alternatePhone ? `Phone: ${addr.alternatePhone}` : (user?.phone ? `Phone: ${user.phone}` : '')}</div>
                       </div>
                     </div>
                   ))}
+                  
+                  {/* Add New Address Card */}
+                  <div 
+                    onClick={() => {
+                      setEditingAddressIndex(-1);
+                      setAddrHouse('');
+                      setAddrLandmark('');
+                      setShowNewAddressForm(true);
+                    }}
+                    style={{ 
+                      padding: '20px 16px', border: `1px solid var(--border)`, 
+                      borderRadius: 12, cursor: 'pointer', background: 'var(--bg-secondary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, color: 'var(--primary)', fontWeight: 700,
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-card)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                  >
+                    <span style={{ fontSize: 20 }}>+</span>
+                    <span>Add a new address</span>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -416,6 +588,18 @@ export default function CheckoutPage() {
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>The delivery agent will call this number.</div>
                 </div>
               )}
+              {showNewAddressForm && (
+                <div style={{ marginTop: 20, textAlign: 'right' }}>
+                  <button type="button" className="btn btn-primary" onClick={handleSaveAddressStandalone} disabled={savingAddress}>
+                    {savingAddress ? 'Saving...' : (editingAddressIndex >= 0 ? 'Update Address' : 'Save Address')}
+                  </button>
+                  {savedAddresses.length > 0 && (
+                    <button type="button" className="btn btn-secondary" onClick={() => { setShowNewAddressForm(false); setEditingAddressIndex(-1); }} style={{ marginLeft: 12 }}>
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              )}
               </>
             )}
             </div>
@@ -482,34 +666,95 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* OUT OF ZONE MODAL */}
+      {/* OUT OF ZONE MODAL - PREMIUM REDESIGN */}
       {showZoneError && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', maxWidth: '400px', width: '90%', textAlign: 'center', border: '1px solid var(--border)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📍</div>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '22px', fontWeight: 800 }}>Out of Delivery Zone</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '15px', lineHeight: '1.6' }}>
-              The items in your cart cannot be delivered to this address, and no nearby branches offer them. Would you like to clear your cart and browse restaurants that deliver to you?
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button 
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: '24px', width: '100%', maxWidth: '500px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden', position: 'relative' }}>
+            
+            {/* Close Button */}
+            <button onClick={() => setShowZoneError(false)} style={{ position: 'absolute', top: 16, right: 16, background: 'var(--bg-secondary)', color: 'var(--text)', border: 'none', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}>✕</button>
+            
+            {/* Header */}
+            <div style={{ padding: '32px 24px 20px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'inline-block', background: 'rgba(255, 107, 107, 0.1)', color: '#ff6b6b', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, marginBottom: '12px', letterSpacing: '0.5px' }}>
+                📍 DELIVERY UNAVAILABLE
+              </div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 800, lineHeight: '1.3' }}>Oops! This restaurant is out of reach</h3>
+              <p style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 700, color: 'var(--primary)' }}>{cartVendorName}</p>
+              <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '14px', lineHeight: '1.5' }}>Hungry? Let's find something closer!</p>
+            </div>
+
+            {/* Scrollable Restaurant List */}
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1, background: 'var(--bg-body)' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text)' }}>🍽️ Restaurants Near Your Location</div>
+              
+              {loadingLocal && localRestaurants.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-secondary)' }}>
+                  <span className="spinner" style={{ width: 24, height: 24, marginBottom: 12, borderTopColor: 'var(--primary)' }} />
+                  <div style={{ fontSize: '14px', fontWeight: 500 }}>Finding restaurants that deliver to you...</div>
+                </div>
+              ) : localRestaurants.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {localRestaurants.map(rest => (
+                    <div key={rest._id} onClick={() => { 
+                      setShowZoneError(false); 
+                      navigate(`/restaurants/${rest._id}`); 
+                      setTimeout(() => clearCart(), 50);
+                    }} style={{ display: 'flex', background: 'var(--bg-card)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', transition: 'transform 0.2s, box-shadow 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; }}>
+                      <div style={{ width: 100, height: 100, flexShrink: 0, background: 'var(--bg-secondary)' }}>
+                        <img src={rest.image || 'https://via.placeholder.com/100'} alt={rest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>{rest.name}</h4>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                          <span>📍</span> <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>{rest.city || 'Local Area'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '3px 8px', borderRadius: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }}>{rest.cuisine?.slice(0,2).join(', ') || 'Various'}</span>
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%' }}></span> Delivers to you
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '30px 20px' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, lineHeight: '1.5' }}>No nearby restaurants found that deliver to this location.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div style={{ padding: '20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+               <button 
                 onClick={() => {
-                  clearCart();
                   setShowZoneError(false);
-                  navigate('/restaurants');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="btn btn-primary"
-                style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: 700 }}
+                style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: 700, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                Clear Cart & Show Local
+                <span></span> Change Delivery Address
               </button>
               <button 
-                onClick={() => setShowZoneError(false)}
+                onClick={() => {
+                  setShowZoneError(false);
+                  navigate('/restaurants');
+                  setTimeout(() => clearCart(), 50);
+                }}
                 className="btn btn-secondary"
-                style={{ width: '100%', padding: '14px', background: 'transparent', border: '1px solid var(--border)', fontSize: '15px', fontWeight: 600 }}
+                style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid var(--border)', fontSize: '15px', fontWeight: 300, color: 'var(--text)', borderRadius: '12px', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                Change Address
+                <span></span> Clear Cart & Explore Local Restaurants
               </button>
+              
+              <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                
+              </div>
             </div>
           </div>
         </div>

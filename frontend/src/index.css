@@ -1681,31 +1681,3 @@ body {
   }
 }
 
-
-/* ── JDkart Ultimate Mobile Order Flow Enhancements ── */
-@media (max-width: 768px) {
-  /* Make Cart & Checkout Summary sticky at the bottom for easy thumb access */
-  .cart-layout > :last-child {
-    position: fixed !important;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    margin: 0 !important;
-    border-radius: 20px 20px 0 0 !important;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.5) !important;
-    z-index: 99;
-    padding: 16px 20px !important;
-    background: var(--bg-card);
-    border-top: 1px solid var(--border);
-  }
-
-  /* Add padding to the bottom of the screen so content isn't hidden behind the sticky bar */
-  .cart-layout {
-    padding-bottom: 300px !important; 
-  }
-  
-  /* Fix sticky cart layout overlap */
-  .cart-layout > :first-child {
-    padding-bottom: 20px;
-  }
-}

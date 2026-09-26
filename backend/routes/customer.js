@@ -211,7 +211,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       const vendorId = item.restaurantId || item.storeId;
       const vendorType = item.type === 'food' ? 'restaurant' : 'store';
       
-      const isVendorServiceable = await checkVendorServiceability(vendorType, vendorId, serviceAreaId);
+      const isVendorServiceable = await checkVendorServiceability(vendorType, vendorId, serviceAreaId, deliveryAddress);
       
       if (!isVendorServiceable) {
         if (vendorType === 'restaurant') {
@@ -281,7 +281,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       let vendorDeliveryFee = 30; // fallback
 
       // Validate vendor serviceability for this area
-      const isVendorServiceable = await checkVendorServiceability(group.vendorType, group.vendorId, serviceAreaId);
+      const isVendorServiceable = await checkVendorServiceability(group.vendorType, group.vendorId, serviceAreaId, deliveryAddress);
       if (!isVendorServiceable) {
          return res.status(400).json({ success: false, message: `One or more items in your cart cannot be delivered to this area.` });
       }
@@ -522,7 +522,7 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
     }
 
     const { checkVendorServiceability } = require('../utils/serviceabilityEngine');
-    const isVendorServiceable = await checkVendorServiceability('store', storeId, serviceAreaId);
+    const isVendorServiceable = await checkVendorServiceability('store', storeId, serviceAreaId, deliveryAddress);
     if (!isVendorServiceable) {
        return res.status(400).json({ success: false, message: `This store cannot deliver to the selected area.` });
     }
