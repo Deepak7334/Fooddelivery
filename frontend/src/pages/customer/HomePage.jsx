@@ -743,6 +743,7 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: food.isVeg ? 'var(--success)' : 'var(--danger)', display: 'block' }} />
             </span>
             {food.isBestseller && <span style={{ fontSize: 10, color: '#FF8F00', fontWeight: 700 }}>★ Bestseller</span>}
+            {food.orderCount > 0 && <span style={{ fontSize: 10, color: '#E53935', fontWeight: 700, marginLeft: 8 }}>🔥 Ordered {food.orderCount}+ times</span>}
             {food.freeDelivery && (
               <span style={{ background: 'linear-gradient(90deg, #ECFDF5 0%, #D1FAE5 100%)', color: '#059669', padding: '3px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}> Free Delivery</span>
             )}

@@ -264,6 +264,7 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: food.isVeg ? 'var(--success)' : 'var(--danger)', display: 'block' }} />
             </span>
             {food.isBestseller && <span style={{ fontSize: 10, color: '#FF8F00', fontWeight: 700 }}>★ Bestseller</span>}
+            {food.orderCount > 0 && <span style={{ fontSize: 10, color: '#E53935', fontWeight: 700, marginLeft: 8 }}>🔥 Ordered {food.orderCount}+ times</span>}
           </div>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{food.name}</div>
           {food.restaurantId && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>from {food.restaurantId.name}</div>}

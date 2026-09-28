@@ -14,7 +14,7 @@ const productSchema = new mongoose.Schema({
   unit: { type: String, default: '' },          // e.g. "500g", "1L", "1 pc", "Pack of 6"
   stock: { type: Number, default: -1 },         // -1 = unlimited
   isAvailable: { type: Boolean, default: true },
-  isFeatured: { type: Boolean, default: false },
+  isFeatured: { type: Boolean, default: false },\n  orderCount: { type: Number, default: 0 },
   rating: { type: Number, default: 4.0 },
   totalRatings: { type: Number, default: 0 },
   tags: [{ type: String }],

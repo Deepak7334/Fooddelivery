@@ -46,11 +46,11 @@ router.get('/stats', async (req, res) => {
       Restaurant.countDocuments(req.adminFilter),
       Store.countDocuments(req.adminFilter),
       Order.countDocuments(req.adminOrderFilter),
-      Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$finalAmount' }, adminEarnings: { $sum: '$adminCommission' }, vendorPayouts: { $sum: '$vendorPayout' } } }]),
+      Order.aggregate([{ $match: { paymentStatus: 'paid', ...req.adminOrderFilter } }, { $group: { _id: null, total: { $sum: '$finalAmount' }, adminEarnings: { $sum: '$adminCommission' }, vendorPayouts: { $sum: '$vendorPayout' } } }]),
       User.countDocuments({ role: 'delivery', ...req.adminFilter }),
       Booking.countDocuments(req.adminFilter),
     ]);
-    const recentOrders = await Order.find().sort({ createdAt: -1 }).limit(10)
+    const recentOrders = await Order.find(req.adminOrderFilter).sort({ createdAt: -1 }).limit(10)
       .populate('customerId', 'name email phone')
       .populate('restaurantId', 'name')
       .populate('deliveryAgentId', 'name phone');
@@ -796,7 +796,7 @@ router.get('/manage-items', async (req, res) => {
 // Admin: Update Item (Food or Product)
 router.patch('/manage-items/:id', async (req, res) => {
   try {
-    const { itemType, price, discountedPrice, offer, description, isAvailable, freeDelivery } = req.body;
+    const { itemType, price, discountedPrice, offer, description, isAvailable, freeDelivery, isFeatured } = req.body;
     
     if (!itemType || !['food', 'product'].includes(itemType)) {
       return res.status(400).json({ success: false, message: 'Invalid or missing itemType' });
@@ -835,6 +835,10 @@ router.patch('/manage-items/:id', async (req, res) => {
     
     if (typeof freeDelivery !== 'undefined') {
       updateData.freeDelivery = Boolean(freeDelivery);
+    }
+    
+    if (typeof isFeatured !== 'undefined') {
+      updateData.isFeatured = Boolean(isFeatured);
     }
 
     let updatedItem;

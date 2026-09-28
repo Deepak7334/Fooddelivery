@@ -105,8 +105,8 @@ router.get('/products', async (req, res) => {
     ];
 
     const products = await Product.find(filter)
-      .populate('storeId', 'name storeType city deliveryTime deliveryFee')
-      .limit(60);
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .populate('storeId', 'name storeType city deliveryTime deliveryFee');
 
     res.json({ success: true, products });
   } catch (err) {

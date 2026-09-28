@@ -236,6 +236,7 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
         </div>
 
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{food.name}</div>
+        {food.orderCount > 0 && <div style={{ fontSize: 10, color: '#E53935', fontWeight: 700, marginBottom: 4 }}>🔥 Ordered {food.orderCount}+ times</div>}
         {food.description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{food.description}</div>}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 10 }}>

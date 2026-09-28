@@ -25,7 +25,16 @@ export default function AdminSidebar({ open, onClose }) {
   
   const filteredLinks = navLinks.filter(link => {
     if (user?.role === 'sub_admin') {
-      return !['/admin/payouts', '/admin/categories', '/admin/service-areas'].includes(link.to);
+      const allowedForSubAdmin = [
+        '/admin',
+        '/admin/restaurants',
+        '/admin/stores',
+        '/admin/orders',
+        '/admin/bookings',
+        '/admin/delivery-agents',
+        '/admin/items'
+      ];
+      return allowedForSubAdmin.includes(link.to);
     }
     return true;
   });

@@ -13,6 +13,7 @@ function EditDrawer({ item, onClose, onSave, saving }) {
   const [description, setDescription] = useState(item.description || '');
   const [available, setAvailable]     = useState(item.isAvailable !== false);
   const [freeDelivery, setFreeDelivery] = useState(item.freeDelivery || false);
+  const [featured, setFeatured]         = useState(item.isFeatured || false);
 
   return (
     <div className="ai-drawer-backdrop" onClick={onClose}>
@@ -68,6 +69,16 @@ function EditDrawer({ item, onClose, onSave, saving }) {
           </label>
 
           <label className="ai-toggle-row">
+            <span>Pin to Top (Featured)</span>
+            <span
+              className={`ai-toggle ${featured ? 'on' : ''}`}
+              onClick={() => setFeatured(v => !v)}
+            >
+              <span className="ai-toggle-knob" />
+            </span>
+          </label>
+
+          <label className="ai-toggle-row">
             <span>Item is available</span>
             <span
               className={`ai-toggle ${available ? 'on' : ''}`}
@@ -83,7 +94,7 @@ function EditDrawer({ item, onClose, onSave, saving }) {
           <button
             className="ai-btn-save"
             disabled={saving}
-            onClick={() => onSave(item._id, item.itemType, { price, discountedPrice, offer, description, isAvailable: available, freeDelivery })}
+            onClick={() => onSave(item._id, item.itemType, { price, discountedPrice, offer, description, isAvailable: available, freeDelivery, isFeatured: featured })}
           >
             {saving ? 'Saving…' : '✓ Save Changes'}
           </button>

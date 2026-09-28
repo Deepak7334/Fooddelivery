@@ -91,7 +91,7 @@ router.get('/foods', async (req, res) => {
         { category: new RegExp(search, 'i') }
       ];
     }
-    const foods = await Food.find(filter).sort({ createdAt: -1 }).populate('restaurantId', 'name image address cuisine');
+    const foods = await Food.find(filter).sort({ isFeatured: -1, createdAt: -1 }).populate('restaurantId', 'name image address cuisine');
     res.json({ success: true, foods });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -347,7 +347,10 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));
       const vendorPayout = Number((totalAmount - adminCommission).toFixed(2));
 
-      const order = await Order.create({
+      // Increment orderCount for items
+    const itemIds = items.map(i => i.menuItemId || i.productId);
+    await Product.updateMany({ _id: { $in: itemIds } }, { $inc: { orderCount: 1 } });
+    const order = await Order.create({
         customerId: req.user._id,
         restaurantId: group.vendorType === 'restaurant' ? group.vendorId : null,
         restaurantName: group.vendorType === 'restaurant' ? vendorName : null,
@@ -377,6 +380,13 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       }
       
       createdOrders.push(order);
+        // Increment orderCount for items
+        const itemIds = group.items.map(i => i.menuItemId);
+        if (group.vendorType === 'restaurant') {
+          await Food.updateMany({ _id: { $in: itemIds } }, { $inc: { orderCount: 1 } });
+        } else {
+          await Product.updateMany({ _id: { $in: itemIds } }, { $inc: { orderCount: 1 } });
+        }
       io.to(`${group.vendorType}_${group.vendorId}`).emit('order:new', order);
       
       // FCM Notifications
