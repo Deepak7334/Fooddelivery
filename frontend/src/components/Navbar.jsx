@@ -200,7 +200,7 @@ export default function Navbar() {
                         </Link>
                       </>
                     )}
-                    {user.role === 'admin' && (
+                    {(user.role === 'admin' || user.role === 'sub_admin') && (
                       <Link to="/admin" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -345,7 +345,7 @@ export default function Navbar() {
                 </Link>
               </>
             )}
-            {user.role === 'admin' && (
+            {(user.role === 'admin' || user.role === 'sub_admin') && (
               <Link to="/admin" onClick={() => setMobileOpen(false)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
                 Admin Panel

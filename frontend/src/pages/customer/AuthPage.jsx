@@ -27,7 +27,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin') navigate('/admin', { replace: true });
+      if (user.role === 'admin' || user.role === 'sub_admin') navigate('/admin', { replace: true });
       else if (user.role === 'restaurant') navigate('/restaurant', { replace: true });
       else if (user.role === 'store_owner') navigate('/store-owner', { replace: true });
       else if (user.role === 'delivery') navigate('/delivery', { replace: true });
