@@ -72,6 +72,14 @@ export default function AdminServiceAreas() {
         <button className="btn btn-primary" onClick={() => { setFormData({ name: '', code: '', city: '', state: '', pincodes: '', deliveryFee: 30, minimumOrderValue: 100, estimatedDeliveryTime: '30-45 mins', status: 'ACTIVE', lat: '', lng: '' }); setShowModal(true); }}>+ Add Zone</button>
       </div>
 
+      <style>{`
+        .asa-mobile { display:none; flex-direction:column; gap:12px; }
+        .asa-card { background:var(--bg-card); border:1px solid var(--glass-border); border-radius:12px; padding:16px; transition:border-color 0.2s; }
+        .asa-card:hover { border-color:var(--primary); }
+        @media(max-width:768px) { .table-wrapper { display:none; } .asa-mobile { display:flex; } }
+      `}</style>
+
+      {/* Desktop Table */}
       <div className="table-wrapper">
         <table>
           <thead>
@@ -123,6 +131,66 @@ export default function AdminServiceAreas() {
             )})}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="asa-mobile">
+        {areas.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>No service areas found. Create one to enable deliveries!</div>
+        ) : areas.map(area => {
+          const lat = area.location?.coordinates?.[1] || 'Not Set';
+          const lng = area.location?.coordinates?.[0] || 'Not Set';
+          return (
+            <div key={area._id} className="asa-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>{area.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{area.code} · {area.city}</div>
+                </div>
+                <span className={`badge ${area.status === 'ACTIVE' ? 'badge-paid' : 'badge-danger'}`}>{area.status}</span>
+              </div>
+              
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 8, marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>📍 Center (GPS)</div>
+                <div style={{ fontSize: 13, fontFamily: 'monospace', color: lat === 'Not Set' ? 'var(--danger)' : 'var(--success)' }}>
+                  {lat !== 'Not Set' ? `${lat}, ${lng}` : 'Missing GPS! Update required.'}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, fontSize: 13 }}>
+                <div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Delivery Fee</div>
+                  <div style={{ fontWeight: 700, color: 'var(--success)' }}>₹{area.deliveryFee}</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Min Order</div>
+                  <div style={{ fontWeight: 700 }}>₹{area.minimumOrderValue}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Pincodes</div>
+                  <div style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={area.pincodes?.join(', ')}>
+                    {area.pincodes?.join(', ')}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn btn-secondary btn-sm" style={{ flex: 1, padding: 10 }} onClick={() => { 
+                  setFormData({ 
+                    ...area, 
+                    pincodes: area.pincodes.join(', '),
+                    lat: area.location?.coordinates?.[1] || '',
+                    lng: area.location?.coordinates?.[0] || ''
+                  }); 
+                  setShowModal(true); 
+                }}>Edit Zone</button>
+                <button className="btn btn-secondary btn-sm" style={{ flex: 1, padding: 10 }} onClick={() => handleToggleStatus(area._id, area.status)}>
+                  {area.status === 'ACTIVE' ? 'Disable' : 'Enable'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {showModal && (

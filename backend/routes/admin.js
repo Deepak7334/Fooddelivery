@@ -385,7 +385,8 @@ router.get('/delivery-agents/:id/details', async (req, res) => {
     const agent = await User.findOne({ _id: req.params.id, role: 'delivery' }).select('-password');
     if (!agent) return res.status(404).json({ success: false, message: 'Agent not found' });
     
-    const orders = await Order.find({ deliveryAgentId: agent._id })
+    const orders = await Order.find({
+      ...req.adminOrderFilter, deliveryAgentId: agent._id })
       .sort({ createdAt: -1 })
       .populate('customerId', 'name phone')
       .populate('restaurantId', 'name address');
@@ -517,6 +518,50 @@ router.patch('/orders/:id/status', async (req, res) => {
   }
 });
 
+// Admin: bulk assign delivery agent to multiple orders
+router.patch('/orders/bulk-assign', async (req, res) => {
+  try {
+    const { orderIds, agentId } = req.body;
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No orders selected' });
+    }
+
+    const agent = await User.findOne({ _id: agentId, role: 'delivery', isActive: true });
+    if (!agent) return res.status(404).json({ success: false, message: 'Delivery agent not found or inactive' });
+    if (agent.deliveryStatus === 'offline') return res.status(400).json({ success: false, message: 'Agent is offline.' });
+
+    const io = req.app.get('io');
+    const updatedOrders = [];
+
+    for (const orderId of orderIds) {
+      const order = await Order.findByIdAndUpdate(
+        orderId,
+        { 
+          deliveryAgentId: agentId, 
+          deliveryAgentName: agent.name,
+          status: 'assignment_pending',
+          agentAccepted: false
+        },
+        { new: true }
+      ).populate('customerId', 'name email phone').populate('restaurantId', 'name address phone').populate('storeId', 'name address phone').populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
+      
+      if (order) {
+        order.statusHistory.push({ status: 'assignment_pending', timestamp: new Date(), note: 'Admin assigned (Bulk). Waiting for agent.' });
+        await order.save();
+        updatedOrders.push(order);
+        
+        io.to(`order_${order._id}`).emit('order:agent_assigned', { orderId: order._id, agent: { name: agent.name, phone: agent.phone } });
+        io.to(`delivery_${agentId}`).emit('delivery:new_assignment', order);
+      }
+    }
+
+    res.json({ success: true, message: `Successfully assigned ${updatedOrders.length} orders to ${agent.name}`, updatedOrders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
 // Admin: assign delivery agent to order
 router.patch('/orders/:id/assign-agent', async (req, res) => {
   try {
@@ -564,50 +609,6 @@ router.patch('/orders/:id/assign-agent', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// Admin: bulk assign delivery agent to multiple orders
-router.patch('/orders/bulk-assign', async (req, res) => {
-  try {
-    const { orderIds, agentId } = req.body;
-    if (!Array.isArray(orderIds) || orderIds.length === 0) {
-      return res.status(400).json({ success: false, message: 'No orders selected' });
-    }
-
-    const agent = await User.findOne({ _id: agentId, role: 'delivery', isActive: true });
-    if (!agent) return res.status(404).json({ success: false, message: 'Delivery agent not found or inactive' });
-    if (agent.deliveryStatus === 'offline') return res.status(400).json({ success: false, message: 'Agent is offline.' });
-
-    const io = req.app.get('io');
-    const updatedOrders = [];
-
-    for (const orderId of orderIds) {
-      const order = await Order.findByIdAndUpdate(
-        orderId,
-        { 
-          deliveryAgentId: agentId, 
-          deliveryAgentName: agent.name,
-          status: 'assignment_pending',
-          agentAccepted: false
-        },
-        { new: true }
-      ).populate('customerId', 'name email phone').populate('restaurantId', 'name address phone').populate('storeId', 'name address phone').populate('deliveryAgentId', 'name phone vehicleNumber deliveryStatus');
-      
-      if (order) {
-        order.statusHistory.push({ status: 'assignment_pending', timestamp: new Date(), note: 'Admin assigned (Bulk). Waiting for agent.' });
-        await order.save();
-        updatedOrders.push(order);
-        
-        io.to(`order_${order._id}`).emit('order:agent_assigned', { orderId: order._id, agent: { name: agent.name, phone: agent.phone } });
-        io.to(`delivery_${agentId}`).emit('delivery:new_assignment', order);
-      }
-    }
-
-    res.json({ success: true, message: `Successfully assigned ${updatedOrders.length} orders to ${agent.name}`, updatedOrders });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
 // ========== CATEGORY MANAGEMENT ==========
 router.get('/categories', async (req, res) => {
   try {
@@ -653,7 +654,7 @@ router.get('/bookings', async (req, res) => {
     const limitNum = Math.max(1, parseInt(req.query.limit || '20', 10));
     const { status, restaurantId } = req.query;
 
-    const filter = {};
+    const filter = { ...req.adminOrderFilter };
     if (status && status !== 'all') filter.status = status;
     if (restaurantId)               filter.restaurantId = restaurantId;
 
@@ -701,7 +702,7 @@ router.put('/bookings/:id/:action', async (req, res) => {
 router.get('/stores', async (req, res) => {
   try {
     const { type, search } = req.query;
-    const filter = {};
+    const filter = { ...req.adminFilter };
     if (type && type !== 'all') filter.storeType = type;
     if (search) filter.name = { $regex: search, $options: 'i' };
     const stores = await Store.find(filter)
@@ -903,6 +904,7 @@ router.get('/users/:id/audit-log', async (req, res) => {
 router.get('/payouts', async (req, res) => {
   try {
     const orders = await Order.find({
+      ...req.adminOrderFilter,
       status: 'delivered',
       paymentStatus: 'paid',
       vendorPayoutStatus: 'pending',

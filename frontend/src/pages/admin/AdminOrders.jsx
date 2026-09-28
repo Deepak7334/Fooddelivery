@@ -133,9 +133,11 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
               label: 'Address', 
               value: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span>{order.deliveryAddress || '—'}</span>
-                  {order.deliveryCoords && order.deliveryCoords.lat && (
-                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#3B82F6', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span>{typeof order.deliveryAddress === 'object' && order.deliveryAddress !== null 
+                    ? [order.deliveryAddress.addressLine1, order.deliveryAddress.landmark, order.deliveryAddress.area, order.deliveryAddress.city, order.deliveryAddress.pincode].filter(Boolean).join(', ')
+                    : (order.deliveryAddress || '—')}</span>
+                  {((order.deliveryCoords && order.deliveryCoords.lat) || (typeof order.deliveryAddress === 'object' && order.deliveryAddress?.latitude)) && (
+                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords?.lat || order.deliveryAddress?.latitude},${order.deliveryCoords?.lng || order.deliveryAddress?.longitude}`} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#3B82F6', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       🗺️ Open in Google Maps
                     </a>
                   )}
@@ -423,7 +425,7 @@ export default function AdminOrders() {
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No orders found</td></tr>
+                  <tr><td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No orders found</td></tr>
                 ) : filtered.map(o => {
                   const nextStatuses = ADMIN_NEXT[o.status] || [];
                   return (
