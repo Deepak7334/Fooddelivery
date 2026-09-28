@@ -25,12 +25,24 @@ router.get('/categories', async (req, res) => {
 // Get checkout info (delivery fees & global taxes)
 router.post('/checkout-info', async (req, res) => {
   try {
-    const { items = [], totalAmount = 0 } = req.body;
-    
-    // Fallback if no items provided
-    if (items.length === 0) {
-      const deliveryFees = Number(totalAmount) < 30 ? 5 : 10;
-      return res.json({ success: true, deliveryFees, globalTaxRate: 0 });
+    const { items = [], restaurantIds = [], storeIds = [], totalAmount = 0 } = req.body;
+
+      // Robust Fallback using provided IDs if items are dropped
+      if (items.length === 0) {
+        let totalDeliveryFee = 0;
+        if (restaurantIds && restaurantIds.length > 0) {
+          for (const id of restaurantIds) {
+            const rest = await Restaurant.findById(id);
+            if (rest && rest.deliveryFee !== undefined) totalDeliveryFee += rest.deliveryFee;
+          }
+        }
+        if (storeIds && storeIds.length > 0) {
+          for (const id of storeIds) {
+            const store = await Store.findById(id);
+            if (store && store.deliveryFee !== undefined) totalDeliveryFee += store.deliveryFee;
+          }
+        }
+        return res.json({ success: true, deliveryFees: totalDeliveryFee || (Number(totalAmount) < 30 ? 5 : 10), globalTaxRate: 0 });
     }
 
     const vendorGroups = {};
