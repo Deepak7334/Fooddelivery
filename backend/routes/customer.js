@@ -350,7 +350,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       // Increment orderCount for items
     const itemIds = items.map(i => i.menuItemId || i.productId);
     await Product.updateMany({ _id: { $in: itemIds } }, { $inc: { orderCount: 1 } });
-    const order = await Order.create({
+      const order = await Order.create({
         customerId: req.user._id,
         restaurantId: group.vendorType === 'restaurant' ? group.vendorId : null,
         restaurantName: group.vendorType === 'restaurant' ? vendorName : null,
@@ -381,11 +381,11 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       
       createdOrders.push(order);
         // Increment orderCount for items
-        const itemIds = group.items.map(i => i.menuItemId);
+        const groupItemIds = group.items.map(i => i.menuItemId);
         if (group.vendorType === 'restaurant') {
-          await Food.updateMany({ _id: { $in: itemIds } }, { $inc: { orderCount: 1 } });
+          await Food.updateMany({ _id: { $in: groupItemIds } }, { $inc: { orderCount: 1 } });
         } else {
-          await Product.updateMany({ _id: { $in: itemIds } }, { $inc: { orderCount: 1 } });
+          await Product.updateMany({ _id: { $in: groupItemIds } }, { $inc: { orderCount: 1 } });
         }
       io.to(`${group.vendorType}_${group.vendorId}`).emit('order:new', order);
       
