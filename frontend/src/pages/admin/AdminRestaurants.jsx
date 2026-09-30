@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiEye, FiEyeOff } from 'react-icons/fi';
 import ImageCropperModal from '../../components/ImageCropperModal';
 
-const emptyForm = { name: '', description: '', cuisine: '', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '', customCommissionRate: '' };
+const emptyForm = { name: '', description: '', cuisine: '', address: '', addrHouse: '', addrArea: '', addrLandmark: '', addrPincode: '', city: '', image: '', deliveryTime: '30-40 mins', deliveryFee: 30, minOrder: 100, phone: '', ownerEmail: '', ownerPassword: '', ownerName: '', customCommissionRate: '', serviceAreaId: '' };
 
 const F = ({ label, field, type = 'text', placeholder, form, setForm, onUpload, uploading }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -87,7 +87,8 @@ export default function AdminRestaurants() {
       lng = r.location.coordinates[0];
     }
     setForm({ ...r, cuisine: r.cuisine?.join(', ') || '', addrHouse: r.address || '', addrArea: '', addrLandmark: '', addrPincode: '', lat, lng, customCommissionRate: r.customCommissionRate !== null && r.customCommissionRate !== undefined ? r.customCommissionRate : '' });
-    setEditing(r._id); setShowModal(true);
+    setForm(prev => ({...prev, serviceAreaId: r.serviceAreaIds?.[0] || ''}));
+      setEditing(r._id); setShowModal(true);
   };
 
   const handleImageUpload = (e, fieldKey) => {

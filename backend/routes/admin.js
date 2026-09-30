@@ -118,6 +118,8 @@ router.post('/restaurants', async (req, res) => {
     }
 
     const restaurantData = { name, description, cuisine: cuisine || [], address, city, image, deliveryTime, deliveryFee, minOrder, phone, ownerEmail, ownerId, location: locationData };
+      if (req.user.role === 'sub_admin' && req.user.serviceAreaIds.length > 0) restaurantData.serviceAreaIds = [req.user.serviceAreaIds[0]];
+      else if (req.body.serviceAreaId) restaurantData.serviceAreaIds = [req.body.serviceAreaId];
     if (req.body.customCommissionRate !== undefined && req.body.customCommissionRate !== '') {
       restaurantData.customCommissionRate = Number(req.body.customCommissionRate);
     } else if (req.body.customCommissionRate === '') {
@@ -448,7 +450,7 @@ router.patch('/orders/:id/status', async (req, res) => {
     const validStatuses = ['accepted', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) return res.status(400).json({ success: false, message: 'Invalid status' });
 
-    const order = await Order.findById(req.params.id).populate('customerId', 'name email phone').populate('restaurantId', 'name address');
+    const order = await Order.findOne({ _id: req.params.id, ...req.adminOrderFilter }).populate('customerId', 'name email phone').populate('restaurantId', 'name address');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
     // Auto-assign logic: When admin dispatches without an agent, find the first available agent
@@ -526,7 +528,7 @@ router.patch('/orders/bulk-assign', async (req, res) => {
       return res.status(400).json({ success: false, message: 'No orders selected' });
     }
 
-    const agent = await User.findOne({ _id: agentId, role: 'delivery', isActive: true });
+    const agent = await User.findOne({ _id: agentId, role: 'delivery', isActive: true, ...req.adminFilter });
     if (!agent) return res.status(404).json({ success: false, message: 'Delivery agent not found or inactive' });
     if (agent.deliveryStatus === 'offline') return res.status(400).json({ success: false, message: 'Agent is offline.' });
 
@@ -566,7 +568,7 @@ router.patch('/orders/bulk-assign', async (req, res) => {
 router.patch('/orders/:id/assign-agent', async (req, res) => {
   try {
     const { agentId } = req.body;
-    const agent = await User.findOne({ _id: agentId, role: 'delivery', isActive: true });
+    const agent = await User.findOne({ _id: agentId, role: 'delivery', isActive: true, ...req.adminFilter });
     if (!agent) return res.status(404).json({ success: false, message: 'Delivery agent not found or inactive' });
     
     if (agent.deliveryStatus === 'offline') {

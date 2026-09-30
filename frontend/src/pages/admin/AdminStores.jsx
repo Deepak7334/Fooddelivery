@@ -247,7 +247,15 @@ export default function AdminStores() {
                 <div style={{ marginTop: 16, padding: 16, background: 'rgba(33,150,243,0.08)', borderRadius: 12, border: '1px solid rgba(33,150,243,0.2)' }}>
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, color: '#2196F3' }}>👤 Store Owner Account (optional)</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
-                    {[
+  
+                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                      <label className="form-label">Zone (Service Area)</label>
+                      <select className="form-input" value={form.serviceAreaId || ''} onChange={e => setForm({...form, serviceAreaId: e.target.value})}>
+                        <option value="">-- Select Zone --</option>
+                        {serviceAreas.map(sa => <option key={sa._id} value={sa._id}>{sa.name} ({sa.city})</option>)}
+                      </select>
+                    </div>
+                  {[
                       { label: 'Owner Email', key: 'ownerEmail', col: 2 },
                       { label: 'Owner Name', key: 'ownerName', col: 1 },
                       { label: 'Password', key: 'ownerPassword', type: 'password', col: 1 },
