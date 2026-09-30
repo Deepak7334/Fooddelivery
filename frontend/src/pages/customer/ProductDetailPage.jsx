@@ -154,7 +154,7 @@ export default function ProductDetailPage() {
             <div style={{ display: 'flex', gap: 32, marginTop: 24, fontSize: 14, color: 'var(--text-primary)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ background: 'var(--bg-card2)', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>📦</div>
-                <div><div style={{ fontWeight: 600 }}>{ (finalPrice * quantity) < 30 ? 'Delivery: ₹5' : 'Delivery: ₹10' }</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Available on all orders</div></div>
+                <div><div style={{ fontWeight: 600 }}>{ product.storeId?.deliveryFee === 0 ? 'Free Delivery' : `Delivery: ₹${product.storeId?.deliveryFee ?? 30}` }</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{ product.storeId?.deliveryTime || 'Available on all orders' }</div></div>
               </div>
             </div>
 

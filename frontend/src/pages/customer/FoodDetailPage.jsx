@@ -165,7 +165,7 @@ export default function FoodDetailPage() {
             <div style={{ display: 'flex', gap: 32, marginTop: 24, fontSize: 14, color: 'var(--text-primary)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ background: 'var(--bg-card2)', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: 18 }}>⏱️</div>
-                <div><div style={{ fontWeight: 600 }}>{ (finalPrice * quantity) < 30 ? 'Delivery: ₹5' : 'Delivery: ₹10' }</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>30-45 mins</div></div>
+                <div><div style={{ fontWeight: 600 }}>{ food.restaurantId?.deliveryFee === 0 ? 'Free Delivery' : `Delivery: ₹${food.restaurantId?.deliveryFee ?? 30}` }</div><div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{ food.restaurantId?.deliveryTime || '30-45 mins' }</div></div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ background: 'var(--bg-card2)', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: 18 }}>🍽️</div>

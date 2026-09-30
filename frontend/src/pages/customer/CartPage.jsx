@@ -16,7 +16,7 @@ export default function CartPage() {
   const [vendorLocation, setVendorLocation] = useState(null);
   const [distance, setDistance] = useState(null);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
-  const [locLoading, setLocLoading] = useState(false);
+  const [locLoading, setLocLoading] = useState(false);\n  const [vendorFee, setVendorFee] = useState(30);
 
   // Initialize location and fetch vendor details
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function CartPage() {
   const minOrderRequired = (!manualMode && distance !== null && distance > 2 && distance <= 5) ? 100 : 0;
 
   // Delivery fee: < ₹30 → ₹5, ≥ ₹30 → ₹10
-  const fee = totalPrice < 30 ? 5 : 10;
+  const fee = vendorFee;
   
   const total = totalPrice + fee;
 
