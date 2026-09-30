@@ -16,7 +16,9 @@ export default function CartPage() {
   const [vendorLocation, setVendorLocation] = useState(null);
   const [distance, setDistance] = useState(null);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
-  const [locLoading, setLocLoading] = useState(false);\n  const [vendorFee, setVendorFee] = useState(30);
+  const [locLoading, setLocLoading] = useState(false);
+  const [vendorFee, setVendorFee] = useState(30);
+  const [vendorTime, setVendorTime] = useState('30-45 mins');
 
   // Initialize location and fetch vendor details
   useEffect(() => {
@@ -44,6 +46,10 @@ export default function CartPage() {
             let lat = loc.lat != null ? loc.lat : (loc.coordinates ? loc.coordinates[1] : null);
             let lng = loc.lng != null ? loc.lng : (loc.coordinates ? loc.coordinates[0] : null);
             if (lat != null && lng != null) setVendorLocation({ lat, lng });
+              if (res.data.store.deliveryFee !== undefined) setVendorFee(res.data.store.deliveryFee);
+              if (res.data.store.deliveryTime) setVendorTime(res.data.store.deliveryTime);
+              if (res.data.restaurant.deliveryFee !== undefined) setVendorFee(res.data.restaurant.deliveryFee);
+              if (res.data.restaurant.deliveryTime) setVendorTime(res.data.restaurant.deliveryTime);
           }
         } else if (cartType === 'product' && storeId) {
           const res = await api.get(`/store/stores/${storeId}`);
@@ -196,7 +202,7 @@ export default function CartPage() {
                 <span>Subtotal ({totalItems} items)</span><span>₹{totalPrice}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)' }}>
-                <span>Delivery Fee</span><span>{fee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free</span> : `₹${fee}`}</span>
+                <span>Delivery Fee ({vendorTime})</span><span>{fee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free</span> : `₹${fee}`}</span>
               </div>
               <div className="divider" />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800 }}>

@@ -66,10 +66,10 @@ router.post('/checkout-info', async (req, res) => {
       let fee = 30; // default fallback
       if (type === 'restaurant') {
         const rest = await Restaurant.findById(id);
-        if (rest) fee = rest.deliveryFee || 0;
+        if (rest) fee = rest.deliveryFee !== undefined ? rest.deliveryFee : 30;
       } else {
         const store = await Store.findById(id);
-        if (store) fee = store.deliveryFee || 0;
+        if (store) fee = store.deliveryFee !== undefined ? store.deliveryFee : 30;
       }
       totalDeliveryFee += fee;
     }
