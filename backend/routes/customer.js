@@ -103,7 +103,7 @@ router.get('/foods', async (req, res) => {
         { category: new RegExp(search, 'i') }
       ];
     }
-    const foods = await Food.find(filter).sort({ isFeatured: -1, createdAt: -1 }).populate('restaurantId', 'name image address cuisine');
+    const foods = await Food.find(filter).sort({ isFeatured: -1, createdAt: -1 }).populate('restaurantId', 'name image address cuisine deliveryTime deliveryFee');
     res.json({ success: true, foods });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
