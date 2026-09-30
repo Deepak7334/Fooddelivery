@@ -118,6 +118,7 @@ export default function AdminItems() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkOffer, setBulkOffer] = useState('');
   const [bulkFreeDelivery, setBulkFreeDelivery] = useState(false);
+  const [bulkFeatured, setBulkFeatured] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
 
   useEffect(() => { fetchItems(); }, []);
@@ -164,6 +165,7 @@ export default function AdminItems() {
       setSelectedIds(new Set());
       setBulkOffer('');
       setBulkFreeDelivery(false);
+      setBulkFeatured(false);
       fetchItems(); // refresh items
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to apply bulk update');

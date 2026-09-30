@@ -862,7 +862,7 @@ router.patch('/manage-items/:id', async (req, res) => {
 // Admin: Bulk update items (Offers & Free Delivery)
 router.post('/manage-items/bulk', async (req, res) => {
   try {
-    const { itemIds, freeDelivery, offer } = req.body;
+    const { itemIds, freeDelivery, offer, isFeatured } = req.body;
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
       return res.status(400).json({ success: false, message: 'No items selected' });
     }

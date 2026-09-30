@@ -40,6 +40,10 @@ const foodSchema = new mongoose.Schema({
     ref: 'Restaurant',
     required: true,
   },
+  isFeatured: {
+    type: Boolean,
+    default: false,
+  },
   isAvailable: {
     type: Boolean,
     default: true,
