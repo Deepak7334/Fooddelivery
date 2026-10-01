@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -33,6 +34,29 @@ const STORE_TYPES = [
 ];
 
 export default function HomePage() {
+  const categoriesRef = React.useRef(null);
+  const isDragging = React.useRef(false);
+  const startX = React.useRef(0);
+  const scrollLeft = React.useRef(0);
+
+  const onDragStart = (e) => {
+    isDragging.current = true;
+    startX.current = e.pageX - categoriesRef.current.offsetLeft;
+    scrollLeft.current = categoriesRef.current.scrollLeft;
+  };
+
+  const onDragEnd = () => {
+    isDragging.current = false;
+  };
+
+  const onDragMove = (e) => {
+    if (!isDragging.current) return;
+    e.preventDefault();
+    const x = e.pageX - categoriesRef.current.offsetLeft;
+    const walk = (x - startX.current) * 2; // scroll-fast
+    categoriesRef.current.scrollLeft = scrollLeft.current - walk;
+  };
+
   const [categories, setCategories]   = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [stores, setStores]           = useState([]);
@@ -272,7 +296,12 @@ export default function HomePage() {
           : item.category === activeCategory || item.restaurantId?.cuisine?.includes(activeCategory);
       })
       // Use a stable shuffle seeded once, not on every render
-      .sort((a, b) => a._id > b._id ? 1 : -1);
+      .sort((a, b) => {
+        if (a.isFeatured !== b.isFeatured) {
+          return a.isFeatured ? -1 : 1;
+        }
+        return a._id > b._id ? 1 : -1;
+      });
   }, [foods, products, search, activeCategory, vegOnly]);
 
   const handleAddToCart = (food) => {
@@ -520,7 +549,13 @@ export default function HomePage() {
               <h2 className="section-title">What's on your <span>mind?</span></h2>
               <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>See all →</Link>
             </div>
-            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
+            <div 
+                ref={categoriesRef}
+                onMouseDown={onDragStart}
+                onMouseLeave={onDragEnd}
+                onMouseUp={onDragEnd}
+                onMouseMove={onDragMove}
+                style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none', cursor: 'grab', userSelect: 'none' }}>
               {loading ? Array(8).fill(0).map((_, i) => (
                 <div key={i} style={{ minWidth: 90, height: 88, borderRadius: 16, background: 'var(--bg-card)' }} className="shimmer" />
               )) : [...STORE_TYPES, ...categories].map(cat => {
