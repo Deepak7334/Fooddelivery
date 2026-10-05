@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
 
 export default function Footer() {
   return (
@@ -28,11 +29,27 @@ export default function Footer() {
           <div>
             <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>Contact</div>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📧 supportjdkart@gmail.com</p>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>📞 JDkart - 7762971182 </p>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>⏰ 24/7 Support</p>
-            <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-              <a href="#" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Instagram</a>
-              <a href="#" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Twitter</a>
+            <div style={{ display: 'flex', gap: 20, marginTop: 16 }}>
+              <a 
+                href="https://instagram.com/jd__kart" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, transition: 'var(--transition)' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#E1306C'} 
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                <FaInstagram size={18} /> Instagram
+              </a>
+              <a 
+                href="https://wa.me/917762971182" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, transition: 'var(--transition)' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#25D366'} 
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                <FaWhatsapp size={18} /> WhatsApp
+              </a>
             </div>
           </div>
         </div>
