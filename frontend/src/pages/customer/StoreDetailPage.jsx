@@ -106,7 +106,7 @@ export default function StoreDetailPage() {
       {/* Store Header */}
       <div style={{ position: 'relative', height: 200, background: 'linear-gradient(135deg, var(--bg-dark), var(--bg-card2))', overflow: 'hidden' }}>
         {store.coverImage || store.image ? (
-          <img src={store.coverImage || store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+          <img loading="lazy" src={store.coverImage || store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}>{icon}</div>
         )}
@@ -115,7 +115,7 @@ export default function StoreDetailPage() {
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
             {store.image && (
               <div style={{ width: 72, height: 72, borderRadius: 16, overflow: 'hidden', border: '3px solid rgba(255,255,255,0.2)', flexShrink: 0 }}>
-                <img src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img loading="lazy" src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             )}
             <div>
@@ -265,7 +265,7 @@ function ProductCard({ product, qty, onAdd, onBuy }) {
         {/* Image */}
         <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
           {product.image ? (
-            <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📦</div>
           )}

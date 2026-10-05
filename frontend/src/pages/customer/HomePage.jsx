@@ -410,8 +410,8 @@ export default function HomePage() {
         <div style={{ position: 'absolute', top: '-50px', right: '10%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(255,87,34,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '-50px', left: '5%',  width: 300, height: 300, background: 'radial-gradient(circle, rgba(255,193,7,0.1) 0%, transparent 70%)',  pointerEvents: 'none' }} />
 
-        <div className="container" style={{ position: 'relative' }}>
-          <div style={{ maxWidth: 680, animation: 'fadeIn 0.8s ease' }}>
+        <div className="container" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ maxWidth: 680, animation: 'fadeIn 0.8s ease', zIndex: 2 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               {HERO_FOOD_EMOJIS.map((e, i) => (
                 <span key={i} style={{ fontSize: 'clamp(22px,4vw,30px)', animation: `bounce ${1 + i * 0.15}s ease infinite`, animationDelay: `${i * 0.1}s` }}>{e}</span>
@@ -607,7 +607,7 @@ export default function HomePage() {
                     
                     {(userCoords || (locationText && locationText !== '📍 Current Location')) ? (
                       <>
-                        <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 800, marginBottom: 16, color: 'var(--text-primary)' }}>"our service not started in your area yet !! soon we expand it in your area"</h2>
+                        <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 800, marginBottom: 16, color: 'var(--text-primary)' }}>"Our service hasn't reached your area yet! We're expanding soon."</h2>
                         <button className="btn btn-primary" style={{ marginTop: 16, padding: '10px 24px' }} onClick={clearLocation}>
                           Try Again
                         </button>
@@ -718,7 +718,7 @@ function RestaurantCard({ restaurant, userCoords }) {
     <Link to={`/restaurants/${restaurant._id}`} className="card" style={{ textDecoration: 'none' }}>
       <div style={{ position: 'relative', height: 160, background: 'var(--bg-card2)', overflow: 'hidden' }}>
         {restaurant.image ? (
-          <img src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'var(--transition)' }} />
+          <img loading="lazy" src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'var(--transition)' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, background: 'linear-gradient(135deg, var(--bg-card), var(--bg-card2))' }}>🍽️</div>
         )}
@@ -806,7 +806,7 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </div>
         <div className="item-img" style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
           {food.image ? (
-            <img src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🍽️</div>
           )}
@@ -894,7 +894,7 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
         </div>
         <div style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
           {product.image ? (
-            <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>
           )}
@@ -943,7 +943,7 @@ function StoreCard({ store }) {
     <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none', overflow: 'hidden' }}>
       <div style={{ position: 'relative', height: 160, background: 'linear-gradient(135deg, var(--bg-card), var(--bg-card2))', overflow: 'hidden' }}>
         {store.image ? (
-          <img src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img loading="lazy" src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>
             {typeInfo?.icon || '🏬'}

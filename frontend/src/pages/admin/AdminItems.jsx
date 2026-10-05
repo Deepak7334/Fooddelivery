@@ -28,7 +28,7 @@ function EditDrawer({ item, onClose, onSave, saving }) {
 
         <div className="ai-drawer-body">
           <div className="ai-drawer-image-row">
-            <img src={item.image || 'https://via.placeholder.com/120'} alt={item.name} className="ai-drawer-img" />
+            <img loading="lazy" src={item.image || 'https://via.placeholder.com/120'} alt={item.name} className="ai-drawer-img" />
             <div>
               <div className="ai-drawer-vendor">By <strong>{item.vendorName}</strong></div>
               <span className="ai-type-pill">{item.itemType}</span>
@@ -373,7 +373,7 @@ export default function AdminItems() {
                   <div className="ai-card-checkbox">
                     <input type="checkbox" className="ai-checkbox" checked={selectedIds.has(item._id)} onChange={() => toggleSelection(item._id)} />
                   </div>
-                  <img src={item.image || 'https://via.placeholder.com/400'} alt={item.name} className="ai-card-img" />
+                  <img loading="lazy" src={item.image || 'https://via.placeholder.com/400'} alt={item.name} className="ai-card-img" />
                   <span className="ai-type-badge">{item.itemType}</span>
                   {item.offer && <span className="ai-offer-badge">{item.offer}</span>}
                   {item.freeDelivery && <span className="ai-free-badge">FREE DELIVERY</span>}
@@ -428,7 +428,7 @@ export default function AdminItems() {
                     </td>
                     <td>
                       <div className="ai-table-item">
-                        <img src={item.image || 'https://via.placeholder.com/60'} alt={item.name} className="ai-table-img" />
+                        <img loading="lazy" src={item.image || 'https://via.placeholder.com/60'} alt={item.name} className="ai-table-img" />
                         <div>
                           <div className="ai-table-item-name">{item.name}</div>
                           <div className="ai-table-item-desc">{item.description?.slice(0, 50) || '—'}</div>

@@ -109,7 +109,7 @@ export default function FoodDetailPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64 }}>
                   {[food.image, ...food.images].filter(Boolean).map((img, i) => (
                     <div key={i} onClick={() => setActiveImage(img)} style={{ width: 64, height: 64, borderRadius: 2, overflow: 'hidden', cursor: 'pointer', border: activeImage === img ? '2px solid var(--primary)' : '1px solid var(--border)', padding: 2 }}>
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img loading="lazy" src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                   ))}
                 </div>
@@ -119,7 +119,7 @@ export default function FoodDetailPage() {
                 <button style={{ position: 'absolute', top: 16, right: 16, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }} onClick={() => toast.success('Added to Wishlist!')}>
                   <FiHeart size={18} />
                 </button>
-                {activeImage ? <img src={activeImage} alt={food.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <div style={{ color: 'var(--text-muted)' }}>No Image</div>}
+                {activeImage ? <img loading="lazy" src={activeImage} alt={food.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <div style={{ color: 'var(--text-muted)' }}>No Image</div>}
               </div>
             </div>
 

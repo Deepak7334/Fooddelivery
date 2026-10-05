@@ -99,7 +99,7 @@ export default function RestaurantMenu() {
                       <tr key={f._id} style={{ opacity: f.isAvailable ? 1 : 0.5 }}>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            {f.image ? <img src={f.image} alt={f.name} style={{ width: 42, height: 42, objectFit: 'cover', borderRadius: 8 }} /> : <div style={{ width: 42, height: 42, background: 'var(--bg-dark)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍽️</div>}
+                            {f.image ? <img loading="lazy" src={f.image} alt={f.name} style={{ width: 42, height: 42, objectFit: 'cover', borderRadius: 8 }} /> : <div style={{ width: 42, height: 42, background: 'var(--bg-dark)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍽️</div>}
                             <div>
                               <div style={{ fontWeight: 700 }}>{f.name}</div>
                               {f.isBestseller && <span style={{ fontSize: 10, color: '#FF8F00' }}>★ Bestseller</span>}

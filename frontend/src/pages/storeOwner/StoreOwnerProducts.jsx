@@ -123,7 +123,7 @@ export default function StoreOwnerProducts() {
           {filtered.map(p => (
             <div key={p._id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ height: 120, background: 'var(--bg-dark)', overflow: 'hidden' }}>
-                {p.image ? <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {p.image ? <img loading="lazy" src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📦</div>}
               </div>
               <div style={{ padding: 12 }}>

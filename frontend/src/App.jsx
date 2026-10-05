@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { FiMenu } from 'react-icons/fi';
 import NotificationBell from './components/NotificationBell';
@@ -158,7 +158,9 @@ export default function App() {
 
     // Connect to Socket.io server
     const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    if (window.__appSocket) window.__appSocket.disconnect();
     const socket = io(apiBase);
+    window.__appSocket = socket;
 
     socket.on('connect', () => {
       // Join the user's specific room
@@ -248,7 +250,9 @@ export default function App() {
         <Route path="/delivery/orders/:id"  element={<PrivateRoute role="delivery"><DeliveryLayout><DeliveryOrderPage /></DeliveryLayout></PrivateRoute>} />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<CustomerLayout><div style={{ padding: '100px 20px', textAlign: 'center' }}><h2>404 - Page Not Found</h2><Link to="/" className="btn btn-primary" style={{marginTop: 20}}>Go Home</Link></div></CustomerLayout>} />
+        <Route path="/about" element={<CustomerLayout><div style={{ padding: '100px 20px', textAlign: 'center' }}><h2>About Us</h2><p>JDkart is your friendly neighborhood delivery app.</p></div></CustomerLayout>} />
+        <Route path="/terms" element={<CustomerLayout><div style={{ padding: '100px 20px', textAlign: 'center' }}><h2>Terms & Privacy</h2><p>Our terms of service and privacy policy will be displayed here.</p></div></CustomerLayout>} />
       </Routes>
       <Analytics />
     </Suspense>

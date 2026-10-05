@@ -203,8 +203,10 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
     
-    // Check serviceability
-    if (!deliveryAddress || !serviceAreaId) {
+    // Check serviceability -- GPS orders may have serviceAreaId=null if no ServiceArea
+    // is configured for their GPS zone yet. Allow if GPS coordinates are present.
+    const hasGpsCoords = (deliveryAddress && deliveryAddress.latitude) || (deliveryCoords && deliveryCoords.lat);
+    if (!deliveryAddress || (!serviceAreaId && !hasGpsCoords)) {
        return res.status(400).json({ success: false, message: 'Delivery address and service area are required.' });
     }
 
@@ -324,7 +326,6 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
           role: 'delivery',
           isActive: true,
           deliveryStatus: 'available',
-          serviceAreaIds: serviceAreaId, // filter by service area
           location: {
             $near: {
               $geometry: {
@@ -359,9 +360,6 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));
       const vendorPayout = Number((totalAmount - adminCommission).toFixed(2));
 
-      // Increment orderCount for items
-    const itemIds = items.map(i => i.menuItemId || i.productId);
-    await Product.updateMany({ _id: { $in: itemIds } }, { $inc: { orderCount: 1 } });
       const order = await Order.create({
         customerId: req.user._id,
         restaurantId: group.vendorType === 'restaurant' ? group.vendorId : null,
@@ -535,11 +533,13 @@ router.patch('/orders/:id/cancel', protect, authorize('customer'), async (req, r
 // ========== STORE ORDER PLACEMENT ==========
 router.post('/store-orders', protect, authorize('customer'), async (req, res) => {
   try {
-    const { storeId, items, deliveryAddress, paymentMethod, totalAmount, specialInstructions, serviceAreaId } = req.body;
+    const { storeId, items, deliveryAddress, deliveryCoords, paymentMethod, totalAmount, specialInstructions, serviceAreaId } = req.body;
     if (!storeId || !items?.length) return res.status(400).json({ success: false, message: 'storeId and items are required' });
     
-    // Check serviceability
-    if (!deliveryAddress || !serviceAreaId) {
+    // Check serviceability -- GPS orders may have serviceAreaId=null if no ServiceArea
+    // is configured for their GPS zone yet. Allow if GPS coordinates are present.
+    const hasGpsCoords = (deliveryAddress && deliveryAddress.latitude) || (deliveryCoords && deliveryCoords.lat);
+    if (!deliveryAddress || (!serviceAreaId && !hasGpsCoords)) {
        return res.status(400).json({ success: false, message: 'Delivery address and service area are required.' });
     }
 

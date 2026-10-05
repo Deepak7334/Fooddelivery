@@ -163,7 +163,7 @@ export default function AdminStores() {
                 <tr key={store._id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {store.image ? <img src={store.image} alt={store.name} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} /> : <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--bg-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{TYPE_ICONS[store.storeType]}</div>}
+                      {store.image ? <img loading="lazy" src={store.image} alt={store.name} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} /> : <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--bg-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{TYPE_ICONS[store.storeType]}</div>}
                       <div>
                         <div style={{ fontWeight: 700 }}>{store.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{store.address?.slice(0, 40)}</div>

@@ -242,7 +242,7 @@ function StoreCard({ store }) {
     <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none' }}>
       <div style={{ position: 'relative', height: 170, background: 'var(--bg-card2)' }}>
         {store.image ? (
-          <img src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img loading="lazy" src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>{typeInfo.icon || '🏬'}</div>
         )}
@@ -292,7 +292,7 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
         </div>
         <div className="item-img" style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
           {product.image ? (
-            <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>
           )}

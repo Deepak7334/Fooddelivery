@@ -100,7 +100,7 @@ export default function RestaurantDetailPage() {
       {/* Hero Banner */}
       <div style={{ height: 280, position: 'relative', background: 'var(--bg-card2)', overflow: 'hidden' }}>
         {restaurant.image ? (
-          <img src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img loading="lazy" src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}></div>
         )}
@@ -216,7 +216,7 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
         {/* Image */}
         <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
           {food.image ? (
-            <img src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🍽️</div>
           )}

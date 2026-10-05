@@ -152,7 +152,7 @@ export default function ProfilePage() {
             <div className="profile-user-info">
               <div className="profile-avatar" style={{ position: 'relative' }}>
                 {formData.profileImage ? (
-                  <img src={formData.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                  <img loading="lazy" src={formData.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                 ) : (
                   (user?.email?.charAt(0) || user?.name?.charAt(0) || 'U').toUpperCase()
                 )}
@@ -253,12 +253,27 @@ export default function ProfilePage() {
               </div>
               
               <div className="form-group" style={{ marginTop: '20px' }}>
-                <label>Primary Address</label>
-                <div className="input-with-icon">
-                  <span className="input-icon">📍</span>
-                  <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Enter your primary delivery address" />
-                </div>
-              </div>
+  <label>Primary Address</label>
+  <div className="input-with-icon">
+    <span className="input-icon">📍</span>
+    <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Enter your primary delivery address" />
+  </div>
+</div>
+<div style={{ marginTop: '24px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+  <h4 style={{ marginBottom: '12px' }}>Saved Addresses</h4>
+  {user?.addresses && user.addresses.length > 0 ? (
+    <ul style={{ paddingLeft: '20px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+      {user.addresses.map((addr, idx) => (
+        <li key={idx} style={{ marginBottom: '8px' }}>
+          <strong>{addr.label || 'Home'}:</strong> {addr.address || addr.addressLine1}
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>No saved addresses.</p>
+  )}
+  <p style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '8px' }}>* You can add or edit addresses during checkout.</p>
+</div>
               
               <h3 style={{ marginTop: '24px' }}>Change Password</h3>
               <p className="profile-subtitle" style={{ marginBottom: '16px' }}>Leave blank if you don't want to change your password.</p>

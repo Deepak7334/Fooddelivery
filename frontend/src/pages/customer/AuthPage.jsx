@@ -157,7 +157,7 @@ export default function AuthPage() {
               ) : (
                 <form onSubmit={handleVerifyOtp}>
                   <div style={{ marginBottom: 20, fontSize: 14, color: 'var(--text-secondary)' }}>
-                    OTP sent to {email}. <button type="button" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>Edit</button>
+                    OTP sent to {email}. <button type="button" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>Edit</button> | <button type="button" onClick={handleSendOtp} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', marginLeft: 6 }}>Resend OTP</button>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Enter 6-digit OTP</label>

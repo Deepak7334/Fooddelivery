@@ -35,7 +35,7 @@ export default function StoreOwnerDashboard() {
     <div>
       {/* Store info */}
       <div style={{ marginBottom: 28, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-        {store.image && <img src={store.image} alt={store.name} style={{ width: 64, height: 64, borderRadius: 14, objectFit: 'cover', border: '2px solid var(--border)' }} />}
+        {store.image && <img loading="lazy" src={store.image} alt={store.name} style={{ width: 64, height: 64, borderRadius: 14, objectFit: 'cover', border: '2px solid var(--border)' }} />}
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 800 }}>{store.name}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>

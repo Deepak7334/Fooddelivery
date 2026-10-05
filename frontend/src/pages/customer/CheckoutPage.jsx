@@ -202,7 +202,7 @@ export default function CheckoutPage() {
         toast.success('New address saved!');
       }
       
-      setTimeout(() => window.location.reload(), 1000); 
+      // window.location.reload() removed 
     } catch (err) {
       toast.error('Failed to save address');
     } finally {
@@ -702,7 +702,7 @@ export default function CheckoutPage() {
                       setTimeout(() => clearCart(), 50);
                     }} style={{ display: 'flex', background: 'var(--bg-card)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', transition: 'transform 0.2s, box-shadow 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; }}>
                       <div style={{ width: 100, height: 100, flexShrink: 0, background: 'var(--bg-secondary)' }}>
-                        <img src={rest.image || 'https://via.placeholder.com/100'} alt={rest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img loading="lazy" src={rest.image || 'https://via.placeholder.com/100'} alt={rest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                       <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>{rest.name}</h4>

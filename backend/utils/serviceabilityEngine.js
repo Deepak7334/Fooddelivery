@@ -75,7 +75,7 @@ const checkVendorServiceability = async (vendorType, vendorId, serviceAreaId, de
   }
 
   // If the vendor has serviceAreaIds defined, check if it includes the target area
-  if (vendor.serviceAreaIds && vendor.serviceAreaIds.length > 0) {
+  if (vendor.serviceAreaIds && vendor.serviceAreaIds.length > 0 && serviceAreaId) {
     return vendor.serviceAreaIds.map(id => id.toString()).includes(serviceAreaId.toString());
   }
 
