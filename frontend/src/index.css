@@ -414,6 +414,7 @@ select.form-input option {
   display: flex;
   gap: 0;
   max-width: 640px;
+  width: 100%;
   background: var(--bg-card);
   border-radius: 100px;
   border: 1px solid var(--border);
@@ -431,6 +432,7 @@ select.form-input option {
 .search-input-wrap {
   flex: 2 1 240px;
   display: flex;
+  min-width: 0;
   align-items: center;
   padding: 0 16px;
   position: relative;

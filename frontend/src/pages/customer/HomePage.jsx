@@ -197,7 +197,7 @@ export default function HomePage() {
       },
       // Mobile optimization: false for high accuracy (uses fast wifi/cell triangulation instead of slow satellite GPS) 
       // and increased timeout to 20 seconds for slower mobile networks.
-      { enableHighAccuracy: false, timeout: 20000, maximumAge: 0 }
+      { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
     );
   };
 
@@ -411,13 +411,13 @@ export default function HomePage() {
         <div style={{ position: 'absolute', bottom: '-50px', left: '5%',  width: 300, height: 300, background: 'radial-gradient(circle, rgba(255,193,7,0.1) 0%, transparent 70%)',  pointerEvents: 'none' }} />
 
         <div className="container" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ maxWidth: 680, animation: 'fadeIn 0.8s ease', zIndex: 2 }}>
+          <div style={{ maxWidth: 680, width: '100%', minWidth: 0, animation: 'fadeIn 0.8s ease', zIndex: 2 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               {HERO_FOOD_EMOJIS.map((e, i) => (
                 <span key={i} style={{ fontSize: 'clamp(22px,4vw,30px)', animation: `bounce ${1 + i * 0.15}s ease infinite`, animationDelay: `${i * 0.1}s` }}>{e}</span>
               ))}
             </div>
-            <h1 style={{ fontSize: 'clamp(32px,6vw,64px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 16, fontFamily: 'Poppins, sans-serif' }}>
+            <h1 style={{ fontSize: 'clamp(32px,6vw,64px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 16, fontFamily: 'Poppins, sans-serif', wordBreak: 'break-word' }}>
               Order Food And Grocery,<br />
               <span style={{ color: 'var(--primary)', textShadow: '0 0 40px rgba(255,87,34,0.4)' }}>Fast &amp; Fresh</span>
             </h1>

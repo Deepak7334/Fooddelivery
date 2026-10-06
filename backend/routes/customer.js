@@ -393,16 +393,16 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
         // Increment orderCount for items
         const groupItemIds = group.items.map(i => i.menuItemId);
         if (group.vendorType === 'restaurant') {
-          await Food.updateMany({ _id: { $in: groupItemIds } }, { $inc: { orderCount: 1 } });
+          Food.updateMany({ _id: { $in: groupItemIds } }, { $inc: { orderCount: 1 } }).catch(console.error);
         } else {
-          await Product.updateMany({ _id: { $in: groupItemIds } }, { $inc: { orderCount: 1 } });
+          Product.updateMany({ _id: { $in: groupItemIds } }, { $inc: { orderCount: 1 } }).catch(console.error);
         }
       io.to(`${group.vendorType}_${group.vendorId}`).emit('order:new', order);
       
       // FCM Notifications
       const NotificationService = require('../services/notificationService');
-      await NotificationService.sendToCustomer(req.user._id, 'Order Placed Successfully', 'Your order has been placed successfully.', 'NEW_ORDER', io).catch(console.error);
-      await NotificationService.sendToAdmin('New Order', 'Customer placed an order.', 'NEW_ORDER', io).catch(console.error);
+      NotificationService.sendToCustomer(req.user._id, 'Order Placed Successfully', 'Your order has been placed successfully.', 'NEW_ORDER', io).catch(console.error);
+      NotificationService.sendToAdmin('New Order', 'Customer placed an order.', 'NEW_ORDER', io).catch(console.error);
 
       // Email Notification to Admin
       if (process.env.ADMIN_EMAIL) {
@@ -432,9 +432,9 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       }
       
       if (group.vendorType === 'restaurant') {
-        await NotificationService.sendToRestaurant(group.vendorId, 'New Order', 'You received a new order.', 'NEW_ORDER', io).catch(console.error);
+        NotificationService.sendToRestaurant(group.vendorId, 'New Order', 'You received a new order.', 'NEW_ORDER', io).catch(console.error);
       } else if (group.vendorType === 'store') {
-        await NotificationService.sendToStore(group.vendorId, 'New Order', 'You received a new store order.', 'NEW_ORDER', io).catch(console.error);
+        NotificationService.sendToStore(group.vendorId, 'New Order', 'You received a new store order.', 'NEW_ORDER', io).catch(console.error);
       }
     }
 
@@ -590,9 +590,9 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
 
     const io = req.app.get('io');
     const NotificationService = require('../services/notificationService');
-    await NotificationService.sendToCustomer(req.user.id, 'Order Placed Successfully', 'Your store order has been placed.', 'NEW_ORDER', io).catch(console.error);
-    await NotificationService.sendToAdmin('New Store Order', 'Customer placed a store order.', 'NEW_ORDER', io).catch(console.error);
-    await NotificationService.sendToStore(storeId, 'New Order', 'You received a new store order.', 'NEW_ORDER', io).catch(console.error);
+    NotificationService.sendToCustomer(req.user.id, 'Order Placed Successfully', 'Your store order has been placed.', 'NEW_ORDER', io).catch(console.error);
+    NotificationService.sendToAdmin('New Store Order', 'Customer placed a store order.', 'NEW_ORDER', io).catch(console.error);
+    NotificationService.sendToStore(storeId, 'New Order', 'You received a new store order.', 'NEW_ORDER', io).catch(console.error);
 
     res.status(201).json({ success: true, order });
   } catch (err) {
