@@ -41,7 +41,7 @@ export default function NotificationBell() {
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute', top: 0, right: 0,
-            background: 'red', color: 'white', borderRadius: '50%',
+            background: 'var(--danger)', color: 'white', borderRadius: '50%',
             padding: '2px 6px', fontSize: '10px', fontWeight: 'bold'
           }}>
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -64,7 +64,7 @@ export default function NotificationBell() {
           </div>
 
           {notifications.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
               No notifications yet.
             </div>
           ) : (
@@ -74,7 +74,7 @@ export default function NotificationBell() {
                   key={notif._id} 
                   className="notification-item"
                   style={{
-                    background: notif.isRead ? '#2a2a3c' : '#33334d',
+                    background: notif.isRead ? 'var(--bg-card)' : 'var(--bg-card2)',
                     padding: '12px', borderRadius: '8px',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
                   }}
@@ -84,9 +84,9 @@ export default function NotificationBell() {
                     setIsOpen(false);
                     navigate('/orders');
                   }}>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', color: notif.isRead ? '#ccc' : '#fff' }}>{notif.title}</h4>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#aaa', lineHeight: '1.4' }}>{notif.body}</p>
-                    <span style={{ fontSize: '10px', color: '#666', marginTop: '6px', display: 'block' }}>{formatTime(notif.createdAt)}</span>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', color: notif.isRead ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{notif.title}</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{notif.body}</p>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>{formatTime(notif.createdAt)}</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginLeft: '12px' }}>
                     {!notif.isRead && (

@@ -36,7 +36,7 @@ const F = ({ label, field, type = 'text', placeholder, form, setForm, onUpload, 
             value={form[field] || ''}
             onChange={e => setForm({ ...form, [field]: e.target.value })}
           />
-          <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
+          <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
             {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
           </button>
         </div>

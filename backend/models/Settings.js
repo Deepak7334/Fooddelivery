@@ -12,7 +12,9 @@ const settingsSchema = new mongoose.Schema({
     default: 15, // 15% default commission
     min: 0,
     max: 100
-  }
+  },
+  promoBannerActive: { type: Boolean, default: false },
+  promoBannerText: { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

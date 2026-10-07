@@ -65,6 +65,7 @@ export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
+  const [promoBanner, setPromoBanner] = useState({ active: false, text: '' });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [locationText, setLocationText] = useState(() => {
     try { 
@@ -126,8 +127,10 @@ export default function HomePage() {
       api.get(`/customer/restaurants${qs}`).catch(() => ({ data: { restaurants: [] } })),
       api.get(`/customer/foods${qs}`).catch(() => ({ data: { foods: [] } })),
       api.get(`/store/products${qs}`).catch(() => ({ data: { products: [] } })),
-      api.get(`/store/stores${qs}`).catch(() => ({ data: { stores: [] } }))
-    ]).then(([catRes, restRes, foodRes, prodRes, storeRes]) => {
+      api.get(`/store/stores${qs}`).catch(() => ({ data: { stores: [] } })),
+      api.get('/customer/settings/promo').catch(() => ({ data: {} }))
+    ]).then(([catRes, restRes, foodRes, prodRes, storeRes, promoRes]) => {
+        if (promoRes?.data?.success) { setPromoBanner({ active: promoRes.data.promoBannerActive, text: promoRes.data.promoBannerText }); }
       setCategories(catRes.data.categories || []);
       setRestaurants(restRes.data.restaurants || []);
       setFoods(foodRes.data.foods || []);
@@ -417,6 +420,11 @@ export default function HomePage() {
                 <span key={i} style={{ fontSize: 'clamp(22px,4vw,30px)', animation: `bounce ${1 + i * 0.15}s ease infinite`, animationDelay: `${i * 0.1}s` }}>{e}</span>
               ))}
             </div>
+                        {promoBanner.active && promoBanner.text && (
+              <Link to="/offers" style={{ display: 'inline-block', padding: '6px 16px', background: 'linear-gradient(90deg, rgba(255,87,34,0.1), rgba(255,193,7,0.1))', border: '1px solid rgba(255,87,34,0.3)', borderRadius: '100px', color: 'var(--primary)', fontWeight: 700, fontSize: 'clamp(12px, 3vw, 14px)', marginBottom: 20, animation: 'pulse 2s infinite', boxShadow: '0 0 20px rgba(255,87,34,0.2)', textDecoration: 'none' }}>
+                {promoBanner.text}
+              </Link>
+            )}
             <h1 style={{ fontSize: 'clamp(32px,6vw,64px)', fontWeight: 900, lineHeight: 1.1, marginBottom: 16, fontFamily: 'Poppins, sans-serif', wordBreak: 'break-word' }}>
               Order Food And Grocery,<br />
               <span style={{ color: 'var(--primary)', textShadow: '0 0 40px rgba(255,87,34,0.4)' }}>Fast &amp; Fresh</span>

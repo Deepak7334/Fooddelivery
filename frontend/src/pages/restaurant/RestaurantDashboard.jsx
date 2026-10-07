@@ -41,7 +41,7 @@ const timeSince = (iso) => {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || { label: status, color: '#9CA3AF', bg: 'rgba(156,163,175,0.13)' };
+  const cfg = STATUS_CONFIG[status] || { label: status, color: 'var(--text-secondary)', bg: 'rgba(156,163,175,0.13)' };
   return (
     <span style={{
       padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
@@ -92,12 +92,12 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
-            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Order Details</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Order Details</div>
             <div style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 800, fontSize: 20, marginTop: 3 }}>
               #{order._id?.slice(-8).toUpperCase()}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
         </div>
 
         {/* Pending alert */}
@@ -117,7 +117,7 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
         {/* OTP display in dev mode */}
         {order._devOtp && (
           <div style={{ background: 'rgba(249,115,22,0.08)', border: '2px dashed rgba(249,115,22,0.4)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Dev Mode — Delivery OTP</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Dev Mode — Delivery OTP</div>
             <div style={{ fontSize: 36, fontWeight: 900, color: '#F97316', letterSpacing: 12, fontFamily: 'monospace' }}>{order._devOtp}</div>
           </div>
         )}
@@ -132,19 +132,19 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
             { label: 'Ordered', value: new Date(order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) },
             { label: 'Status', value: <StatusBadge status={order.status} /> },
           ].map(({ label, value, span }) => (
-            <div key={label} style={{ ...(span ? { gridColumn: '1/-1' } : {}), background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 13, color: '#E5E7EB', fontWeight: 600 }}>{value}</div>
+            <div key={label} style={{ ...(span ? { gridColumn: '1/-1' } : {}), background: 'var(--glass)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>{value}</div>
             </div>
           ))}
         </div>
 
         {/* Items */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Items Ordered</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Items Ordered</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {order.items?.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 13, color: '#E5E7EB' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'var(--glass)', borderRadius: 8, fontSize: 13, color: 'var(--text-primary)' }}>
                 <span> {item.name} × {item.quantity}</span>
                 <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
               </div>
@@ -154,10 +154,10 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
 
         {/* Totals */}
         <div style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#9CA3AF', marginBottom: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
             <span>Subtotal</span><span>₹{order.totalAmount?.toLocaleString('en-IN')}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#9CA3AF', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
             <span>Delivery Fee</span><span>₹{order.deliveryFee?.toLocaleString('en-IN')}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: '#22C55E', fontSize: 18 }}>
@@ -175,10 +175,10 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
         {/* Status History */}
         {order.statusHistory?.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Status Timeline</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Status Timeline</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {[...order.statusHistory].reverse().map((h, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', color: '#9CA3AF' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
                   <span><StatusBadge status={h.status} /></span>
                   <span>{new Date(h.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
@@ -366,7 +366,7 @@ export default function RestaurantDashboard() {
   if (loading) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid #F97316', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-      <span style={{ color: '#9CA3AF', fontSize: 14, marginTop: 16 }}>Loading dashboard…</span>
+      <span style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 16 }}>Loading dashboard…</span>
     </div>
   );
 
@@ -394,7 +394,7 @@ export default function RestaurantDashboard() {
               </h1>
               {refreshing && <span className="pulse-dot" />}
             </div>
-            <p style={{ fontSize: 13, margin: 0, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: 13, margin: 0, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ color: restaurant?.isOpen ? '#22C55E' : '#EF4444', fontWeight: 600 }}>{restaurant?.isOpen ? '● Open' : '● Closed'}</span>
               <span>·</span>
               <span>{restaurant?.address}</span>
@@ -413,7 +413,7 @@ export default function RestaurantDashboard() {
             <div key={c.label} className="stat-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', color: '#6B7280', textTransform: 'uppercase', marginBottom: 8 }}>{c.label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{c.label}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: c.color, fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>
                     <AnimatedNumber value={c.value} prefix={c.prefix || ''} />
                   </div>
@@ -444,8 +444,8 @@ export default function RestaurantDashboard() {
                     <span style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 12 }}>#{o._id.slice(-8).toUpperCase()}</span>
                     <span style={{ fontSize: 11, color: '#F59E0B', fontWeight: 600, background: 'rgba(245,158,11,0.1)', padding: '2px 7px', borderRadius: 10 }}>{timeSince(o.createdAt)}</span>
                   </div>
-                  <div style={{ fontWeight: 700, color: '#E5E7EB', marginBottom: 2, fontSize: 14 }}>{o.customerId?.name || 'Customer'}</div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 10, lineHeight: 1.5 }}>{o.items?.map(i => `${i.name}×${i.quantity}`).join(' · ')}</div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, fontSize: 14 }}>{o.customerId?.name || 'Customer'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>{o.items?.map(i => `${i.name}×${i.quantity}`).join(' · ')}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#22C55E', fontSize: 16 }}>₹{o.finalAmount?.toLocaleString('en-IN')}</span>
                     <StatusBadge status={o.status} />
@@ -500,16 +500,16 @@ export default function RestaurantDashboard() {
               {orders.slice(0, 8).map(o => (
                 <div key={o._id} className="activity-row" onClick={() => setSelectedOrder(o)}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#E5E7EB', fontFamily: 'monospace' }}>#{o._id.slice(-8).toUpperCase()}</div>
-                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{o.customerId?.name || 'Customer'} · {timeSince(o.createdAt)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>#{o._id.slice(-8).toUpperCase()}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{o.customerId?.name || 'Customer'} · {timeSince(o.createdAt)}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <StatusBadge status={o.status} />
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>₹{o.finalAmount?.toLocaleString('en-IN')}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>₹{o.finalAmount?.toLocaleString('en-IN')}</div>
                   </div>
                 </div>
               ))}
-              {orders.length === 0 && <div style={{ color: '#6B7280', textAlign: 'center', padding: 24 }}>No orders yet</div>}
+              {orders.length === 0 && <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>No orders yet</div>}
             </div>
           </div>
         )}
@@ -548,8 +548,8 @@ export default function RestaurantDashboard() {
             </div>
 
             {/* Summary */}
-            <div style={{ display: 'flex', gap: 20, padding: '8px 0 14px', borderBottom: '1px solid var(--glass-border)', fontSize: 13, color: '#9CA3AF', flexWrap: 'wrap' }}>
-              <span><b style={{ color: '#E5E7EB' }}>{displayOrders.length}</b> orders</span>
+            <div style={{ display: 'flex', gap: 20, padding: '8px 0 14px', borderBottom: '1px solid var(--glass-border)', fontSize: 13, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+              <span><b style={{ color: 'var(--text-primary)' }}>{displayOrders.length}</b> orders</span>
               <span><b style={{ color: '#22C55E' }}>₹{displayOrders.reduce((s, o) => s + (o.finalAmount || 0), 0).toLocaleString('en-IN')}</b> revenue</span>
               <span><b style={{ color: '#F59E0B' }}>{displayOrders.filter(o => o.status === 'pending').length}</b> pending</span>
             </div>
@@ -560,35 +560,35 @@ export default function RestaurantDashboard() {
                 <thead>
                   <tr>
                     {['Order ID', 'Customer', 'Items', 'Amount', 'Status', 'Time', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#4B5563', borderBottom: '1px solid var(--glass-border)', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--glass-border)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {displayOrders.length === 0
-                    ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: '#6B7280' }}>No orders match your filters</td></tr>
+                    ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>No orders match your filters</td></tr>
                     : displayOrders.map((o, i) => {
                       const nextStatus = STATUS_FLOW[o.status];
                       const isPending = o.status === 'pending';
                       return (
                         <tr key={o._id} className={`trow${isPending ? ' pending-row' : ''}`} style={{ animationDelay: `${i * 0.015}s`, cursor: 'pointer' }} onClick={() => setSelectedOrder(o)}>
-                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               {isPending && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', animation: 'pulse 1.2s ease infinite' }} />}
                               <span style={{ fontFamily: 'monospace', color: '#F97316', fontSize: 12, fontWeight: 700 }}>#{o._id.slice(-8).toUpperCase()}</span>
                             </div>
                           </td>
-                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
-                            <div style={{ fontWeight: 600, color: '#E5E7EB' }}>{o.customerId?.name || 'Customer'}</div>
-                            <div style={{ fontSize: 11, color: '#6B7280' }}>{o.customerId?.phone || o.customerPhone || '—'}</div>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{o.customerId?.name || 'Customer'}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.customerId?.phone || o.customerPhone || '—'}</div>
                           </td>
-                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle', color: '#9CA3AF', fontSize: 12 }}>{o.items?.map(i => `${i.name}×${i.quantity}`).join(', ')}</td>
-                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid var(--glass-border)', verticalAlign: 'middle', color: 'var(--text-secondary)', fontSize: 12 }}>{o.items?.map(i => `${i.name}×${i.quantity}`).join(', ')}</td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid var(--glass-border)', verticalAlign: 'middle' }}>
                             <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#22C55E' }}>₹{o.finalAmount?.toLocaleString('en-IN')}</span>
                           </td>
-                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}><StatusBadge status={o.status} /></td>
-                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle', color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap' }}>{timeSince(o.createdAt)}</td>
-                          <td style={{ padding: '11px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid var(--glass-border)', verticalAlign: 'middle' }}><StatusBadge status={o.status} /></td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid var(--glass-border)', verticalAlign: 'middle', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{timeSince(o.createdAt)}</td>
+                          <td style={{ padding: '11px 12px', borderBottom: '1px solid var(--glass-border)', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                               <button className="acbtn-sm info" onClick={() => setSelectedOrder(o)}>View</button>
                               {nextStatus && (
@@ -612,7 +612,7 @@ export default function RestaurantDashboard() {
             {/* Mobile Cards */}
             <div className="mobile-cards">
               {displayOrders.length === 0
-                ? <div style={{ textAlign: 'center', padding: 48, color: '#6B7280' }}>No orders match your filters</div>
+                ? <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>No orders match your filters</div>
                 : displayOrders.map((o, i) => {
                   const nextStatus = STATUS_FLOW[o.status];
                   const isPending = o.status === 'pending';
@@ -627,12 +627,12 @@ export default function RestaurantDashboard() {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <div>
-                          <span style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{o.customerId?.name || 'Customer'}</span>
-                          <div style={{ fontSize: 11, color: '#6B7280' }}>{o.customerId?.phone || '—'}</div>
+                          <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{o.customerId?.name || 'Customer'}</span>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.customerId?.phone || '—'}</div>
                         </div>
                         <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#22C55E', fontSize: 15 }}>₹{o.finalAmount?.toLocaleString('en-IN')}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 10 }}>{o.items?.map(it => `${it.name}×${it.quantity}`).join(' · ')} · {timeSince(o.createdAt)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>{o.items?.map(it => `${it.name}×${it.quantity}`).join(' · ')} · {timeSince(o.createdAt)}</div>
                       {(nextStatus || o.status === 'pending') && (
                         <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
                           {nextStatus && <button className="acbtn accept" style={{ flex: 2 }} disabled={actionLoading} onClick={() => handleAction(o._id, nextStatus)}>{STATUS_NEXT_LABEL[o.status]}</button>}
@@ -652,9 +652,9 @@ export default function RestaurantDashboard() {
 }
 
 const styles = {
-  root: { fontFamily: "'DM Sans',sans-serif", background: '#0F1117', minHeight: '100vh', padding: '24px 16px', color: '#E5E7EB', maxWidth: 1300, margin: '0 auto' },
+  root: { fontFamily: "'DM Sans',sans-serif", background: 'var(--bg-dark)', minHeight: '100vh', padding: '24px 16px', color: 'var(--text-primary)', maxWidth: 1300, margin: '0 auto' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 },
-  panelTitle: { fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#6B7280', marginBottom: 14, marginTop: 0 },
+  panelTitle: { fontSize: 12, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 14, marginTop: 0 },
 };
 
 const CSS = `
@@ -685,7 +685,7 @@ const CSS = `
 
 /* Tabs */
 .tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:10px 16px 12px;cursor:pointer;
-  color:#6B7280;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all 0.2s;margin-bottom:-1px;}
+  color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all 0.2s;margin-bottom:-1px;}
 .tab-btn:hover{color:#D1D5DB;}
 .tab-btn.active{color:#F97316;border-bottom-color:#F97316;}
 
@@ -718,17 +718,17 @@ const CSS = `
 .acbtn-sm.accept:hover{background:rgba(249,115,22,0.28);}
 .acbtn-sm.reject{background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.25);}
 .acbtn-sm.reject:hover{background:rgba(239,68,68,0.2);}
-.acbtn-sm.info{background:var(--glass-border);color:#9CA3AF;border:1px solid var(--glass-border);}
-.acbtn-sm.info:hover{color:#E5E7EB;background:var(--glass-border);}
+.acbtn-sm.info{background:var(--glass-border);color:var(--text-secondary);border:1px solid var(--glass-border);}
+.acbtn-sm.info:hover{color:var(--text-primary);background:var(--glass-border);}
 .acbtn-sm:disabled{opacity:0.5;cursor:not-allowed;}
 
 /* Inputs */
 .filter-input{padding:9px 12px;background:var(--glass-border);border:1px solid var(--glass-border);
-  border-radius:8px;color:#E5E7EB;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;}
-.filter-input::placeholder{color:#4B5563;}
+  border-radius:8px;color:var(--text-primary);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;}
+.filter-input::placeholder{color:var(--text-muted);}
 .filter-input:focus{border-color:rgba(249,115,22,0.5);}
 .filter-select{padding:9px 10px;background:var(--glass-border);border:1px solid var(--glass-border);
-  border-radius:8px;color:#E5E7EB;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;outline:none;}
+  border-radius:8px;color:var(--text-primary);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;outline:none;}
 .filter-select option{background:#1F2937;}
 
 /* Table */

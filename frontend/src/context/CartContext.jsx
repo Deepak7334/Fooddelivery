@@ -81,6 +81,7 @@ export const CartProvider = ({ children }) => {
         quantity: 1,
         price: itemPrice,
         basePrice: item.discountedPrice || item.price,
+          originalPrice: item.price,
         variantName: config.variantName,
         addOns: config.addOns || [],
         spiceLevel: config.spiceLevel,
@@ -130,6 +131,7 @@ export const CartProvider = ({ children }) => {
         quantity: 1,
         price: itemPrice,
         basePrice: item.discountedPrice || item.price,
+          originalPrice: item.price,
         variantName: config.variantName
       }];
     });

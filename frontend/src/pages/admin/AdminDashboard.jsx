@@ -133,11 +133,59 @@ export default function AdminDashboard() {
             >
               {savingSettings ? 'Saving...' : 'Save'}
             </button>
+                      </div>
           </div>
         </div>
-      </div>
 
-      {/* Recent Orders */}
+        {/* Promo Banner Settings */}
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Festive Banner</h2>
+          <div className="card ad-settings-card" style={{ background: 'linear-gradient(135deg, rgba(33,150,243,0.05), transparent)', border: '1px solid rgba(33,150,243,0.2)' }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flex: 1 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(33,150,243,0.1)', color: '#2196F3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+                ??
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Customer Hero Banner</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setSettings({ ...settings, promoBannerActive: !settings?.promoBannerActive })}>
+                    <div style={{ width: 40, height: 22, borderRadius: 20, background: settings?.promoBannerActive ? 'var(--success)' : 'var(--bg-secondary)', position: 'relative', transition: '0.3s' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', position: 'absolute', top: 2, left: settings?.promoBannerActive ? 20 : 2, transition: '0.3s' }}></div>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: settings?.promoBannerActive ? 'var(--success)' : 'var(--text-muted)' }}>{settings?.promoBannerActive ? 'Active' : 'Hidden'}</span>
+                  </div>
+                </div>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. ?? Diwali Special: Get Flat 20% OFF!"
+                  value={settings?.promoBannerText || ''}
+                  onChange={(e) => setSettings({ ...settings, promoBannerText: e.target.value })}
+                  style={{ width: '100%', maxWidth: '100%', fontSize: 14 }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%' }}>
+              <button 
+                className="btn btn-primary"
+                disabled={savingSettings}
+                onClick={async () => {
+                  setSavingSettings(true);
+                  try {
+                    await api.put('/admin/settings', settings);
+                    toast.success('Banner settings saved!');
+                  } catch(e) { toast.error('Failed to update banner'); }
+                  setSavingSettings(false);
+                }}
+                style={{ padding: '0 20px', height: 42, whiteSpace: 'nowrap' }}
+              >
+                {savingSettings ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Orders */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ fontWeight: 800, fontSize: 20 }}>Recent Orders</h2>

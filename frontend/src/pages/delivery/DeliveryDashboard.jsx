@@ -487,7 +487,7 @@ const CSS = `
 .dd-loader {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 100vh; background: #080C14; gap: 14px; font-family: 'Inter', sans-serif;
-  color: #6B7280; font-size: 14px;
+  color: var(--text-muted); font-size: 14px;
 }
 .dd-spinner {
   width: 36px; height: 36px;
@@ -502,7 +502,7 @@ const CSS = `
   font-family: 'Inter', sans-serif;
   background: #080C14;
   min-height: 100vh;
-  color: #E5E7EB;
+  color: var(--text-primary);
   max-width: 600px;
   margin: 0 auto;
   padding: 16px 16px 48px;
@@ -528,8 +528,8 @@ const CSS = `
   display: flex; align-items: center; justify-content: center;
   font-size: 20px;
 }
-.dd-name  { font-size: 15px; font-weight: 700; color: #F1F5F9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dd-vehicle { font-size: 11px; color: #6B7280; margin-top: 2px; }
+.dd-name  { font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-vehicle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .dd-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 .dd-status-toggle {
@@ -545,7 +545,7 @@ const CSS = `
 }
 .dd-status-toggle.online  { background: rgba(34,197,94,0.1);  border-color: rgba(34,197,94,0.4);  color: #22C55E; }
 .dd-status-toggle.busy    { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.4); color: #F59E0B; }
-.dd-status-toggle.offline { background: rgba(107,114,128,0.1);border-color: rgba(107,114,128,0.4);color: #9CA3AF; }
+.dd-status-toggle.offline { background: rgba(107,114,128,0.1);border-color: rgba(107,114,128,0.4);color: var(--text-secondary); }
 .dd-status-dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: currentColor;
@@ -577,12 +577,12 @@ const CSS = `
   width: 1px; background: var(--glass-border);
   align-self: stretch; margin: 0 4px;
 }
-.dd-earn-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #4B5563; margin-bottom: 5px; }
+.dd-earn-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 5px; }
 .dd-earn-value { font-size: 20px; font-weight: 900; font-family: 'JetBrains Mono', monospace; line-height: 1; }
 .dd-earn-value.green  { color: #22C55E; }
 .dd-earn-value.cyan   { color: #06B6D4; }
 .dd-earn-value.purple { color: #A78BFA; }
-.dd-earn-sub { font-size: 10px; color: #6B7280; margin-top: 3px; }
+.dd-earn-sub { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
 
 /* ── Sections ── */
 .dd-section { margin-bottom: 20px; }
@@ -593,7 +593,7 @@ const CSS = `
 .dd-section-title {
   font-size: 12px; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.09em;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 .dd-section-title.amber { color: #F59E0B; }
 .dd-badge-count {
@@ -619,12 +619,12 @@ const CSS = `
   align-items: flex-start; gap: 12px; margin-bottom: 10px;
 }
 .dd-order-id  { font-family: 'JetBrains Mono', monospace; color: #F97316; font-size: 11px; font-weight: 700; margin-bottom: 3px; }
-.dd-vendor-name { font-size: 16px; font-weight: 700; color: #F1F5F9; }
-.dd-delivery-addr { font-size: 12px; color: #9CA3AF; margin-top: 3px; }
+.dd-vendor-name { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.dd-delivery-addr { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
 .dd-earn-pill { text-align: right; flex-shrink: 0; }
 .dd-earn-pill-amt { font-size: 22px; font-weight: 900; color: #22C55E; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-.dd-earn-pill-lbl { font-size: 10px; color: #6B7280; }
-.dd-items-preview { font-size: 12px; color: #6B7280; margin-bottom: 14px; line-height: 1.5; }
+.dd-earn-pill-lbl { font-size: 10px; color: var(--text-muted); }
+.dd-items-preview { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
 .dd-pending-actions { display: flex; gap: 10px; }
 .dd-btn-accept {
   flex: 2; padding: 12px 10px;
@@ -669,7 +669,7 @@ const CSS = `
 .dd-status-label { font-size: 16px; font-weight: 800; }
 .dd-fee-display { text-align: right; }
 .dd-fee-amt { font-size: 24px; font-weight: 900; color: #22C55E; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-.dd-fee-lbl { font-size: 10px; color: #6B7280; }
+.dd-fee-lbl { font-size: 10px; color: var(--text-muted); }
 
 /* ── Progress Track ── */
 .dd-progress-track {
@@ -683,18 +683,18 @@ const CSS = `
 }
 .dd-step-circle {
   width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(255,255,255,0.04);
+  background: var(--glass);
   border: 2px solid var(--glass-border);
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 700;
   transition: all 0.3s;
   position: relative; z-index: 1;
-  color: #6B7280;
+  color: var(--text-muted);
 }
 .dd-step-circle.done { color: #fff; font-size: 14px; }
 .dd-step-label {
   font-size: 9px; font-weight: 600;
-  color: #4B5563;
+  color: var(--text-muted);
   margin-top: 5px; text-align: center;
   text-transform: uppercase; letter-spacing: 0.05em;
 }
@@ -722,14 +722,14 @@ const CSS = `
   background: rgba(34,197,94,0.05);
   border-color: rgba(34,197,94,0.15);
 }
-.dd-info-label { font-size: 10px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
-.dd-info-name { font-size: 14px; font-weight: 700; color: #F1F5F9; margin-bottom: 3px; }
-.dd-info-detail { font-size: 12px; color: #9CA3AF; line-height: 1.6; }
+.dd-info-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+.dd-info-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+.dd-info-detail { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
 
 /* ── Items List ── */
 .dd-items-list { margin-bottom: 14px; }
 .dd-items-header {
-  font-size: 10px; font-weight: 700; color: #6B7280;
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.07em;
   margin-bottom: 8px;
 }
@@ -737,14 +737,14 @@ const CSS = `
   display: flex; justify-content: space-between;
   font-size: 13px; color: #D1D5DB;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--glass);
 }
-.dd-item-qty { color: #6B7280; }
-.dd-item-price { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #9CA3AF; }
+.dd-item-qty { color: var(--text-muted); }
+.dd-item-price { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-secondary); }
 .dd-items-total {
   display: flex; justify-content: space-between;
   padding-top: 8px;
-  font-size: 13px; font-weight: 700; color: #F1F5F9;
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -801,8 +801,8 @@ const CSS = `
   border-radius: 16px;
 }
 .dd-empty-icon  { font-size: 44px; margin-bottom: 10px; }
-.dd-empty-title { font-size: 15px; font-weight: 700; color: #9CA3AF; }
-.dd-empty-sub   { font-size: 12px; color: #4B5563; margin-top: 4px; }
+.dd-empty-title { font-size: 15px; font-weight: 700; color: var(--text-secondary); }
+.dd-empty-sub   { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
 .dd-idle-banner {
   text-align: center; padding: 18px 20px;
@@ -832,9 +832,9 @@ const CSS = `
   text-align: center;
 }
 .dd-modal-icon  { font-size: 52px; margin-bottom: 12px; line-height: 1; }
-.dd-modal-title { font-size: 22px; font-weight: 900; color: #F1F5F9; margin-bottom: 8px; }
-.dd-modal-sub   { font-size: 14px; color: #9CA3AF; margin-bottom: 28px; line-height: 1.6; }
-.dd-modal-sub strong { color: #E5E7EB; }
+.dd-modal-title { font-size: 22px; font-weight: 900; color: var(--text-primary); margin-bottom: 8px; }
+.dd-modal-sub   { font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; line-height: 1.6; }
+.dd-modal-sub strong { color: var(--text-primary); }
 .dd-otp-row {
   display: flex; gap: 8px; justify-content: center;
   margin-bottom: 28px;
@@ -846,7 +846,7 @@ const CSS = `
   font-family: 'JetBrains Mono', monospace;
   background: var(--glass-border);
   border: 2px solid var(--glass-border);
-  border-radius: 12px; color: #E5E7EB;
+  border-radius: 12px; color: var(--text-primary);
   outline: none; transition: all 0.2s;
 }
 .dd-otp-box.filled { border-color: #F97316; background: rgba(249,115,22,0.08); }
@@ -856,7 +856,7 @@ const CSS = `
   flex: 1; padding: 13px;
   background: var(--glass-border);
   border: 1px solid var(--glass-border);
-  border-radius: 12px; color: #9CA3AF;
+  border-radius: 12px; color: var(--text-secondary);
   font-size: 14px; font-weight: 700;
   cursor: pointer; font-family: 'Inter', sans-serif;
   transition: background 0.15s;

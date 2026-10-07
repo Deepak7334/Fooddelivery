@@ -27,6 +27,7 @@ export default function OrderTrackingPage() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -57,18 +58,44 @@ export default function OrderTrackingPage() {
   if (loading) return <div style={{ padding: 120, textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
   if (!order) return <div className="empty-state" style={{ paddingTop: 120 }}><div className="empty-state-icon"></div><h3>Order not found</h3></div>;
 
+    const handleCancelOrder = async () => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    setCancelling(true);
+    try {
+      await api.patch(`/customer/orders/${order._id}/cancel`);
+      setOrder({ ...order, status: 'cancelled' });
+      toast.success('Order cancelled successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const currentIdx = STEP_MAP[order.status] ?? 0;
   const isCancelled = order.status === 'cancelled';
 
   return (
     <div className="page-wrapper">
       <div className="container" style={{ maxWidth: 720 }}>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
-            {order.status === 'delivered' ? ' Delivered!' : isCancelled ? ' Cancelled' : ' Live Tracking'}
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Order #{order._id?.slice(-8).toUpperCase()}</p>
-        </div>
+                  <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
+                {order.status === 'delivered' ? ' Delivered!' : isCancelled ? ' Cancelled' : ' Live Tracking'}
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Order #{order._id?.slice(-8).toUpperCase()}</p>
+            </div>
+            {!isCancelled && ['pending', 'accepted'].includes(order.status) && (
+              <button 
+                onClick={handleCancelOrder} 
+                disabled={cancelling}
+                className="btn btn-sm"
+                style={{ background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', border: '1px solid rgba(244,67,54,0.3)', padding: '8px 16px', fontWeight: 700 }}
+              >
+                {cancelling ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            )}
+          </div>
 
         {/* Status Tracker */}
         {!isCancelled && (

@@ -13,6 +13,27 @@ const Product = require('../models/Product');
 
 // ========== PUBLIC ROUTES ==========
 // Get all categories
+router.get('/settings/promo', async (req, res) => {
+  try {
+    const settings = await Settings.findOne();
+    res.json({ success: true, promoBannerActive: settings?.promoBannerActive || false, promoBannerText: settings?.promoBannerText || '' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.get('/offers', async (req, res) => {
+  try {
+    const Food = require('../models/Food');
+    const Product = require('../models/Product');
+    const discountedFoods = await Food.find({ discountedPrice: { $ne: null } }).populate('restaurantId', 'name image city');
+    const discountedProducts = await Product.find({ discountedPrice: { $ne: null } }).populate('storeId', 'name image city');
+    res.json({ success: true, foods: discountedFoods, products: discountedProducts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/categories', async (req, res) => {
   try {
     const categories = await Category.find({ isActive: true });

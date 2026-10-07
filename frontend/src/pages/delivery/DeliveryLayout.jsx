@@ -104,7 +104,7 @@ const CSS = `
   min-height: 100vh;
   background: #080C14;
   font-family: 'Inter', sans-serif;
-  color: #E5E7EB;
+  color: var(--text-primary);
 }
 
 /* ── Sidebar ── */
@@ -138,7 +138,7 @@ const CSS = `
   font-size: 18px; flex-shrink: 0;
 }
 .dl-brand-name { font-size: 16px; font-weight: 900; color: #F97316; line-height: 1; }
-.dl-brand-sub  { font-size: 11px; color: #6B7280; font-weight: 600; margin-top: 2px; }
+.dl-brand-sub  { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
 
 /* Nav links */
 .dl-sidebar-nav {
@@ -158,12 +158,12 @@ const CSS = `
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
-  color: #6B7280;
+  color: var(--text-muted);
   border: 1px solid transparent;
   transition: all 0.18s;
 }
 .dl-nav-link:hover {
-  color: #E5E7EB;
+  color: var(--text-primary);
   background: var(--glass-border);
 }
 .dl-nav-link.active {
@@ -194,8 +194,8 @@ const CSS = `
   font-size: 14px; font-weight: 800; color: #fff;
   flex-shrink: 0;
 }
-.dl-user-name  { font-size: 13px; font-weight: 700; color: #E5E7EB; }
-.dl-user-phone { font-size: 11px; color: #6B7280; margin-top: 1px; }
+.dl-user-name  { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.dl-user-phone { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .dl-logout-btn {
   width: 100%;
   padding: 9px;
@@ -245,7 +245,7 @@ const CSS = `
   background: var(--glass-border);
   border: 1px solid var(--glass-border);
   border-radius: 9px;
-  color: #E5E7EB;
+  color: var(--text-primary);
   font-size: 17px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;

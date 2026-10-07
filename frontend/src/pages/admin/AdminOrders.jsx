@@ -36,7 +36,7 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelled', color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
-const AGENT_STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6B7280' };
+const AGENT_STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: 'var(--text-muted)' };
 
 const ADMIN_NEXT = {
   pending: ['accepted', 'cancelled'],
@@ -52,7 +52,7 @@ const ADMIN_NEXT = {
 };
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || { label: status, color: '#9CA3AF', bg: 'rgba(156,163,175,0.12)' };
+  const cfg = STATUS_CONFIG[status] || { label: status, color: 'var(--text-secondary)', bg: 'rgba(156,163,175,0.12)' };
   return (
     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}30`, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
       {cfg.label}
@@ -104,10 +104,10 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
-            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}> Admin — Order Details</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}> Admin — Order Details</div>
             <div style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 800, fontSize: 20, marginTop: 3 }}>#{order._id?.slice(-8).toUpperCase()}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 22, cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer' }}>✕</button>
         </div>
 
         {/* OFD note */}
@@ -118,7 +118,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
         )}
         {order._devOtp && (
           <div style={{ background: 'rgba(249,115,22,0.08)', border: '2px dashed rgba(249,115,22,0.4)', borderRadius: 10, padding: '12px 16px', marginBottom: 14, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Dev Mode — OTP</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Dev Mode — OTP</div>
             <div style={{ fontSize: 36, fontWeight: 900, color: '#F97316', letterSpacing: 12, fontFamily: 'monospace' }}>{order._devOtp}</div>
           </div>
         )}
@@ -150,18 +150,18 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
             { label: 'Placed At', value: new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), span: true },
             ...(order.deliveredAt ? [{ label: 'Delivered At', value: new Date(order.deliveredAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }), span: true }] : []),
           ].map(({ label, value, span }) => (
-            <div key={label} style={{ ...(span ? { gridColumn: '1/-1' } : {}), background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 13, color: '#E5E7EB', fontWeight: 600 }}>{value}</div>
+            <div key={label} style={{ ...(span ? { gridColumn: '1/-1' } : {}), background: 'var(--glass)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>{value}</div>
             </div>
           ))}
         </div>
 
         {/* Items */}
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Items</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Items</div>
           {order.items?.map((item, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, marginBottom: 4, fontSize: 13, color: '#E5E7EB' }}>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--glass)', borderRadius: 8, marginBottom: 4, fontSize: 13, color: 'var(--text-primary)' }}>
               <span>{item.name} × {item.quantity}</span>
               <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
             </div>
@@ -175,7 +175,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
         {order.deliveryAgentId ? (
           <div style={{ background: order.agentAccepted || order.status !== 'assignment_pending' ? 'rgba(6,182,212,0.08)' : 'rgba(245,158,11,0.08)', border: '1px solid', borderColor: order.agentAccepted || order.status !== 'assignment_pending' ? 'rgba(6,182,212,0.25)' : 'rgba(245,158,11,0.25)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 11, color: order.agentAccepted || order.status !== 'assignment_pending' ? '#6B7280' : '#F59E0B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              <div style={{ fontSize: 11, color: order.agentAccepted || order.status !== 'assignment_pending' ? 'var(--text-muted)' : '#F59E0B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                 {order.status === 'assignment_pending' ? '⏳ Waiting for Agent to Accept' : 'Assigned Delivery Agent'}
               </div>
               {['out_for_delivery', 'accepted_by_driver', 'reached_restaurant', 'picked_up', 'on_the_way', 'reached_customer'].includes(order.status) && (
@@ -189,8 +189,8 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 24 }}>🚴</span>
               <div>
-                <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 15 }}>{order.deliveryAgentId?.name || order.deliveryAgentName}</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF' }}>{order.deliveryAgentId?.phone} {order.deliveryAgentId?.vehicleNumber && `· ${order.deliveryAgentId.vehicleNumber}`}</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>{order.deliveryAgentId?.name || order.deliveryAgentName}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{order.deliveryAgentId?.phone} {order.deliveryAgentId?.vehicleNumber && `· ${order.deliveryAgentId.vehicleNumber}`}</div>
               </div>
               <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: AGENT_STATUS_COLOR[order.deliveryAgentId?.deliveryStatus || 'busy'] }}>● {order.deliveryAgentId?.deliveryStatus || 'busy'}</span>
             </div>
@@ -202,7 +202,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
               <select
                 value={selectedAgent}
                 onChange={e => setSelectedAgent(e.target.value)}
-                style={{ flex: 1, padding: '9px 10px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#E5E7EB', fontSize: 13 }}>
+                style={{ flex: 1, padding: '9px 10px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13 }}>
                 <option value="">— Select agent —</option>
                 {availableAgents.map(a => (
                   <option key={a._id} value={a._id}>{a.name} ({a.phone}) — {a.deliveryStatus}</option>
@@ -242,10 +242,10 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
           <div style={{ ...ms.modal, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '80vh' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', background: 'var(--bg-card)', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontWeight: 800, color: '#E5E7EB', fontSize: 16 }}>Live Location Tracking</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF' }}>Agent: {order.deliveryAgentId?.name}</div>
+                <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: 16 }}>Live Location Tracking</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Agent: {order.deliveryAgentId?.name}</div>
               </div>
-              <button onClick={() => setShowMap(false)} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 24, cursor: 'pointer' }}>✕</button>
+              <button onClick={() => setShowMap(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer' }}>✕</button>
             </div>
 
             <div style={{ flex: 1, background: '#0F1117', position: 'relative' }}>
@@ -263,7 +263,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
                   </Marker>
                 </MapContainer>
               ) : (
-                <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#6B7280' }}>
+                <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>📡</div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>Waiting for GPS Signal...</div>
                   <div style={{ fontSize: 12 }}>The agent might have location disabled or bad reception.</div>
@@ -450,7 +450,7 @@ export default function AdminOrders() {
                       <td style={{ fontSize: 12 }}>
                         {o.deliveryAgentId ? (
                           <div>
-                            <div style={{ fontWeight: 600, color: '#E5E7EB' }}>{o.deliveryAgentId?.name || o.deliveryAgentName}</div>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{o.deliveryAgentId?.name || o.deliveryAgentName}</div>
                             <div style={{ color: AGENT_STATUS_COLOR[o.deliveryAgentId?.deliveryStatus || 'busy'] }}>● {o.deliveryAgentId?.deliveryStatus || '—'}</div>
                           </div>
                         ) : <span style={{ color: 'var(--text-muted)' }}>Not assigned</span>}
@@ -510,8 +510,8 @@ export default function AdminOrders() {
 }
 
 const CSS = `
-.ao-input { padding:9px 12px;background:var(--glass-border);border:1px solid var(--glass-border);border-radius:8px;color:#E5E7EB;font-size:13px;outline:none;width:180px; }
-.ao-select { padding:9px 10px;background:var(--glass-border);border:1px solid var(--glass-border);border-radius:8px;color:#E5E7EB;font-size:13px;cursor:pointer;outline:none; }
+.ao-input { padding:9px 12px;background:var(--glass-border);border:1px solid var(--glass-border);border-radius:8px;color:var(--text-primary);font-size:13px;outline:none;width:180px; }
+.ao-select { padding:9px 10px;background:var(--glass-border);border:1px solid var(--glass-border);border-radius:8px;color:var(--text-primary);font-size:13px;cursor:pointer;outline:none; }
 .ao-select option { background:#1F2937; }
 .ao-btn { padding:8px 14px;background:var(--glass-border);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#D1D5DB;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
 .ao-btn:hover { background:rgba(255,255,255,0.12); }

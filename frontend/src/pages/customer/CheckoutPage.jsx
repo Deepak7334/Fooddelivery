@@ -212,6 +212,8 @@ export default function CheckoutPage() {
   
   const total = totalPrice + deliveryFee;
 
+  const totalSavings = cartItems.reduce((sum, item) => sum + ((item.originalPrice || item.price) - item.price) * item.quantity, 0);
+
   const handlePlaceOrder = async () => {
     if (showNewAddressForm) {
       if (!customerName.trim()) { toast.error('Please enter your full name'); return; }
@@ -651,6 +653,11 @@ export default function CheckoutPage() {
               <span>Delivery Fee</span>
               <span>{calculating ? '...' : deliveryFee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free Delivery</span> : `₹${deliveryFee}`}</span>
             </div>
+            {totalSavings > 0 && (
+              <div style={{ padding: '8px 12px', background: 'rgba(76, 175, 80, 0.1)', color: '#4CAF50', borderRadius: '8px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', border: '1px dashed rgba(76, 175, 80, 0.3)' }}>
+                ?? Festive Offer Applied! You saved ?{totalSavings} on this order!
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px dashed var(--border)', fontWeight: 800, fontSize: 18, marginBottom: 20 }}>
               <span>Total</span>
               <span style={{ color: 'var(--primary)' }}>₹{calculating ? '...' : total}</span>

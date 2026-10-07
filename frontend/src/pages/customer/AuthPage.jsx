@@ -201,7 +201,7 @@ export default function AuthPage() {
                   <label className="form-label">Password</label>
                   <div style={{ position: 'relative' }}>
                     <input className="form-input" style={{ paddingRight: '40px' }} type={showPassword ? "text" : "password"} value={partnerForm.password} onChange={e => setPartnerForm({ ...partnerForm, password: e.target.value })} required minLength={6} />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>{showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}</button>
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>{showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}</button>
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="btn btn-primary btn-full btn-lg" style={{ marginTop: 8 }}>{loading ? 'Processing...' : partnerMode === 'login' ? 'Sign In' : 'Create Account'}</button>

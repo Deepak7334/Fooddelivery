@@ -19,6 +19,7 @@ import PostLoginPrompt from './components/PostLoginPrompt';
 
 // ── Customer Pages (lazy) ─────────────────────────────────────────────────────
 const HomePage             = lazy(() => import('./pages/customer/HomePage'));
+const OffersPage           = lazy(() => import('./pages/customer/OffersPage'));
 const ProfilePage          = lazy(() => import('./pages/shared/ProfilePage'));
 const RestaurantsPage      = lazy(() => import('./pages/customer/RestaurantsPage'));
 const RestaurantDetailPage = lazy(() => import('./pages/customer/RestaurantDetailPage'));
@@ -205,6 +206,7 @@ export default function App() {
         
         {/* Customer Routes */}
         <Route path="/"                      element={<CustomerLayout><HomePage /></CustomerLayout>} />
+        <Route path="/offers"                 element={<CustomerLayout><OffersPage /></CustomerLayout>} />
         <Route path="/restaurants"           element={<CustomerLayout><RestaurantsPage /></CustomerLayout>} />
         <Route path="/restaurants/:id"       element={<CustomerLayout><RestaurantDetailPage /></CustomerLayout>} />
         <Route path="/food/:id"              element={<CustomerLayout><FoodDetailPage /></CustomerLayout>} />

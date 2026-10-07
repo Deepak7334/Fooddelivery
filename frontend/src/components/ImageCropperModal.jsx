@@ -103,7 +103,7 @@ export default function ImageCropperModal({ imageSrc, aspect = 16 / 9, onCancel,
       }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Adjust Image</h3>
-          <button onClick={onCancel} style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer' }}><FiX size={24} /></button>
+          <button onClick={onCancel} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><FiX size={24} /></button>
         </div>
         
         <div style={{ position: 'relative', width: '100%', height: 400, background: '#000' }}>
@@ -121,7 +121,7 @@ export default function ImageCropperModal({ imageSrc, aspect = 16 / 9, onCancel,
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 13, color: '#9CA3AF', fontWeight: 600 }}>Zoom</span>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Zoom</span>
             <input
               type="range"
               value={zoom}

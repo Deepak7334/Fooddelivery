@@ -62,6 +62,20 @@ export default function OrderHistoryPage() {
     setTab(t);
   };
 
+    const handleCancelOrder = async (id) => {
+    if (!confirm('Cancel this order?')) return;
+    setCancellingId(id);
+    try {
+      await api.patch(`/customer/orders/${id}/cancel`);
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, status: 'cancelled' } : o));
+      toast.success('Order cancelled');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not cancel order');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const handleCancelBooking = async (id) => {
     if (!confirm('Cancel this booking?')) return;
     setCancellingId(id);
@@ -166,6 +180,16 @@ export default function OrderHistoryPage() {
                             </span>
                           ) : null}
 
+                                                    {['pending', 'accepted'].includes(order.status) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCancelOrder(order._id); }}
+                              disabled={cancellingId === order._id}
+                              className="btn btn-sm"
+                              style={{ background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', border: '1px solid rgba(244,67,54,0.3)', fontWeight: 700 }}
+                            >
+                              {cancellingId === order._id ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          )}
                           {order.status === 'delivered' || order.status === 'cancelled' ? (
                             <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Details</Link>
                           ) : (

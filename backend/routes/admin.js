@@ -79,9 +79,9 @@ router.put('/settings', async (req, res) => {
     if (!settings) {
       settings = new Settings();
     }
-    if (req.body.globalTaxRate !== undefined) {
-      settings.globalTaxRate = req.body.globalTaxRate;
-    }
+    if (req.body.globalTaxRate !== undefined) { settings.globalTaxRate = req.body.globalTaxRate; }
+      if (req.body.promoBannerActive !== undefined) { settings.promoBannerActive = req.body.promoBannerActive; }
+      if (req.body.promoBannerText !== undefined) { settings.promoBannerText = req.body.promoBannerText; }
     await settings.save();
     res.json({ success: true, settings });
   } catch (err) {

@@ -24,19 +24,19 @@ export default function DeliveryLayout({ children }) {
       <aside className={`delivery-sidebar ${open ? 'open' : ''}`}>
         <div style={{ padding: '24px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 900, fontSize: 18, color: '#F97316' }}>JDkart</div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: 600 }}>Delivery Partner</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontWeight: 600 }}>Delivery Partner</div>
         </div>
         <nav style={{ padding: '16px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {navLinks.map(link => (
             <Link key={link.to} to={link.to} onClick={() => setOpen(false)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, textDecoration: 'none', fontSize: 14, fontWeight: 600, color: isActive(link.to, link.exact) ? '#F97316' : '#9CA3AF', background: isActive(link.to, link.exact) ? 'rgba(249,115,22,0.1)' : 'transparent', border: isActive(link.to, link.exact) ? '1px solid rgba(249,115,22,0.2)' : '1px solid transparent', transition: 'all 0.2s' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, textDecoration: 'none', fontSize: 14, fontWeight: 600, color: isActive(link.to, link.exact) ? '#F97316' : 'var(--text-secondary)', background: isActive(link.to, link.exact) ? 'rgba(249,115,22,0.1)' : 'transparent', border: isActive(link.to, link.exact) ? '1px solid rgba(249,115,22,0.2)' : '1px solid transparent', transition: 'all 0.2s' }}>
               <span style={{ fontSize: 18 }}>{link.icon}</span> {link.label}
             </Link>
           ))}
         </nav>
         <div style={{ padding: '16px', borderTop: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{user?.name}</div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>{user?.phone}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>{user?.phone}</div>
           <Link to="/profile" 
             style={{ display: 'block', width: '100%', padding: '9px', background: 'transparent', border: '1px solid var(--glass-border)', borderRadius: 8, color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', marginBottom: 8, fontFamily: 'inherit' }}>
              Profile Settings

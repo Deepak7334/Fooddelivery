@@ -42,7 +42,7 @@ function OTPModal({ order, onVerify, onClose, loading }) {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>🔐</div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Enter Delivery OTP</h2>
-          <p style={{ color: '#9CA3AF', fontSize: 14, margin: '8px 0 0', lineHeight: 1.5 }}>Ask <strong style={{ color: '#E5E7EB' }}>{order?.customerId?.name || 'customer'}</strong> to share their OTP</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: '8px 0 0', lineHeight: 1.5 }}>Ask <strong style={{ color: 'var(--text-primary)' }}>{order?.customerId?.name || 'customer'}</strong> to share their OTP</p>
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 24 }}>
           {otp.map((d, i) => (
@@ -53,12 +53,12 @@ function OTPModal({ order, onVerify, onClose, loading }) {
               onChange={e => handleInput(i, e.target.value)}
               onKeyDown={e => handleKeyDown(i, e)}
               maxLength={1}
-              style={{ width: 46, height: 54, textAlign: 'center', fontSize: 24, fontWeight: 800, fontFamily: 'monospace', background: 'var(--glass-border)', border: `2px solid ${d ? '#F97316' : 'rgba(255,255,255,0.12)'}`, borderRadius: 10, color: '#E5E7EB', outline: 'none', transition: 'border-color 0.2s' }}
+              style={{ width: 46, height: 54, textAlign: 'center', fontSize: 24, fontWeight: 800, fontFamily: 'monospace', background: 'var(--glass-border)', border: `2px solid ${d ? '#F97316' : 'rgba(255,255,255,0.12)'}`, borderRadius: 10, color: 'var(--text-primary)', outline: 'none', transition: 'border-color 0.2s' }}
             />
           ))}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: 13, background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#9CA3AF', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onClose} style={{ flex: 1, padding: 13, background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: 'var(--text-secondary)', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
           <button onClick={submitOtp} disabled={loading || otp.join('').length !== 6}
             style={{ flex: 2, padding: 13, background: '#22C55E', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 800, fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
             {loading ? 'Verifying…' : '✅ Confirm Delivery'}
@@ -146,15 +146,15 @@ export default function DeliveryOrderPage() {
   };
 
   if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0F1117' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-dark)' }}>
       <div style={{ width: 36, height: 36, border: '3px solid #F97316', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <span style={{ color: '#9CA3AF', marginTop: 14, fontSize: 14 }}>Loading…</span>
+      <span style={{ color: 'var(--text-secondary)', marginTop: 14, fontSize: 14 }}>Loading…</span>
       <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
     </div>
   );
 
   if (!order) return (
-    <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Order not found.</div>
+    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Order not found.</div>
   );
 
   const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
@@ -168,8 +168,8 @@ export default function DeliveryOrderPage() {
 
       <div style={S.root}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: 24, marginRight: 12 }}>←</button>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#E5E7EB' }}>Order Details</h1>
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 24, marginRight: 12 }}>←</button>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>Order Details</h1>
         </div>
 
         <div className="active-card" style={{ marginBottom: 16 }}>
@@ -179,12 +179,12 @@ export default function DeliveryOrderPage() {
               <span style={{ fontSize: 22 }}>{STATUS_CFG[order.status]?.icon}</span>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 16, color: STATUS_CFG[order.status]?.color }}>{STATUS_CFG[order.status]?.label}</div>
-                <div style={{ fontSize: 11, color: '#6B7280', fontFamily: 'monospace' }}>#{order._id.slice(-8).toUpperCase()}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{order._id.slice(-8).toUpperCase()}</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontWeight: 800, fontSize: 20, color: '#22C55E', fontFamily: 'monospace' }}>₹{order.deliveryFee}</div>
-              <div style={{ fontSize: 11, color: '#6B7280' }}>delivery earning</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>delivery earning</div>
             </div>
           </div>
 
@@ -202,7 +202,7 @@ export default function DeliveryOrderPage() {
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? STATUS_CFG[s]?.color || '#F97316' : 'var(--glass-border)', border: `2px solid ${done ? STATUS_CFG[s]?.color || '#F97316' : 'rgba(255,255,255,0.15)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, transition: 'all 0.3s', boxShadow: active ? `0 0 12px ${STATUS_CFG[s]?.color}60` : 'none' }}>
                     {done ? '✓' : i + 1}
                   </div>
-                  <div style={{ fontSize: 9, color: done ? '#E5E7EB' : '#4B5563', marginTop: 4, textAlign: 'center', fontWeight: done ? 700 : 400 }}>
+                  <div style={{ fontSize: 9, color: done ? 'var(--text-primary)' : 'var(--text-muted)', marginTop: 4, textAlign: 'center', fontWeight: done ? 700 : 400 }}>
                     {['Go Rest', 'Reached', 'Pick/Run', 'Done'][i]}
                   </div>
                 </div>
@@ -212,24 +212,24 @@ export default function DeliveryOrderPage() {
 
           {/* Restaurant pickup info */}
           <div className="info-section">
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Pickup</div>
-            <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{vendorName}</div>
-            <div style={{ fontSize: 12, color: '#9CA3AF' }}>{vendorAddress}</div>
-            <div style={{ fontSize: 12, color: '#9CA3AF' }}>{vendorPhone}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Pickup</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{vendorName}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{vendorAddress}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{vendorPhone}</div>
           </div>
 
           {/* Customer drop info */}
           <div className="info-section" style={{ background: 'rgba(34,197,94,0.05)', borderColor: 'rgba(34,197,94,0.2)' }}>
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}> Deliver To</div>
-            <div style={{ fontWeight: 700, color: '#E5E7EB', fontSize: 14 }}>{order.customerId?.name}</div>
-            <div style={{ fontSize: 12, color: '#9CA3AF' }}>{order.deliveryAddress}</div>
-            <div style={{ fontSize: 12, color: '#9CA3AF' }}>📞 {order.customerId?.phone || order.customerPhone || 'N/A'}</div>
-            {order.alternatePhone && <div style={{ fontSize: 12, color: '#9CA3AF' }}>📱 Alt: {order.alternatePhone}</div>}
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}> Deliver To</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{order.customerId?.name}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{order.deliveryAddress}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>📞 {order.customerId?.phone || order.customerPhone || 'N/A'}</div>
+            {order.alternatePhone && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>📱 Alt: {order.alternatePhone}</div>}
           </div>
 
           {/* Items */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Order Items</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Order Items</div>
             {order.items?.map((item, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#D1D5DB', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <span>{item.name} × {item.quantity}</span>
@@ -298,7 +298,7 @@ export default function DeliveryOrderPage() {
 }
 
 const S = {
-  root: { fontFamily: "'DM Sans',sans-serif", background: '#0F1117', minHeight: '100vh', padding: '16px', maxWidth: 540, margin: '0 auto', color: '#E5E7EB', paddingBottom: 32 },
+  root: { fontFamily: "'DM Sans',sans-serif", background: 'var(--bg-dark)', minHeight: '100vh', padding: '16px', maxWidth: 540, margin: '0 auto', color: 'var(--text-primary)', paddingBottom: 32 },
 };
 
 const CSS = `

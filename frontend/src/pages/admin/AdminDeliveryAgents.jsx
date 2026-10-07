@@ -19,13 +19,13 @@ const deliveryIcon = new L.Icon({
   iconAnchor: [20, 40],
   popupAnchor: [0, -40]
 });
-const STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: '#6B7280' };
+const STATUS_COLOR = { available: '#22C55E', busy: '#F59E0B', offline: 'var(--text-muted)' };
 const STATUS_BG = { available: 'rgba(34,197,94,0.12)', busy: 'rgba(245,158,11,0.12)', offline: 'rgba(107,114,128,0.12)' };
 
 function AgentBadge({ status }) {
   const isAvail = status === 'available';
   const isBusy = status === 'busy';
-  const col = isAvail ? '#10B981' : isBusy ? '#F59E0B' : '#6B7280';
+  const col = isAvail ? '#10B981' : isBusy ? '#F59E0B' : 'var(--text-muted)';
   const bg = isAvail ? 'rgba(16,185,129,0.1)' : isBusy ? 'rgba(245,158,11,0.1)' : 'rgba(107,114,128,0.1)';
 
   return (
@@ -56,7 +56,7 @@ function AgentModal({ agent, onClose, onSave }) {
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 18, padding: 24, width: '100%', maxWidth: 440 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{isEdit ? '✏️ Edit Agent' : '➕ Add Delivery Agent'}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: 22, cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer' }}>✕</button>
         </div>
         <form onSubmit={handleSubmit}>
           {[
@@ -67,24 +67,24 @@ function AgentModal({ agent, onClose, onSave }) {
             { key: 'vehicleNumber', label: 'Vehicle Number', type: 'text', placeholder: 'TN01AB1234' },
           ].map(({ key, label, type, placeholder }) => (
             <div key={key} style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</label>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</label>
               <input type={type} placeholder={placeholder} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
           ))}
           <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Service Area</label>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Service Area</label>
               <select value={form.serviceAreaId || ''} onChange={e => setForm(f => ({ ...f, serviceAreaId: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none' }}>
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}>
                 <option value="">Unassigned</option>
                 {serviceAreas?.map(area => <option key={area._id} value={area._id}>{area.name}</option>)}
               </select>
             </div>
             {isEdit && (
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 12, color: '#9CA3AF', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Status</label>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Status</label>
               <select value={form.deliveryStatus} onChange={e => setForm(f => ({ ...f, deliveryStatus: e.target.value }))}
-                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#E5E7EB', fontSize: 14, outline: 'none' }}>
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}>
                 <option value="available">Available</option>
                 <option value="busy">Busy</option>
                 <option value="offline">Offline</option>
@@ -92,7 +92,7 @@ function AgentModal({ agent, onClose, onSave }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#9CA3AF', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px', background: 'var(--glass-border)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'var(--text-secondary)', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
             <button type="submit" disabled={saving} style={{ flex: 2, padding: '12px', background: '#F97316', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 15, opacity: saving ? 0.7 : 1 }}>
               {saving ? 'Saving…' : isEdit ? 'Update Agent' : 'Add Agent'}
             </button>
@@ -157,15 +157,15 @@ function AgentDetailsModal({ agentId, onClose }) {
         {/* Header */}
         <div style={{ padding: '24px 32px', background: 'linear-gradient(to right, var(--bg-card), var(--bg-card))', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${STATUS_COLOR[agent.deliveryStatus] || '#6B7280'}, ${STATUS_COLOR[agent.deliveryStatus] || '#6B7280'}88)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>🚴</div>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${STATUS_COLOR[agent.deliveryStatus] || 'var(--text-muted)'}, ${STATUS_COLOR[agent.deliveryStatus] || 'var(--text-muted)'}88)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>🚴</div>
             <div>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#F9FAFB' }}>{agent.name}</h2>
-              <div style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{agent.name}</h2>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
                 {agent.phone} · {agent.vehicleNumber || 'No Vehicle'} · <AgentBadge status={agent.deliveryStatus} />
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'var(--glass-border)', border: '1px solid var(--glass-border)', borderRadius: '50%', width: 40, height: 40, color: '#9CA3AF', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'var(--glass-border)'} onMouseOut={e => e.currentTarget.style.background = 'var(--glass-border)'}>✕</button>
+          <button onClick={onClose} style={{ background: 'var(--glass-border)', border: '1px solid var(--glass-border)', borderRadius: '50%', width: 40, height: 40, color: 'var(--text-secondary)', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'var(--glass-border)'} onMouseOut={e => e.currentTarget.style.background = 'var(--glass-border)'}>✕</button>
         </div>
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -179,8 +179,8 @@ function AgentDetailsModal({ agentId, onClose }) {
                 { label: 'Active', value: stats.active, color: '#F59E0B' },
                 { label: 'Cancelled', value: stats.cancelled, color: '#EF4444' },
               ].map(s => (
-                <div key={s.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{s.label}</div>
+                <div key={s.label} style={{ background: 'var(--glass-border)', borderRadius: 12, padding: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{s.label}</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.value}</div>
                 </div>
               ))}
@@ -201,7 +201,7 @@ function AgentDetailsModal({ agentId, onClose }) {
                   </Marker>
                 </MapContainer>
               ) : (
-                <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#6B7280', textAlign: 'center', padding: 20 }}>
+                <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}></div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>Waiting for GPS Signal...</div>
                   <div style={{ fontSize: 12, marginTop: 4 }}>Agent is currently not sharing location or app is closed.</div>
@@ -212,25 +212,25 @@ function AgentDetailsModal({ agentId, onClose }) {
 
           {/* Right Panel: Delivery History */}
           <div style={{ width: 380, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', flexShrink: 0 }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', fontWeight: 800, color: '#E5E7EB', fontSize: 15 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', fontWeight: 800, color: 'var(--text-primary)', fontSize: 15 }}>
               Delivery History
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
               {orders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#6B7280', fontSize: 13 }}>No orders assigned yet.</div>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>No orders assigned yet.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {orders.map(o => (
-                    <div key={o._id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 14 }}>
+                    <div key={o._id} style={{ background: 'var(--glass-border)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 14 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <span style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 700, fontSize: 13 }}>#{o._id.slice(-8).toUpperCase()}</span>
-                        <span style={{ fontSize: 11, color: '#9CA3AF' }}>{new Date(o.createdAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{new Date(o.createdAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 12 }}>
                         <div style={{ width: 2, background: 'var(--glass-border)', borderRadius: 2 }} />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, color: '#E5E7EB', fontWeight: 600, marginBottom: 2 }}>{o.restaurantId?.name || 'Restaurant'}</div>
-                          <div style={{ fontSize: 12, color: '#9CA3AF' }}>to {o.customerId?.name || 'Customer'}</div>
+                          <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 2 }}>{o.restaurantId?.name || 'Restaurant'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>to {o.customerId?.name || 'Customer'}</div>
                         </div>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--glass-border)', paddingTop: 10 }}>
@@ -323,10 +323,10 @@ export default function AdminDeliveryAgents() {
       {/* Header */}
       <div className="da-header">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 4px', color: '#F9FAFB' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 4px', color: 'var(--text-primary)' }}>
             Fleet <span style={{ color: '#F97316' }}>Management</span>
           </h1>
-          <div style={{ fontSize: 14, color: '#9CA3AF', fontWeight: 500 }}>Monitor and coordinate your delivery partners</div>
+          <div style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 500 }}>Monitor and coordinate your delivery partners</div>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ position: 'relative' }}>
@@ -343,7 +343,7 @@ export default function AdminDeliveryAgents() {
           { label: 'Total Fleet', value: stats.total, color: '#8B5CF6' },
           { label: 'Available (Idle)', value: stats.available, color: '#10B981' },
           { label: 'Active on Delivery', value: stats.busy, color: '#F59E0B' },
-          { label: 'Offline / Inactive', value: stats.offline, color: '#6B7280' },
+          { label: 'Offline / Inactive', value: stats.offline, color: 'var(--text-muted)' },
         ].map(c => (
           <div key={c.label} className="da-stat">
             <div className="da-stat-label">{c.label}</div>
@@ -357,10 +357,10 @@ export default function AdminDeliveryAgents() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state" style={{ background: '#11141A', border: '1px solid var(--glass-border)', borderRadius: 24 }}>
+        <div className="empty-state" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 24 }}>
           <div className="empty-state-icon" style={{ fontSize: 48, marginBottom: 16 }}></div>
-          <h3 style={{ color: '#F3F4F6' }}>No delivery partners found</h3>
-          <p style={{ color: '#9CA3AF' }}>Recruit and add your first delivery partner to start dispatching orders.</p>
+          <h3 style={{ color: 'var(--text-primary)' }}>No delivery partners found</h3>
+          <p style={{ color: 'var(--text-secondary)' }}>Recruit and add your first delivery partner to start dispatching orders.</p>
           <button className="da-btn-add" style={{ marginTop: 16 }} onClick={() => setModalAgent('new')}>+ Add Partner</button>
         </div>
       ) : (
@@ -368,11 +368,11 @@ export default function AdminDeliveryAgents() {
           {filtered.map(agent => (
             <div key={agent._id} className={`da-card ${!agent.isActive ? 'da-card-inactive' : ''}`}>
               <div className="da-card-header">
-                <div className="da-avatar" style={{ background: `linear-gradient(135deg, ${STATUS_COLOR[agent.deliveryStatus] || '#6B7280'}, ${STATUS_COLOR[agent.deliveryStatus] || '#6B7280'}66)` }}>
+                <div className="da-avatar" style={{ background: `linear-gradient(135deg, ${STATUS_COLOR[agent.deliveryStatus] || 'var(--text-muted)'}, ${STATUS_COLOR[agent.deliveryStatus] || 'var(--text-muted)'}66)` }}>
                   🚴
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div className="da-name" style={{ color: agent.isActive ? '#F3F4F6' : '#6B7280' }}>
+                  <div className="da-name" style={{ color: agent.isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                     {agent.name}
                   </div>
                   <div className="da-email">{agent.phone || agent.email}</div>
@@ -389,7 +389,7 @@ export default function AdminDeliveryAgents() {
                 ].map(({ label, value, highlight, bad }) => (
                   <div key={label} className="da-metric-box">
                     <div className="da-metric-label">{label}</div>
-                    <div className="da-metric-val" style={{ color: bad ? '#EF4444' : highlight && value > 0 ? '#F59E0B' : '#E5E7EB' }}>{value}</div>
+                    <div className="da-metric-val" style={{ color: bad ? '#EF4444' : highlight && value > 0 ? '#F59E0B' : 'var(--text-primary)' }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -414,34 +414,34 @@ export default function AdminDeliveryAgents() {
 
 const CSS = `
 .da-wrapper { flex: 1; padding: 10px; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-.da-header { background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--glass-border); padding: 24px 32px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
-.da-input { padding: 12px 18px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 12px; color: #E5E7EB; font-size: 14px; outline: none; width: 260px; transition: all 0.2s; }
-.da-input:focus { border-color: #F97316; background: rgba(0,0,0,0.4); box-shadow: 0 0 0 2px rgba(249,115,22,0.15); }
+.da-header { background: linear-gradient(135deg, var(--glass-border), var(--glass)); border: 1px solid var(--glass-border); padding: 24px 32px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+.da-input { padding: 12px 18px; background: var(--bg-card2); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-primary); font-size: 14px; outline: none; width: 260px; transition: all 0.2s; }
+.da-input:focus { border-color: #F97316; background: var(--bg-dark); box-shadow: 0 0 0 2px rgba(249,115,22,0.15); }
 .da-btn-add { padding: 12px 24px; background: linear-gradient(135deg, #F97316, #EA580C); border: none; border-radius: 12px; color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 16px rgba(234,88,12,0.3); }
 .da-btn-add:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(234,88,12,0.4); }
 
 .da-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
-.da-stat { background: #11141A; border: 1px solid rgba(255,255,255,0.04); border-radius: 20px; padding: 24px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 8px 24px rgba(0,0,0,0.15); transition: transform 0.2s; }
+.da-stat { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; box-shadow: inset 0 1px 0 var(--glass), 0 8px 24px rgba(0,0,0,0.15); transition: transform 0.2s; }
 .da-stat:hover { transform: translateY(-3px); }
-.da-stat-label { font-size: 12px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+.da-stat-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
 .da-stat-val { font-size: 36px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
 .da-stat-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; opacity: 0.9; }
 
 .da-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
-.da-card { background: #11141A; border: 1px solid var(--glass-border); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+.da-card { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
 .da-card:hover { transform: translateY(-6px); border-color: var(--glass-border); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
 .da-card-inactive { opacity: 0.6; filter: grayscale(0.5); }
-.da-card-header { padding: 20px 24px; display: flex; gap: 16px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); background: rgba(255,255,255,0.015); }
+.da-card-header { padding: 20px 24px; display: flex; gap: 16px; align-items: center; border-bottom: 1px solid var(--glass-border); background: var(--glass); }
 .da-avatar { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-.da-name { font-weight: 800; font-size: 18px; color: #F3F4F6; margin-bottom: 4px; letter-spacing: -0.01em; }
-.da-email { font-size: 13px; color: #9CA3AF; font-weight: 500; }
+.da-name { font-weight: 800; font-size: 18px; color: var(--text-primary); margin-bottom: 4px; letter-spacing: -0.01em; }
+.da-email { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 
-.da-metrics { padding: 20px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(0,0,0,0.15); }
-.da-metric-box { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.03); border-radius: 14px; padding: 12px 14px; }
-.da-metric-label { font-size: 10px; color: #6B7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.da-metrics { padding: 20px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: var(--bg-dark); }
+.da-metric-box { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 14px; padding: 12px 14px; }
+.da-metric-label { font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
 .da-metric-val { font-size: 14px; font-weight: 800; }
 
-.da-actions { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; background: rgba(255,255,255,0.01); }
+.da-actions { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; background: var(--glass); }
 .da-btn-row { display: flex; gap: 10px; }
 .da-btn { flex: 1; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: inset 0 1px 0 var(--glass-border); }
 .da-btn.details { background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.3); color: #14B8A6; flex: 100%; box-shadow: 0 4px 12px rgba(20,184,166,0.1); }
