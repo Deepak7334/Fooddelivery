@@ -20,3 +20,7 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Mobile apps (separate workspaces)
+app/
+restaurant_app/

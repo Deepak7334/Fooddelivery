@@ -1,11 +1,9 @@
-import { useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { FiMenu } from 'react-icons/fi';
 import NotificationBell from './components/NotificationBell';
-import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
-import { useEffect } from 'react';
+import { useState, lazy, Suspense, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 
 // ── Layouts (eager — always needed) ──────────────────────────────────────────
@@ -34,6 +32,9 @@ const AuthPage             = lazy(() => import('./pages/customer/AuthPage'));
 const TableBookingPage     = lazy(() => import('./pages/customer/TableBookingPage'));
 const StoresPage           = lazy(() => import('./pages/customer/StoresPage'));
 const StoreDetailPage      = lazy(() => import('./pages/customer/StoreDetailPage'));
+const AboutPage            = lazy(() => import('./pages/customer/AboutPage'));
+const TermsPage            = lazy(() => import('./pages/customer/TermsPage'));
+const PrivacyPage          = lazy(() => import('./pages/customer/PrivacyPage'));
 
 // ── Admin Pages (lazy) ────────────────────────────────────────────────────────
 const AdminDashboard       = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -157,10 +158,12 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    // Connect to Socket.io server
-    const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    if (window.__appSocket) window.__appSocket.disconnect();
-    const socket = io(apiBase);
+    // Async IIFE: dynamically import socket.io-client so it does NOT block first paint
+    const socketPromise = (async () => {
+      const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+      if (window.__appSocket) window.__appSocket.disconnect();
+      const { io } = await import('socket.io-client');
+      const socket = io(apiBase);
     window.__appSocket = socket;
 
     socket.on('connect', () => {
@@ -192,8 +195,11 @@ export default function App() {
       );
     });
 
+      return socket;
+    })();
+
     return () => {
-      socket.disconnect();
+      socketPromise.then(s => s?.disconnect());
     };
   }, [user]);
 
@@ -251,10 +257,13 @@ export default function App() {
         <Route path="/delivery/history"     element={<PrivateRoute role="delivery"><DeliveryLayout><DeliveryHistory /></DeliveryLayout></PrivateRoute>} />
         <Route path="/delivery/orders/:id"  element={<PrivateRoute role="delivery"><DeliveryLayout><DeliveryOrderPage /></DeliveryLayout></PrivateRoute>} />
 
+        {/* Informational Pages */}
+        <Route path="/about"                 element={<CustomerLayout><AboutPage /></CustomerLayout>} />
+        <Route path="/terms"                 element={<CustomerLayout><TermsPage /></CustomerLayout>} />
+        <Route path="/privacy"               element={<CustomerLayout><PrivacyPage /></CustomerLayout>} />
+
         {/* Fallback */}
         <Route path="*" element={<CustomerLayout><div style={{ padding: '100px 20px', textAlign: 'center' }}><h2>404 - Page Not Found</h2><Link to="/" className="btn btn-primary" style={{marginTop: 20}}>Go Home</Link></div></CustomerLayout>} />
-        <Route path="/about" element={<CustomerLayout><div style={{ padding: '100px 20px', textAlign: 'center' }}><h2>About Us</h2><p>JDkart is your friendly neighborhood delivery app.</p></div></CustomerLayout>} />
-        <Route path="/terms" element={<CustomerLayout><div style={{ padding: '100px 20px', textAlign: 'center' }}><h2>Terms & Privacy</h2><p>Our terms of service and privacy policy will be displayed here.</p></div></CustomerLayout>} />
       </Routes>
       <Analytics />
     </Suspense>

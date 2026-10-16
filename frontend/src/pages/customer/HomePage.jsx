@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -139,13 +139,8 @@ export default function HomePage() {
     }).catch(console.error).finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    let coordsObj = null;
-    try {
-      coordsObj = JSON.parse(localStorage.getItem('jdkart_coords'));
-    } catch(e) {}
-    fetchData(coordsObj);
-  }, []);
+  // Removed: duplicate fetchData call — already handled by useEffect([userCoords]) above
+
 
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
 

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const foodSchema = new mongoose.Schema({
   name: {
@@ -94,5 +94,14 @@ const foodSchema = new mongoose.Schema({
     default: false,
   }
 }, { timestamps: true });
+
+
+// ── Indexes for fast queries ──────────────────────────────────────────────────
+// Menu page: GET foods for a restaurant (most common query)
+foodSchema.index({ restaurantId: 1, isAvailable: 1 });
+// Homepage: sorted by isFeatured then createdAt
+foodSchema.index({ isFeatured: -1, createdAt: -1 });
+// Category filter
+foodSchema.index({ category: 1, isAvailable: 1 });
 
 module.exports = mongoose.model('Food', foodSchema);

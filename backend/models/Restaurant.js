@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const restaurantSchema = new mongoose.Schema({
   name: {
@@ -106,5 +106,13 @@ restaurantSchema.add({
 });
 
 restaurantSchema.index({ location: '2dsphere' });
+
+// ── Compound indexes for fast queries ────────────────────────────────────────
+// Homepage: active + open restaurants (most common filter)
+restaurantSchema.index({ isActive: 1, isOpen: 1, createdAt: -1 });
+// City-based text filter
+restaurantSchema.index({ city: 1, isActive: 1 });
+// Rating sort
+restaurantSchema.index({ rating: -1, isActive: 1 });
 
 module.exports = mongoose.model('Restaurant', restaurantSchema);

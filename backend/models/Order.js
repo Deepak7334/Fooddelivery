@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema({
   foodId: {
@@ -189,5 +189,17 @@ orderSchema.set('toJSON', {
     return ret;
   }
 });
+
+
+// ── Indexes for fast queries ──────────────────────────────────────────────────
+// Customer order history (most common query)
+orderSchema.index({ customerId: 1, createdAt: -1 });
+// Restaurant/Store dashboard queries
+orderSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
+orderSchema.index({ storeId: 1, status: 1, createdAt: -1 });
+// Delivery agent assigned orders
+orderSchema.index({ deliveryAgentId: 1, status: 1 });
+// Admin: all pending orders sorted by time
+orderSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

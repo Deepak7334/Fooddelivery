@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const Restaurant = require('../models/Restaurant');
@@ -36,7 +36,7 @@ router.get('/offers', async (req, res) => {
 
 router.get('/categories', async (req, res) => {
   try {
-    const categories = await Category.find({ isActive: true });
+    const categories = await Category.find({ isActive: true }).lean();
     res.json({ success: true, categories });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -124,7 +124,7 @@ router.get('/foods', async (req, res) => {
         { category: new RegExp(search, 'i') }
       ];
     }
-    const foods = await Food.find(filter).sort({ isFeatured: -1, createdAt: -1 }).populate('restaurantId', 'name image address cuisine deliveryTime deliveryFee');
+    const foods = await Food.find(filter).sort({ isFeatured: -1, createdAt: -1 }).limit(50).populate('restaurantId', 'name image address cuisine deliveryTime deliveryFee').lean();
     res.json({ success: true, foods });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -184,7 +184,7 @@ router.get('/restaurants', async (req, res) => {
     else if (sort === 'deliveryTime') query = query.sort({ deliveryTime: 1 });
     else if (sort === 'deliveryFee') query = query.sort({ deliveryFee: 1 });
     else if (!lat || !lng) query = query.sort({ createdAt: -1 });
-    const restaurants = await query;
+    const restaurants = await query.lean();
     res.json({ success: true, restaurants });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

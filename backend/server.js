@@ -38,14 +38,44 @@ const io = new Server(server, {
 // Make io accessible in routes
 app.set('io', io);
 
-// Middleware
+// ── Performance: Gzip/Brotli compression ─────────────────────────────────────
+// Compresses all JSON responses — reduces payload size by 60-80%
+const compression = require('compression');
+app.use(compression({ level: 6 }));  // level 6 = good balance of CPU vs size
+
+// ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: originCheck,
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Static files with aggressive caching (images/uploads cached 7 days in CDN)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '7d',
+  etag: true,
+  lastModified: true,
+}));
+
+// ── Keep-Alive (reuse TCP connections instead of re-establishing per request) ─
+app.use((req, res, next) => {
+  res.setHeader('Connection', 'keep-alive');
+  next();
+});
+
+// ── Cache-Control for public read-only endpoints ──────────────────────────────
+// These change rarely — tell the browser to cache for 60 seconds
+const cachePublic = (req, res, next) => {
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+  next();
+};
+app.use('/api/customer/categories', cachePublic);
+app.use('/api/customer/restaurants', cachePublic);
+app.use('/api/customer/foods', cachePublic);
+app.use('/api/store/stores', cachePublic);
+app.use('/api/store/products', cachePublic);
+
 
 // Ensure uploads directory exists
 const fs = require('fs');
