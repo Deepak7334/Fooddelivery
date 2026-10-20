@@ -105,7 +105,14 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}> Admin — Order Details</div>
-            <div style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 800, fontSize: 20, marginTop: 3 }}>#{order._id?.slice(-8).toUpperCase()}</div>
+            <div style={{ fontFamily: 'monospace', color: '#F97316', fontWeight: 800, fontSize: 20, marginTop: 3, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              #{order._id?.slice(-8).toUpperCase()}
+              {order.isFirstOrder && (
+                <span style={{ padding: '2px 8px', borderRadius: 6, background: 'rgba(34,197,94,0.15)', color: '#22C55E', fontSize: 12, fontWeight: 700 }}>
+                  🎉 1st Order (Free Delivery)
+                </span>
+              )}
+            </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer' }}>✕</button>
         </div>
@@ -433,7 +440,14 @@ export default function AdminOrders() {
                       <td onClick={e => e.stopPropagation()}>
                         <input type="checkbox" checked={selectedOrderIds.has(o._id)} onChange={() => toggleSelectOrder(o._id)} />
                       </td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>#{o._id.slice(-8).toUpperCase()}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>
+                        <div>#{o._id.slice(-8).toUpperCase()}</div>
+                        {o.isFirstOrder && (
+                          <span style={{ display: 'inline-block', marginTop: 3, padding: '1px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#22C55E', fontSize: 10, fontWeight: 700 }}>
+                            🎉 1st Order
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{o.customerId?.name}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{o.customerId?.phone}</div>
@@ -481,7 +495,14 @@ export default function AdminOrders() {
             {filtered.map(o => (
               <div key={o._id} className="ao-card" onClick={() => setSelectedOrder(o)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>#{o._id.slice(-8).toUpperCase()}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>#{o._id.slice(-8).toUpperCase()}</span>
+                    {o.isFirstOrder && (
+                      <span style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#22C55E', fontSize: 10, fontWeight: 700 }}>
+                        🎉 1st Order
+                      </span>
+                    )}
+                  </div>
                   <StatusBadge status={o.status} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{o.customerId?.name}</div>

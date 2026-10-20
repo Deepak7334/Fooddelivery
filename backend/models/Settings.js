@@ -14,7 +14,9 @@ const settingsSchema = new mongoose.Schema({
     max: 100
   },
   promoBannerActive: { type: Boolean, default: false },
-  promoBannerText: { type: String, default: '' }
+  promoBannerText: { type: String, default: '' },
+  firstOrderFreeDelivery: { type: Boolean, default: true },
+  firstOrderMinAmount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

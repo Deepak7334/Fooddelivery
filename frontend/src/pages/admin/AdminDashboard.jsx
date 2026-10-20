@@ -185,6 +185,64 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* First Order Free Delivery Settings */}
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>New Customer Promotion</h2>
+          <div className="card ad-settings-card" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.05), transparent)', border: '1px solid rgba(34,197,94,0.2)' }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flex: 1 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(34,197,94,0.12)', color: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+                🎁
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>First Order Free Delivery</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setSettings({ ...settings, firstOrderFreeDelivery: !(settings?.firstOrderFreeDelivery !== false) })}>
+                    <div style={{ width: 40, height: 22, borderRadius: 20, background: (settings?.firstOrderFreeDelivery !== false) ? 'var(--success)' : 'var(--bg-secondary)', position: 'relative', transition: '0.3s' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', position: 'absolute', top: 2, left: (settings?.firstOrderFreeDelivery !== false) ? 20 : 2, transition: '0.3s' }}></div>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: (settings?.firstOrderFreeDelivery !== false) ? 'var(--success)' : 'var(--text-muted)' }}>
+                      {(settings?.firstOrderFreeDelivery !== false) ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Min order value for free delivery:</span>
+                  <div style={{ position: 'relative', width: 110 }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700 }}>₹</span>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      placeholder="0"
+                      min="0"
+                      value={settings?.firstOrderMinAmount ?? 0}
+                      onChange={(e) => setSettings({ ...settings, firstOrderMinAmount: Number(e.target.value) })}
+                      style={{ paddingLeft: 24, fontSize: 14, fontWeight: 600, width: '100%' }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(₹0 = No minimum order requirement)</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%' }}>
+              <button 
+                className="btn btn-primary"
+                disabled={savingSettings}
+                onClick={async () => {
+                  setSavingSettings(true);
+                  try {
+                    await api.put('/admin/settings', settings);
+                    toast.success('First order settings saved!');
+                  } catch(e) { toast.error('Failed to update first order settings'); }
+                  setSavingSettings(false);
+                }}
+                style={{ padding: '0 20px', height: 42, whiteSpace: 'nowrap' }}
+              >
+                {savingSettings ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Recent Orders */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -219,7 +277,14 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{vendorName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Order #{order._id.slice(-8).toUpperCase()}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>Order #{order._id.slice(-8).toUpperCase()}</span>
+                        {order.isFirstOrder && (
+                          <span style={{ padding: '1px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#22C55E', fontSize: 10, fontWeight: 700 }}>
+                            🎉 1st Order
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <span style={{ padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', background: st.bg, color: st.color, letterSpacing: '0.5px' }}>

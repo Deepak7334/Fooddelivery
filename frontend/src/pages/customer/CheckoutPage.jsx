@@ -90,6 +90,8 @@ export default function CheckoutPage() {
   const [savingAddress, setSavingAddress] = useState(false);
 
   const [deliveryFee, setDeliveryFee] = useState(0);
+  const [isFirstOrder, setIsFirstOrder] = useState(false);
+  const [originalDeliveryFee, setOriginalDeliveryFee] = useState(0);
   const [calculating, setCalculating] = useState(true);
 
   useEffect(() => {
@@ -101,6 +103,8 @@ export default function CheckoutPage() {
     api.post('/customer/checkout-info', { items: cartItems, restaurantIds, storeIds })
       .then(res => {
         setDeliveryFee(res.data.deliveryFees || 0);
+        setIsFirstOrder(Boolean(res.data.isFirstOrder));
+        setOriginalDeliveryFee(res.data.originalDeliveryFee || 0);
       })
       .catch(err => {
         console.error('Error fetching checkout info:', err);
@@ -651,8 +655,15 @@ export default function CheckoutPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, color: 'var(--text-secondary)' }}>
               <span>Delivery Fee</span>
-              <span>{calculating ? '...' : deliveryFee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free Delivery</span> : `₹${deliveryFee}`}</span>
+              <span>{calculating ? '...' : isFirstOrder ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>{originalDeliveryFee > 0 && <del style={{ color: 'var(--text-muted)', marginRight: 6 }}>₹{originalDeliveryFee}</del>}FREE 🎉</span> : deliveryFee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free Delivery</span> : `₹${deliveryFee}`}</span>
             </div>
+            {isFirstOrder && (
+              <div style={{ padding: '8px 12px', background: 'rgba(34, 197, 94, 0.1)', color: '#22C55E', borderRadius: '8px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', border: '1px dashed rgba(34, 197, 94, 0.3)' }}>
+                🎉 Welcome Gift: Free Delivery applied on your 1st order!
+              </div>
+            )}
+
+
             {totalSavings > 0 && (
               <div style={{ padding: '8px 12px', background: 'rgba(76, 175, 80, 0.1)', color: '#4CAF50', borderRadius: '8px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', border: '1px dashed rgba(76, 175, 80, 0.3)' }}>
                 ?? Festive Offer Applied! You saved ?{totalSavings} on this order!

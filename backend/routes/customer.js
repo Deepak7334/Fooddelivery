@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const Restaurant = require('../models/Restaurant');
@@ -10,13 +10,20 @@ const Settings = require('../models/Settings');
 const Review = require('../models/Review');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const jwt = require('jsonwebtoken');
 
 // ========== PUBLIC ROUTES ==========
 // Get all categories
 router.get('/settings/promo', async (req, res) => {
   try {
     const settings = await Settings.findOne();
-    res.json({ success: true, promoBannerActive: settings?.promoBannerActive || false, promoBannerText: settings?.promoBannerText || '' });
+    res.json({ 
+      success: true, 
+      promoBannerActive: settings?.promoBannerActive || false, 
+      promoBannerText: settings?.promoBannerText || '',
+      firstOrderFreeDelivery: settings?.firstOrderFreeDelivery !== false,
+      firstOrderMinAmount: settings?.firstOrderMinAmount || 0
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -95,7 +102,48 @@ router.post('/checkout-info', async (req, res) => {
       totalDeliveryFee += fee;
     }
 
-    res.json({ success: true, deliveryFees: totalDeliveryFee, globalTaxRate: 0 });
+    // Check First Order Free Delivery Eligibility
+    let user = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        user = await User.findById(decoded.id).select('email phone');
+      } catch (e) {}
+    }
+
+    const settings = await Settings.findOne();
+    let isFirstOrderEligible = false;
+    const originalDeliveryFee = totalDeliveryFee;
+
+    if (user && settings?.firstOrderFreeDelivery !== false) {
+      const pastOrders = await Order.countDocuments({
+        $or: [
+          { customerId: user._id },
+          { customerEmail: user.email },
+          ...(user.phone ? [{ customerPhone: user.phone }] : [])
+        ],
+        status: { $nin: ['cancelled'] }
+      });
+      const cartTotal = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0) || Number(totalAmount) || 0;
+      const minAmount = settings?.firstOrderMinAmount || 0;
+      if (pastOrders === 0 && cartTotal >= minAmount) {
+        isFirstOrderEligible = true;
+      }
+    }
+
+    if (isFirstOrderEligible) {
+      totalDeliveryFee = 0;
+    }
+
+    res.json({ 
+      success: true, 
+      deliveryFees: totalDeliveryFee, 
+      originalDeliveryFee: originalDeliveryFee,
+      isFirstOrder: isFirstOrderEligible,
+      firstOrderSavings: isFirstOrderEligible ? originalDeliveryFee : 0,
+      globalTaxRate: 0 
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -368,15 +416,32 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       
       const hasFreeDelivery = group.items.some(item => item.freeDelivery === true);
       
+      // Check First Order Free Delivery Eligibility
+      const settings = await Settings.findOne();
+      let isFirstOrderEligible = false;
+      if (settings?.firstOrderFreeDelivery !== false) {
+        const pastOrders = await Order.countDocuments({
+          $or: [
+            { customerId: req.user._id },
+            { customerEmail: req.user.email },
+            ...(req.user.phone ? [{ customerPhone: req.user.phone }] : [])
+          ],
+          status: { $nin: ['cancelled'] }
+        });
+        const minAmount = settings?.firstOrderMinAmount || 0;
+        if (pastOrders === 0 && totalAmount >= minAmount) {
+          isFirstOrderEligible = true;
+        }
+      }
+
       // Use vendor's specific delivery fee, overridden if free delivery is enabled
       let groupDeliveryFee = vendorDeliveryFee;
-      if (hasFreeDelivery) {
+      if (hasFreeDelivery || isFirstOrderEligible) {
         groupDeliveryFee = 0;
       }
       
       const finalAmount = totalAmount + groupDeliveryFee;
       
-      const settings = await Settings.findOne();
       const platformRate = vendorCustomCommission !== null && vendorCustomCommission !== undefined ? vendorCustomCommission : (settings?.platformCommissionRate ?? 15);
       const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));
       const vendorPayout = Number((totalAmount - adminCommission).toFixed(2));
@@ -401,6 +466,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
         paymentMethod: paymentMethod || 'razorpay',
         customerEmail: req.user.email,
         customerPhone: req.user.phone,
+        isFirstOrder: isFirstOrderEligible,
         alternatePhone: req.body.alternatePhone || '',
         deliveryAgentId: assignedAgentId,
         statusHistory: [{ status: 'pending', timestamp: new Date() }],

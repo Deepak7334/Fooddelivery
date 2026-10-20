@@ -82,6 +82,8 @@ router.put('/settings', async (req, res) => {
     if (req.body.globalTaxRate !== undefined) { settings.globalTaxRate = req.body.globalTaxRate; }
       if (req.body.promoBannerActive !== undefined) { settings.promoBannerActive = req.body.promoBannerActive; }
       if (req.body.promoBannerText !== undefined) { settings.promoBannerText = req.body.promoBannerText; }
+      if (req.body.firstOrderFreeDelivery !== undefined) { settings.firstOrderFreeDelivery = req.body.firstOrderFreeDelivery; }
+      if (req.body.firstOrderMinAmount !== undefined) { settings.firstOrderMinAmount = Number(req.body.firstOrderMinAmount) || 0; }
     await settings.save();
     res.json({ success: true, settings });
   } catch (err) {

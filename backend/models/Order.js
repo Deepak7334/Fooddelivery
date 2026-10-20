@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema({
   foodId: {
@@ -66,6 +66,10 @@ const orderSchema = new mongoose.Schema({
   discount: {
     type: Number,
     default: 0,
+  },
+  isFirstOrder: {
+    type: Boolean,
+    default: false,
   },
   finalAmount: {
     type: Number,
