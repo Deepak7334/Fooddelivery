@@ -1,6 +1,6 @@
 # JDkart (FoodHub) - Comprehensive Documentation
 
-## 🍔 Overview
+##  Overview
 JDkart (also referred to as FoodHub) is a full-featured, MERN-stack based food delivery and restaurant management platform. It offers a complete ecosystem for customers, restaurant owners, delivery partners, and platform administrators, complete with real-time tracking, secure payments, and table bookings.
 
 ## 🛠 Tech Stack
@@ -129,10 +129,6 @@ The backend exposes a modular REST API, organized by feature sets:
    npm run dev
    ```
    *(Note: The server auto-seeds standard Categories and an Admin user upon successful database connection.)*
-
-**Default Admin Credentials:**
-- Email: `supportjdkart@gmail.com`
-- Password: `Admin@123` *(or `Jdkart@support` depending on `.env` overrides)*
 
 ### 2. Frontend Setup
 
