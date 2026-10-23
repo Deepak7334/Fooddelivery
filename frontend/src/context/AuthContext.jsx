@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../lib/api';
 
 const AuthContext = createContext(null);
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     if (res.data.success) {
       localStorage.setItem('foodhub_token', res.data.token);
@@ -41,9 +41,9 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data.user);
     }
     return res.data;
-  };
+  }, []);
 
-  const register = async (data) => {
+  const register = useCallback(async (data) => {
     const res = await api.post('/auth/register', data);
     if (res.data.success) {
       localStorage.setItem('foodhub_token', res.data.token);
@@ -51,9 +51,9 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data.user);
     }
     return res.data;
-  };
+  }, []);
 
-  const firebaseLogin = async (idToken, name, loginProvider = 'phone') => {
+  const firebaseLogin = useCallback(async (idToken, name, loginProvider = 'phone') => {
     const res = await api.post('/auth/firebase-login', { idToken, name, loginProvider });
     if (res.data.success) {
       localStorage.setItem('foodhub_token', res.data.token);
@@ -61,14 +61,14 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data.user);
     }
     return res.data;
-  };
+  }, []);
 
-  const sendEmailOtp = async (email) => {
+  const sendEmailOtp = useCallback(async (email) => {
     const res = await api.post('/auth/send-email-otp', { email });
     return res.data;
-  };
+  }, []);
 
-  const verifyEmailOtp = async (email, otp, name) => {
+  const verifyEmailOtp = useCallback(async (email, otp, name) => {
     const res = await api.post('/auth/verify-email-otp', { email, otp, name });
     if (res.data.success) {
       localStorage.setItem('foodhub_token', res.data.token);
@@ -76,16 +76,20 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data.user);
     }
     return res.data;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('foodhub_token');
     localStorage.removeItem('foodhub_user');
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout
+  }), [user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

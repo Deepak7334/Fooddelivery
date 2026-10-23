@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useCart } from '../../context/CartContext';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 const STORE_TYPES = [
   { key: 'all',         label: 'All Stores',    icon: '🏬', color: '#9E9E9E' },
@@ -28,12 +29,22 @@ export default function StoresPage() {
 
   const { addProductToCart, cartItems, cartType, storeId: cartStoreId, updateQuantity } = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   useEffect(() => {
     // eslint-disable-next-line
     if (!stores.length && !products.length) setLoading(true);
     const params = new URLSearchParams();
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
     if (sort) params.set('sort', sort);
     if (type && type !== 'all') params.set('type', type);
     const cityParam = searchParams.get('city');
@@ -61,7 +72,7 @@ export default function StoresPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
     // eslint-disable-next-line
-  }, [search, sort, type]);
+  }, [debouncedSearch, sort, type]);
 
   const handleAddProduct = (product) => {
     addProductToCart(product, product.storeId?._id);

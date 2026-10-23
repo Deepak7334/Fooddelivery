@@ -36,5 +36,7 @@ const storeSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 storeSchema.index({ location: '2dsphere' });
+storeSchema.index({ isActive: 1, isOpen: 1, storeType: 1 });
+storeSchema.index({ city: 1, isActive: 1 });
 
 module.exports = mongoose.model('Store', storeSchema);

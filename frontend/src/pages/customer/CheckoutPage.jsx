@@ -28,6 +28,12 @@ export default function CheckoutPage() {
   const [localRestaurants, setLocalRestaurants] = useState([]);
   const [loadingLocal, setLoadingLocal] = useState(false);
 
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      navigate('/cart');
+    }
+  }, [cartItems.length, navigate]);
+
   // New Address / Missing Info Form State
   const [customerName, setCustomerName] = useState(user?.name || '');
   const [addrLabel, setAddrLabel] = useState('Home');
@@ -437,7 +443,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (cartItems.length === 0) { navigate('/cart'); return null; }
+  if (cartItems.length === 0) return null;
 
   return (
     <div className="page-wrapper">

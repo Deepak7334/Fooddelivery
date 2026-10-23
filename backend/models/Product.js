@@ -36,4 +36,8 @@ const productSchema = new mongoose.Schema({
   freeDelivery: { type: Boolean, default: false },
 }, { timestamps: true });
 
+productSchema.index({ storeId: 1, isAvailable: 1 });
+productSchema.index({ isFeatured: -1, createdAt: -1 });
+productSchema.index({ category: 1, isAvailable: 1 });
+
 module.exports = mongoose.model('Product', productSchema);

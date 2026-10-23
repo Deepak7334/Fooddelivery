@@ -12,11 +12,25 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const jwt = require('jsonwebtoken');
 
+// Settings cache (refreshes every 60 seconds)
+let _cachedSettings = null;
+let _settingsCacheTime = 0;
+const SETTINGS_CACHE_TTL = 60000;
+
+async function getCachedSettings() {
+  if (_cachedSettings && (Date.now() - _settingsCacheTime < SETTINGS_CACHE_TTL)) {
+    return _cachedSettings;
+  }
+  _cachedSettings = await Settings.findOne().lean();
+  _settingsCacheTime = Date.now();
+  return _cachedSettings;
+}
+
 // ========== PUBLIC ROUTES ==========
 // Get all categories
 router.get('/settings/promo', async (req, res) => {
   try {
-    const settings = await Settings.findOne();
+    const settings = await getCachedSettings();
     res.json({ 
       success: true, 
       promoBannerActive: settings?.promoBannerActive || false, 
@@ -24,6 +38,33 @@ router.get('/settings/promo', async (req, res) => {
       firstOrderFreeDelivery: settings?.firstOrderFreeDelivery !== false,
       firstOrderMinAmount: settings?.firstOrderMinAmount || 0
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Quick search suggestions across foods, products, restaurants, stores
+router.get('/search-suggestions', async (req, res) => {
+  try {
+    const q = req.query.q || '';
+    if (!q.trim()) return res.json({ success: true, suggestions: [] });
+    const safeRegex = new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+    const [foods, products, restaurants, stores] = await Promise.all([
+      Food.find({ name: safeRegex, isAvailable: true }).select('name restaurantId').populate('restaurantId', 'name').limit(4).lean(),
+      Product.find({ name: safeRegex, isAvailable: true }).select('name storeId').populate('storeId', 'name').limit(4).lean(),
+      Restaurant.find({ name: safeRegex, isActive: true }).select('name').limit(3).lean(),
+      Store.find({ name: safeRegex, isActive: true }).select('name').limit(3).lean()
+    ]);
+
+    const suggestions = [
+      ...foods.map(f => ({ _id: f._id, name: f.name, itemType: 'food', restaurantId: f.restaurantId })),
+      ...products.map(p => ({ _id: p._id, name: p.name, itemType: 'product', storeId: p.storeId })),
+      ...restaurants.map(r => ({ _id: r._id, name: r.name, itemType: 'restaurant' })),
+      ...stores.map(s => ({ _id: s._id, name: s.name, itemType: 'store' }))
+    ].slice(0, 8);
+
+    res.json({ success: true, suggestions });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -58,20 +99,14 @@ router.post('/checkout-info', async (req, res) => {
       // Robust Fallback using provided IDs if items are dropped
       if (items.length === 0) {
         let totalDeliveryFee = 0;
-        if (restaurantIds && restaurantIds.length > 0) {
-          for (const id of restaurantIds) {
-            const rest = await Restaurant.findById(id);
-            if (rest && rest.deliveryFee !== undefined) totalDeliveryFee += rest.deliveryFee;
-          }
-        }
-        if (storeIds && storeIds.length > 0) {
-          for (const id of storeIds) {
-            const store = await Store.findById(id);
-            if (store && store.deliveryFee !== undefined) totalDeliveryFee += store.deliveryFee;
-          }
-        }
+        const [rests, sts] = await Promise.all([
+          restaurantIds && restaurantIds.length ? Restaurant.find({ _id: { $in: restaurantIds } }).select('deliveryFee').lean() : [],
+          storeIds && storeIds.length ? Store.find({ _id: { $in: storeIds } }).select('deliveryFee').lean() : []
+        ]);
+        rests.forEach(r => { if (r.deliveryFee !== undefined) totalDeliveryFee += r.deliveryFee; });
+        sts.forEach(s => { if (s.deliveryFee !== undefined) totalDeliveryFee += s.deliveryFee; });
         return res.json({ success: true, deliveryFees: totalDeliveryFee || (Number(totalAmount) < 30 ? 5 : 10), globalTaxRate: 0 });
-    }
+      }
 
     const vendorGroups = {};
     for (const item of items) {
@@ -84,6 +119,8 @@ router.post('/checkout-info', async (req, res) => {
     }
 
     let totalDeliveryFee = 0;
+    const targetRestIds = [];
+    const targetStoreIds = [];
 
     for (const key of Object.keys(vendorGroups)) {
       const group = vendorGroups[key];
@@ -91,15 +128,24 @@ router.post('/checkout-info', async (req, res) => {
       if (hasFreeDelivery) continue;
 
       const [type, id] = key.split('_');
-      let fee = 30; // default fallback
-      if (type === 'restaurant') {
-        const rest = await Restaurant.findById(id);
-        if (rest) fee = rest.deliveryFee !== undefined ? rest.deliveryFee : 30;
-      } else {
-        const store = await Store.findById(id);
-        if (store) fee = store.deliveryFee !== undefined ? store.deliveryFee : 30;
-      }
-      totalDeliveryFee += fee;
+      if (type === 'restaurant') targetRestIds.push(id);
+      else targetStoreIds.push(id);
+    }
+
+    const [restaurants, stores] = await Promise.all([
+      targetRestIds.length ? Restaurant.find({ _id: { $in: targetRestIds } }).select('deliveryFee').lean() : [],
+      targetStoreIds.length ? Store.find({ _id: { $in: targetStoreIds } }).select('deliveryFee').lean() : []
+    ]);
+    const restMap = {};
+    restaurants.forEach(r => { restMap[r._id.toString()] = r.deliveryFee !== undefined ? r.deliveryFee : 30; });
+    const storeMap = {};
+    stores.forEach(s => { storeMap[s._id.toString()] = s.deliveryFee !== undefined ? s.deliveryFee : 30; });
+
+    for (const id of targetRestIds) {
+      totalDeliveryFee += restMap[id] !== undefined ? restMap[id] : 30;
+    }
+    for (const id of targetStoreIds) {
+      totalDeliveryFee += storeMap[id] !== undefined ? storeMap[id] : 30;
     }
 
     // Check First Order Free Delivery Eligibility
@@ -112,7 +158,7 @@ router.post('/checkout-info', async (req, res) => {
       } catch (e) {}
     }
 
-    const settings = await Settings.findOne();
+    const settings = await getCachedSettings();
     let isFirstOrderEligible = false;
     const originalDeliveryFee = totalDeliveryFee;
 
@@ -417,7 +463,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       const hasFreeDelivery = group.items.some(item => item.freeDelivery === true);
       
       // Check First Order Free Delivery Eligibility
-      const settings = await Settings.findOne();
+      const settings = await getCachedSettings();
       let isFirstOrderEligible = false;
       if (settings?.firstOrderFreeDelivery !== false) {
         const pastOrders = await Order.countDocuments({
@@ -537,7 +583,7 @@ router.get('/orders', protect, authorize('customer'), async (req, res) => {
     const orders = await Order.find({ customerId: req.user._id })
       .sort({ createdAt: -1 })
       .populate('restaurantId', 'name image address')
-      .populate('storeId', 'name image address');
+      .populate('storeId', 'name image address').lean();
     res.json({ success: true, orders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -550,7 +596,7 @@ router.get('/orders/:id', protect, authorize('customer'), async (req, res) => {
     const order = await Order.findOne({ _id: req.params.id, customerId: req.user._id })
       .populate('restaurantId', 'name image address phone')
       .populate('storeId', 'name image address phone')
-      .populate('deliveryAgentId', 'name phone vehicleNumber');
+      .populate('deliveryAgentId', 'name phone vehicleNumber').lean();
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     res.json({ success: true, order });
   } catch (err) {
@@ -648,7 +694,7 @@ router.post('/store-orders', protect, authorize('customer'), async (req, res) =>
     }
     const finalAmount = Number(totalAmount) + deliveryFee;
 
-    const settings = await Settings.findOne();
+    const settings = await getCachedSettings();
     const vendorCustomCommission = store.customCommissionRate;
     const platformRate = vendorCustomCommission !== null && vendorCustomCommission !== undefined ? vendorCustomCommission : (settings?.platformCommissionRate ?? 15);
     const adminCommission = Number(((totalAmount * platformRate) / 100).toFixed(2));

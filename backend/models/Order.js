@@ -205,5 +205,7 @@ orderSchema.index({ storeId: 1, status: 1, createdAt: -1 });
 orderSchema.index({ deliveryAgentId: 1, status: 1 });
 // Admin: all pending orders sorted by time
 orderSchema.index({ status: 1, createdAt: -1 });
+// Vendor payout queries
+orderSchema.index({ vendorPayoutStatus: 1, status: 1, paymentStatus: 1 });
 
 module.exports = mongoose.model('Order', orderSchema);

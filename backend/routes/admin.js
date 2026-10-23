@@ -94,7 +94,7 @@ router.put('/settings', async (req, res) => {
 // ========== RESTAURANT MANAGEMENT ==========
 router.get('/restaurants', async (req, res) => {
   try {
-    const restaurants = await Restaurant.find(req.adminFilter).populate('ownerId', 'name email');
+    const restaurants = await Restaurant.find(req.adminFilter).populate('ownerId', 'name email').lean();
     res.json({ success: true, restaurants });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -186,7 +186,7 @@ router.patch('/restaurants/:id/toggle', async (req, res) => {
 // ========== USER MANAGEMENT ==========
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find({ role: { $ne: 'admin' } }).select('-password');
+    const users = await User.find({ role: { $ne: 'admin' } }).select('-password').lean();
     res.json({ success: true, users });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -711,7 +711,7 @@ router.get('/stores', async (req, res) => {
     if (search) filter.name = { $regex: search, $options: 'i' };
     const stores = await Store.find(filter)
       .populate('ownerId', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 }).lean();
     res.json({ success: true, stores });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

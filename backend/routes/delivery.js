@@ -322,7 +322,7 @@ router.patch('/location', async (req, res) => {
     if (lat === undefined || lng === undefined) return res.status(400).json({ success: false, message: 'Coords required' });
 
     const user = await User.findByIdAndUpdate(req.user._id, {
-      location: { lat, lng, lastUpdated: new Date() }
+      location: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)], lastUpdated: new Date() }
     }, { new: true });
 
     res.json({ success: true });

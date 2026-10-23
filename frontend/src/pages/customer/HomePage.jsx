@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -26,9 +26,6 @@ const DELIVERY_RADIUS_KM = 5; // deliver within 5 km
 
 const STORE_TYPES = [
   { _id: 'grocery', name: 'Grocery', icon: '🛒', color: '#4CAF50', type: 'store' },
-  { _id: 'pharmacy', name: 'Pharmacy', icon: '💊', color: '#2196F3', type: 'store' },
-  { _id: 'electronics', name: 'Electronics', icon: '📱', color: '#9C27B0', type: 'store' },
-  { _id: 'beauty', name: 'Beauty', icon: '🧴', color: '#E91E63', type: 'store' },
   { _id: 'bakery', name: 'Bakery', icon: '🥐', color: '#FF5722', type: 'store' },
  
 ];
@@ -97,20 +94,21 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Dispatches true if the element is OUT OF VIEW and above the viewport
-        // Actually, if it's not intersecting, we show sticky nav.
-        const isPast = !entry.isIntersecting && entry.boundingClientRect.top < 100;
-        window.dispatchEvent(new CustomEvent('heroSearchVisibility', { detail: { showSticky: isPast } }));
-      },
-      { rootMargin: '-75px 0px 0px 0px', threshold: 0 }
-    );
-    if (searchContainerRef.current) {
-      observer.observe(searchContainerRef.current);
-    }
+    const checkVisibility = () => {
+      if (!searchContainerRef.current) return;
+      const rect = searchContainerRef.current.getBoundingClientRect();
+      // Only visible when the home page search box has completely passed above the navbar (70px from top)
+      const isPastNavbar = rect.bottom <= 70;
+      window.dispatchEvent(new CustomEvent('heroSearchVisibility', { detail: { showSticky: isPastNavbar } }));
+    };
+
+    window.addEventListener('scroll', checkVisibility, { passive: true });
+    window.addEventListener('resize', checkVisibility, { passive: true });
+    checkVisibility();
+
     return () => {
-      observer.disconnect();
+      window.removeEventListener('scroll', checkVisibility);
+      window.removeEventListener('resize', checkVisibility);
       window.dispatchEvent(new CustomEvent('heroSearchVisibility', { detail: { showSticky: false } }));
     };
   }, []);
@@ -182,7 +180,6 @@ export default function HomePage() {
 
         toast.success('Location detected!', { id: 'loc' });
         setLocLoading(false);
-        fetchData(coords);
       },
       err => {
         setLocLoading(false);
@@ -394,7 +391,6 @@ export default function HomePage() {
     setLocationText('');
     window.dispatchEvent(new Event('locationUpdated'));
     toast.success('Location cleared');
-    fetchData(null);
   };
 
   return (
@@ -403,10 +399,12 @@ export default function HomePage() {
       <section style={{
         background: 'linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-card) 50%, var(--bg-dark) 100%)',
         padding: 'clamp(48px,8vw,80px) 0 clamp(36px,6vw,60px)',
-        position: 'relative', overflow: 'hidden',
+        position: 'relative', zIndex: 10,
       }}>
-        <div style={{ position: 'absolute', top: '-50px', right: '10%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(255,87,34,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-50px', left: '5%',  width: 300, height: 300, background: 'radial-gradient(circle, rgba(255,193,7,0.1) 0%, transparent 70%)',  pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: '-50px', right: '10%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(255,87,34,0.15) 0%, transparent 70%)' }} />
+          <div style={{ position: 'absolute', bottom: '-50px', left: '5%',  width: 300, height: 300, background: 'radial-gradient(circle, rgba(255,193,7,0.1) 0%, transparent 70%)' }} />
+        </div>
 
         <div className="container" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ maxWidth: 680, width: '100%', minWidth: 0, animation: 'fadeIn 0.8s ease', zIndex: 2 }}>
@@ -477,11 +475,15 @@ export default function HomePage() {
                 />
                 
                 {showSuggestions && searchSuggestions.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, marginTop: 12, zIndex: 999, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, marginTop: 8, zIndex: 9999, boxShadow: '0 12px 36px rgba(0,0,0,0.4)', maxHeight: 380, overflowY: 'auto' }}>
                     {searchSuggestions.map((s, i) => (
-                      <div key={i} onClick={() => {
+                      <div key={i} onMouseDown={() => {
                         setSearch(s.name);
                         setShowSuggestions(false);
+                        if (s.itemType === 'restaurant') navigate(`/restaurants/${s._id}`);
+                        else if (s.itemType === 'store') navigate(`/stores/${s._id}`);
+                        else if (s.itemType === 'food') navigate(`/food/${s._id}`);
+                        else if (s.itemType === 'product') navigate(`/product/${s._id}`);
                       }} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: i < searchSuggestions.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-border)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <div style={{ fontSize: 18 }}>
                           {s.itemType === 'food' ? '🍽️' : s.itemType === 'product' ? '📦' : s.itemType === 'restaurant' ? '🏪' : '🛒'}

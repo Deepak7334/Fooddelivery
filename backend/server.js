@@ -51,6 +51,37 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
+// ── Security Headers & Rate Limiting ─────────────────────────────────────────
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+// Security headers with crossOriginResourcePolicy allowing frontend asset loads
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false
+}));
+
+// Rate limiting: protects auth endpoints from brute force and api from DoS
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Too many attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/send-email-otp', authLimiter);
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
+
 // Static files with aggressive caching (images/uploads cached 7 days in CDN)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   maxAge: '7d',

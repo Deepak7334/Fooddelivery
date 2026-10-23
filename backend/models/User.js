@@ -114,5 +114,6 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.index({ location: '2dsphere' });
+userSchema.index({ role: 1, isActive: 1, deliveryStatus: 1 });
 
 module.exports = mongoose.model('User', userSchema);

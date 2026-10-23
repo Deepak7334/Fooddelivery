@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import api from '../lib/api';
-import { io } from 'socket.io-client';
 import { messaging } from '../firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import toast from 'react-hot-toast';
@@ -12,10 +11,11 @@ export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [socket, setSocket] = useState(null);
+  const [, setSocket] = useState(null);
+  const audioRef = useRef(null);
 
   // Fetch initial notifications
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await api.get('/notifications');
       if (res.data.success) {
@@ -25,46 +25,64 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
-  };
+  }, []);
 
-  // Play notification sound
-  const playSound = () => {
-    const audio = new Audio('/notification.mp3'); // Optional: create this file in public/
-    audio.play().catch(e => console.log('Audio play failed due to browser policy', e));
-  };
+  // Play notification sound safely without memory leaks
+  const playSound = useCallback(() => {
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/notification.mp3');
+      }
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    } catch {}
+  }, []);
 
-  // Socket.IO Connection
+  // Socket.IO Connection (code-split with dynamic import)
+  const userId = user?._id || user?.id;
   useEffect(() => {
-    if (user) {
-      const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
-        withCredentials: true
-      });
+    if (!userId) return;
 
-      newSocket.on('connect', () => {
-        newSocket.emit('join_user_room', user._id || user.id);
-      });
+    let activeSocket = null;
+    let isMounted = true;
 
-      newSocket.on('notification', (notification) => {
-        setNotifications(prev => [notification, ...prev]);
-        setUnreadCount(prev => prev + 1);
-        toast.success(notification.title + ': ' + notification.body, { duration: 4000 });
-        playSound();
-      });
+    (async () => {
+      try {
+        const { io } = await import('socket.io-client');
+        if (!isMounted) return;
+        const apiBase = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5000';
+        activeSocket = io(apiBase, { withCredentials: true });
 
-      setSocket(newSocket);
-      fetchNotifications();
+        activeSocket.on('connect', () => {
+          activeSocket.emit('join_user_room', userId);
+        });
 
-      return () => {
-        newSocket.disconnect();
-      };
-    }
-  }, [user]);
+        activeSocket.on('notification', (notification) => {
+          setNotifications(prev => [notification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          toast.success((notification.title || 'Notification') + ': ' + (notification.body || ''), { duration: 4000 });
+          playSound();
+        });
 
-  const requestFCMPermission = async () => {
+        setSocket(activeSocket);
+        fetchNotifications();
+      } catch (err) {
+        console.error('Socket init error:', err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      if (activeSocket) activeSocket.disconnect();
+    };
+  }, [userId, playSound, fetchNotifications]);
+
+  const requestFCMPermission = useCallback(async () => {
     if (!user) return false;
     try {
+      if (!('Notification' in window)) return false;
       const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
+      if (permission === 'granted' && messaging) {
         const token = await getToken(messaging, { 
           vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY 
         });
@@ -78,23 +96,22 @@ export const NotificationProvider = ({ children }) => {
       console.error('FCM Setup Error:', error);
       return false;
     }
-  };
+  }, [user]);
 
   // Handle Foreground FCM Messages
   useEffect(() => {
-    const unsubscribe = onMessage(messaging, (payload) => {
-      // In foreground, we might receive Socket.IO events too.
-      // To avoid duplicates, you might rely solely on Socket.IO when in foreground,
-      // or check if it's already in the list. For now, we'll log it.
-      console.log('Foreground FCM received:', payload);
-      // Let Socket.IO handle the toast if it's running. 
-      // If Socket.IO is down, we can fallback to toast here.
-    });
-
-    return () => unsubscribe();
+    if (!messaging) return;
+    try {
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('Foreground FCM received:', payload);
+      });
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn('FCM onMessage registration skipped:', e);
+    }
   }, []);
 
-  const markAsRead = async (id) => {
+  const markAsRead = useCallback(async (id) => {
     try {
       await api.put(`/notifications/${id}/read`);
       setNotifications(prev => 
@@ -104,9 +121,9 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       await api.put('/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
@@ -114,9 +131,9 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
 
-  const deleteNotification = async (id) => {
+  const deleteNotification = useCallback(async (id) => {
     try {
       await api.delete(`/notifications/${id}`);
       setNotifications(prev => {
@@ -129,17 +146,19 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    requestFCMPermission
+  }), [notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, requestFCMPermission]);
 
   return (
-    <NotificationContext.Provider value={{
-      notifications,
-      unreadCount,
-      markAsRead,
-      markAllAsRead,
-      deleteNotification,
-      requestFCMPermission
-    }}>
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

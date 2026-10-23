@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function RestaurantsPage() {
@@ -16,12 +17,22 @@ export default function RestaurantsPage() {
 
   const { addToCart } = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   useEffect(() => {
     // eslint-disable-next-line
     if (!restaurants.length && !foods.length) setLoading(true);
     const params = new URLSearchParams();
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
     if (sort) params.set('sort', sort);
     if (cuisine) params.set('cuisine', cuisine);
     if (vegOnly) params.set('veg', 'true');
@@ -52,7 +63,7 @@ export default function RestaurantsPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
     // eslint-disable-next-line
-  }, [search, sort, cuisine, vegOnly, searchParams]);
+  }, [debouncedSearch, sort, cuisine, vegOnly, searchParams]);
 
   const handleAddFood = (food) => {
     addToCart(food, food.restaurantId?._id);

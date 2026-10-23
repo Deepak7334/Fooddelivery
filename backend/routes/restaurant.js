@@ -65,7 +65,7 @@ router.get('/stats', async (req, res) => {
 // ========== MENU MANAGEMENT ==========
 router.get('/menu', async (req, res) => {
   try {
-    const foods = await Food.find({ restaurantId: req.user.restaurantId });
+    const foods = await Food.find({ restaurantId: req.user.restaurantId }).lean();
     res.json({ success: true, foods });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -112,7 +112,7 @@ router.get('/orders', async (req, res) => {
     if (status) filter.status = status;
     const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
-      .populate('customerId', 'name email phone');
+      .populate('customerId', 'name email phone').lean();
     res.json({ success: true, orders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

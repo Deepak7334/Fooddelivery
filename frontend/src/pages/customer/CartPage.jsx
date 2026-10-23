@@ -125,7 +125,7 @@ export default function CartPage() {
         <div className="empty-state-icon"></div>
         <h3>Your Cart is Empty</h3>
         <p>Add items from a restaurant to get started</p>
-        <button onClick={() => navigate('Home')} className="btn btn-primary btn-lg" style={{ marginTop: 24 }}>Browse Home</button>
+        <button onClick={() => navigate('/')} className="btn btn-primary btn-lg" style={{ marginTop: 24 }}>Browse Home</button>
       </div>
     </div>
   );

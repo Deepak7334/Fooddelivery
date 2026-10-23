@@ -153,56 +153,6 @@ const RestaurantLayout = ({ children }) => {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Async IIFE: dynamically import socket.io-client so it does NOT block first paint
-    const socketPromise = (async () => {
-      const apiBase = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-      if (window.__appSocket) window.__appSocket.disconnect();
-      const { io } = await import('socket.io-client');
-      const socket = io(apiBase);
-    window.__appSocket = socket;
-
-    socket.on('connect', () => {
-      // Join the user's specific room
-      const userId = user._id || user.id;
-      socket.emit('join_user_room', userId);
-    });
-
-    // Listen for global push notifications
-    socket.on('notification', (notif) => {
-      // Play a small success/info sound if desired, or just show toast
-      toast(
-        (t) => (
-          <div>
-            <strong>{notif.title}</strong>
-            <p style={{ margin: '4px 0 0', fontSize: 13 }}>{notif.body}</p>
-          </div>
-        ),
-        {
-          duration: 5000,
-          position: 'top-right',
-          icon: '🔔',
-          style: {
-            background: 'var(--bg-card)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border)'
-          },
-        }
-      );
-    });
-
-      return socket;
-    })();
-
-    return () => {
-      socketPromise.then(s => s?.disconnect());
-    };
-  }, [user]);
-
   return (
     <Suspense fallback={<PageLoader />}>
       <PostLoginPrompt />
