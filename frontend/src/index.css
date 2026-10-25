@@ -460,19 +460,23 @@ select.form-input option {
 @media (max-width: 640px) {
   .search-form {
     flex-direction: row;
-    padding: 2px 4px;
+    padding: 3px 6px;
+    gap: 4px;
   }
   .search-location {
-    padding: 0 8px;
-    flex: 1 1 50px;
+    padding: 0 6px;
+    flex: 1.2 1 95px;
+    max-width: 140px;
+    min-width: 75px;
   }
   .search-input-wrap {
-    padding: 0 8px;
-    flex: 2 1 110px;
+    padding: 0 6px;
+    flex: 2 1 120px;
   }
   .search-input-field {
     padding: 10px 0;
     font-size: 12px;
+    text-overflow: ellipsis;
   }
   .search-input-field::placeholder {
     font-size: 11px;

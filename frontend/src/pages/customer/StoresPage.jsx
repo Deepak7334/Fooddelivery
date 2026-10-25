@@ -4,6 +4,8 @@ import api from '../../lib/api';
 import { useCart } from '../../context/CartContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { useMemo } from 'react';
+import { getVendorDistance, formatDistance } from '../../utils/distance';
 
 const STORE_TYPES = [
   { key: 'all',         label: 'All Stores',    icon: '🏬', color: '#9E9E9E' },
@@ -26,6 +28,22 @@ export default function StoresPage() {
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [sort, setSort] = useState('');
   const [type, setType] = useState(searchParams.get('type') || '');
+
+  const [userCoords, setUserCoords] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('jdkart_coords') || 'null'); } catch { return null; }
+  });
+
+  useEffect(() => {
+    const handleLocUpdate = () => {
+      try {
+        setUserCoords(JSON.parse(localStorage.getItem('jdkart_coords') || 'null'));
+      } catch {
+        setUserCoords(null);
+      }
+    };
+    window.addEventListener('locationUpdated', handleLocUpdate);
+    return () => window.removeEventListener('locationUpdated', handleLocUpdate);
+  }, []);
 
   const { addProductToCart, cartItems, cartType, storeId: cartStoreId, updateQuantity } = useCart();
   const navigate = useNavigate();
@@ -73,6 +91,27 @@ export default function StoresPage() {
       .finally(() => setLoading(false));
     // eslint-disable-next-line
   }, [debouncedSearch, sort, type]);
+
+  // Sort stores with support for Nearest / Distance
+  const displayedStores = useMemo(() => {
+    if (!stores || stores.length === 0) return [];
+    let list = [...stores];
+    if (sort === 'nearest' || (!sort && userCoords)) {
+      list.sort((a, b) => {
+        const distA = getVendorDistance(a, userCoords);
+        const distB = getVendorDistance(b, userCoords);
+        if (distA != null && distB != null && Math.abs(distA - distB) > 0.05) {
+          return distA - distB;
+        }
+        if (distA != null && distB == null) return -1;
+        if (distA == null && distB != null) return 1;
+        return (b.rating || 0) - (a.rating || 0);
+      });
+    } else if (sort === 'rating') {
+      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    return list;
+  }, [stores, sort, userCoords]);
 
   const handleAddProduct = (product) => {
     addProductToCart(product, product.storeId?._id);
@@ -152,6 +191,7 @@ export default function StoresPage() {
 
             <select value={sort} onChange={e => setSort(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
               <option value="">Sort by</option>
+              <option value="nearest">📍 Nearest</option>
               <option value="rating">⭐ Rating</option>
               <option value="deliveryTime">Delivery Time</option>
               <option value="deliveryFee">Delivery Fee</option>
@@ -204,7 +244,7 @@ export default function StoresPage() {
                 )
               ) : (
                 <div className="vendor-grid">
-                  {stores.map(s => <StoreCard key={s._id} store={s} />)}
+                  {displayedStores.map(s => <StoreCard key={s._id} store={s} userCoords={userCoords} />)}
                 </div>
               )}
             </div>
@@ -246,29 +286,36 @@ export default function StoresPage() {
   );
 }
 
-function StoreCard({ store }) {
+function StoreCard({ store, userCoords }) {
   const typeInfo = STORE_TYPES.find(t => t.key === store.storeType) || STORE_TYPES[0];
+  const dist = getVendorDistance(store, userCoords);
+  const distStr = formatDistance(dist);
   
   return (
     <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none' }}>
-      <div style={{ position: 'relative', height: 170, background: 'var(--bg-card2)' }}>
+      <div style={{ position: 'relative', height: 170, background: 'var(--bg-card2)', overflow: 'hidden' }}>
         {store.image ? (
           <img loading="lazy" src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>{typeInfo.icon || '🏬'}</div>
         )}
-        {!store.isOpen && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>Closed</div>}
+        {!store.isOpen && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>Closed</div>}
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', padding: '3px 10px', borderRadius: 100, fontSize: 12 }}>
-          ⭐ {store.rating?.toFixed(1)}
+          <span style={{ color: '#FFD700' }}>⭐ {store.rating?.toFixed(1)}</span>
         </div>
+        {distStr && (
+          <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', padding: '3px 9px', borderRadius: 100, fontSize: 11, color: '#fff', fontWeight: 600 }}>
+            📍 {distStr}
+          </div>
+        )}
       </div>
       <div style={{ padding: '14px 16px' }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{store.name}</div>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{typeInfo.label}</div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-          <span>{store.deliveryTime}</span>
-          <span>₹{store.deliveryFee}</span>
-          {store.minOrder > 0 && <span> Min ₹{store.minOrder}</span>}
+          <span>⏱ {store.deliveryTime}</span>
+          <span>₹{store.deliveryFee} delivery</span>
+          {store.minOrder > 0 && <span>Min ₹{store.minOrder}</span>}
         </div>
       </div>
     </Link>

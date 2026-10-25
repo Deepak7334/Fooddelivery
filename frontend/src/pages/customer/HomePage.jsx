@@ -5,22 +5,11 @@ import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import toast from 'react-hot-toast';
+import { calculateDistance, getVendorCoords, getVendorDistance, formatDistance } from '../../utils/distance';
 
 const HERO_FOOD_EMOJIS = ['🍕', '🍔', '🍛', '🌮', '🍜', '🥗'];
 
-// Haversine formula — returns distance in km between two lat/lng points
-function getDistanceKm(lat1, lng1, lat2, lng2) {
-  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+const getDistanceKm = calculateDistance;
 
 const DELIVERY_RADIUS_KM = 5; // deliver within 5 km
 
@@ -66,7 +55,9 @@ export default function HomePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [locationText, setLocationText] = useState(() => {
     try { 
-      return localStorage.getItem('jdkart_loc_name') || (localStorage.getItem('jdkart_coords') ? '📍 Current Location' : '');
+      const stored = localStorage.getItem('jdkart_loc_name');
+      if (stored) return stored.replace(/^[📍\s]+/, '');
+      return localStorage.getItem('jdkart_coords') ? 'Current Location' : '';
     } catch { return ''; }
   });
   // GPS coords stored separately from display text
@@ -163,18 +154,18 @@ export default function HomePage() {
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
           const data = await res.json();
-          let locName = '📍 Current Location';
+          let locName = 'Current Location';
           if (data && data.address) {
             const addr = data.address;
             const place = addr.amenity || addr.building || addr.neighbourhood || addr.suburb || addr.city_district || addr.village || addr.town || addr.city;
-            if (place) locName = `📍 ${place}`;
+            if (place) locName = place;
           }
           localStorage.setItem('jdkart_loc_name', locName);
           setLocationText(locName);
           window.dispatchEvent(new Event('locationUpdated'));
         } catch(e) {
-          localStorage.setItem('jdkart_loc_name', '📍 Current Location');
-          setLocationText('📍 Current Location');
+          localStorage.setItem('jdkart_loc_name', 'Current Location');
+          setLocationText('Current Location');
           window.dispatchEvent(new Event('locationUpdated'));
         }
 
@@ -206,7 +197,7 @@ export default function HomePage() {
         return d !== null && d <= DELIVERY_RADIUS_KM;
       });
     }
-    if (locationText.trim() && locationText !== '📍 Current Location') {
+    if (locationText.trim() && !locationText.includes('Current Location')) {
       const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
       return restaurants.filter(r => {
         const c = r.city?.toLowerCase() || '';
@@ -227,7 +218,7 @@ export default function HomePage() {
         return d !== null && d <= DELIVERY_RADIUS_KM;
       });
     }
-    if (locationText.trim() && locationText !== '📍 Current Location') {
+    if (locationText.trim() && !locationText.includes('Current Location')) {
       const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
       return stores.filter(s => {
         const c = s.city?.toLowerCase() || '';
@@ -238,8 +229,8 @@ export default function HomePage() {
     return stores;
   }, [stores, userCoords, locationText]);
 
-  // Determine if we're "out of range" only when the user explicitly used GPS
-  const isOutOfRange = userCoords && (restaurants.length > 0 || stores.length > 0) && visibleRestaurants.length === 0 && visibleStores.length === 0;
+  // Determine if we're "out of range" when the user used GPS, only after loading completes
+  const isOutOfRange = Boolean(userCoords) && !loading && !locLoading && visibleRestaurants.length === 0 && visibleStores.length === 0;
 
   // Set of restaurant IDs that serve items matching the active category
   const matchingRestIds = useMemo(() => {
@@ -307,8 +298,19 @@ export default function HomePage() {
           return hasCuisine || hasName || (vId && matchingRestIds.has(vId));
         }
       })
-      .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  }, [visibleRestaurants, visibleStores, search, activeCategory, matchingRestIds, matchingStoreIds]);
+      .sort((a, b) => {
+        if (userCoords) {
+          const distA = getVendorDistance(a, userCoords);
+          const distB = getVendorDistance(b, userCoords);
+          if (distA != null && distB != null && Math.abs(distA - distB) > 0.05) {
+            return distA - distB;
+          }
+          if (distA != null && distB == null) return -1;
+          if (distA == null && distB != null) return 1;
+        }
+        return (b.rating || 0) - (a.rating || 0);
+      });
+  }, [visibleRestaurants, visibleStores, search, activeCategory, matchingRestIds, matchingStoreIds, userCoords]);
 
   const visibleFoods = useMemo(() => {
     return foods;
@@ -585,31 +587,47 @@ export default function HomePage() {
               </button>
             </form>
 
-            {/* GPS out-of-range banner */}
+            {/* GPS checking/loading pill */}
+            {(locLoading || (loading && userCoords)) && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                marginTop: 14, padding: '6px 14px', borderRadius: 100,
+                background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.25)',
+                fontSize: 13, color: 'var(--primary)', fontWeight: 600
+              }}>
+                <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, display: 'inline-block' }} />
+                <span>Checking service in your area…</span>
+              </div>
+            )}
+
+            {/* GPS out-of-range banner — stays visible near search box */}
             {isOutOfRange && (
               <div style={{
-                marginTop: 20, padding: '14px 18px', borderRadius: 12,
+                marginTop: 16, padding: '14px 18px', borderRadius: 14,
                 background: 'rgba(244,67,54,0.12)', border: '1px solid rgba(244,67,54,0.3)',
-                color: '#F44336', fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+                color: '#F44336', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'
               }}>
-                <span>
-                  <strong>"We can't reach you — sorry! Very soon we expand in your Area!"</strong>
-                  <button onClick={clearLocation} style={{ marginLeft: 10, background: 'transparent', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline', fontSize: 13, fontWeight: 700 }}>
-                    Try Again
-                  </button>
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>📍</span>
+                  <span>
+                    <strong>"Our service hasn't reached your area yet! We're expanding soon."</strong>
+                  </span>
+                </div>
+                <button type="button" onClick={clearLocation} className="btn btn-primary btn-sm" style={{ padding: '6px 16px', borderRadius: 8, fontSize: 13 }}>
+                  Try Another City
+                </button>
               </div>
             )}
 
             {/* GPS in-range info pill */}
-            {userCoords && !isOutOfRange && visibleRestaurants.length > 0 && (
+            {!loading && !locLoading && userCoords && !isOutOfRange && (visibleRestaurants.length > 0 || visibleStores.length > 0) && (
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                marginTop: 16, padding: '6px 14px', borderRadius: 100,
+                marginTop: 14, padding: '6px 14px', borderRadius: 100,
                 background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)',
                 fontSize: 13, color: '#4CAF50', fontWeight: 600
               }}>
-                ✅ {visibleRestaurants.length} restaurant{visibleRestaurants.length !== 1 ? 's' : ''} delivering near you
+                ✅ {(visibleRestaurants.length + visibleStores.length)} vendor{(visibleRestaurants.length + visibleStores.length) !== 1 ? 's' : ''} delivering near you
               </div>
             )}
 
@@ -664,7 +682,7 @@ export default function HomePage() {
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* ALL VENDORS (Restaurants & Stores) */}
-          {(mixedVendors.length > 0 || !activeCategory) && (
+          {(loading || mixedVendors.length > 0) && (
             <section style={{ padding: '8px 0 32px', order: search ? 2 : 1 }}>
               <div className="container">
                 <div className="section-header">
@@ -678,29 +696,13 @@ export default function HomePage() {
                     <Link to="/stores" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Stores →</Link>
                   </div>
                 </div>
-                {mixedVendors.length > 0 ? (
-                  <div className="vendor-grid horizontal-scroll-mobile">
-                    {loading ? Array(6).fill(0).map((_, i) => (
-                      <div key={i} style={{ height: 270, borderRadius: 16 }} className="shimmer" />
-                    )) : mixedVendors.map(v => (
-                      v.isStore ? <StoreCard key={v._id} store={v} /> : <RestaurantCard key={v._id} restaurant={v} userCoords={userCoords} />
-                    ))}
-                  </div>
-                ) : !loading && !activeCategory && (
-                  <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
-                    
-                    {(userCoords || (locationText && !locationText.includes('Current Location'))) ? (
-                      <>
-                        <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 800, marginBottom: 16, color: 'var(--text-primary)' }}>"Our service hasn't reached your area yet! We're expanding soon."</h2>
-                        <button className="btn btn-primary" style={{ marginTop: 16, padding: '10px 24px' }} onClick={clearLocation}>
-                          Try Again
-                        </button>
-                      </>
-                    ) : (
-                      <p>We couldn't find any matches in this area.</p>
-                    )}
-                  </div>
-                )}
+                <div className="vendor-grid horizontal-scroll-mobile">
+                  {loading ? Array(6).fill(0).map((_, i) => (
+                    <div key={i} style={{ height: 270, borderRadius: 16 }} className="shimmer" />
+                  )) : mixedVendors.map(v => (
+                    v.isStore ? <StoreCard key={v._id} store={v} userCoords={userCoords} /> : <RestaurantCard key={v._id} restaurant={v} userCoords={userCoords} />
+                  ))}
+                </div>
               </div>
             </section>
           )}
@@ -809,9 +811,8 @@ export default function HomePage() {
 
 // ── Restaurant Card ──
 function RestaurantCard({ restaurant, userCoords }) {
-  const rLat = restaurant.location?.coordinates ? restaurant.location.coordinates[1] : restaurant.location?.lat;
-  const rLng = restaurant.location?.coordinates ? restaurant.location.coordinates[0] : restaurant.location?.lng;
-  const d = getDistanceKm(userCoords?.lat, userCoords?.lng, rLat, rLng);
+  const dist = getVendorDistance(restaurant, userCoords);
+  const distStr = formatDistance(dist);
   return (
     <Link to={`/restaurants/${restaurant._id}`} className="card" style={{ textDecoration: 'none' }}>
       <div style={{ position: 'relative', height: 160, background: 'var(--bg-card2)', overflow: 'hidden' }}>
@@ -828,9 +829,9 @@ function RestaurantCard({ restaurant, userCoords }) {
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', padding: '3px 9px', borderRadius: 100 }}>
           <span style={{ color: '#FFD700', fontSize: 12 }}>⭐ {restaurant.rating?.toFixed(1)}</span>
         </div>
-        {d != null && (
-          <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', padding: '3px 9px', borderRadius: 100, fontSize: 11, color: '#fff' }}>
-            📍 {d.toFixed(1)} km
+        {distStr && (
+          <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', padding: '3px 9px', borderRadius: 100, fontSize: 11, color: '#fff', fontWeight: 600 }}>
+            📍 {distStr}
           </div>
         )}
       </div>
@@ -1034,8 +1035,10 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
 }
 
 // ── Store Card ──
-function StoreCard({ store }) {
+function StoreCard({ store, userCoords }) {
   const typeInfo = STORE_TYPES.find(t => t._id === store.storeType) || STORE_TYPES[0];
+  const dist = getVendorDistance(store, userCoords);
+  const distStr = formatDistance(dist);
 
   return (
     <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none', overflow: 'hidden' }}>
@@ -1060,6 +1063,11 @@ function StoreCard({ store }) {
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', padding: '3px 10px', borderRadius: 100, fontSize: 12 }}>
           <span style={{ color: '#FFD700', fontSize: 12 }}>⭐ {store.rating?.toFixed(1)}</span>
         </div>
+        {distStr && (
+          <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', padding: '3px 9px', borderRadius: 100, fontSize: 11, color: '#fff', fontWeight: 600 }}>
+            📍 {distStr}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '14px 16px' }}>

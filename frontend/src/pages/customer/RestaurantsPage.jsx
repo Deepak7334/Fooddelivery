@@ -3,6 +3,8 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useMemo } from 'react';
+import { getVendorDistance, formatDistance } from '../../utils/distance';
 import toast from 'react-hot-toast';
 
 export default function RestaurantsPage() {
@@ -14,6 +16,22 @@ export default function RestaurantsPage() {
   const [sort, setSort] = useState('');
   const [cuisine, setCuisine] = useState(searchParams.get('cuisine') || '');
   const [vegOnly, setVegOnly] = useState(searchParams.get('veg') === 'true');
+
+  const [userCoords, setUserCoords] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('jdkart_coords') || 'null'); } catch { return null; }
+  });
+
+  useEffect(() => {
+    const handleLocUpdate = () => {
+      try {
+        setUserCoords(JSON.parse(localStorage.getItem('jdkart_coords') || 'null'));
+      } catch {
+        setUserCoords(null);
+      }
+    };
+    window.addEventListener('locationUpdated', handleLocUpdate);
+    return () => window.removeEventListener('locationUpdated', handleLocUpdate);
+  }, []);
 
   const { addToCart } = useCart();
   const navigate = useNavigate();
@@ -64,6 +82,27 @@ export default function RestaurantsPage() {
       .finally(() => setLoading(false));
     // eslint-disable-next-line
   }, [debouncedSearch, sort, cuisine, vegOnly, searchParams]);
+
+  // Sort restaurants with support for Nearest / Distance
+  const displayedRestaurants = useMemo(() => {
+    if (!restaurants || restaurants.length === 0) return [];
+    let list = [...restaurants];
+    if (sort === 'nearest' || (!sort && userCoords)) {
+      list.sort((a, b) => {
+        const distA = getVendorDistance(a, userCoords);
+        const distB = getVendorDistance(b, userCoords);
+        if (distA != null && distB != null && Math.abs(distA - distB) > 0.05) {
+          return distA - distB;
+        }
+        if (distA != null && distB == null) return -1;
+        if (distA == null && distB != null) return 1;
+        return (b.rating || 0) - (a.rating || 0);
+      });
+    } else if (sort === 'rating') {
+      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    return list;
+  }, [restaurants, sort, userCoords]);
 
   const handleAddFood = (food) => {
     addToCart(food, food.restaurantId?._id);
@@ -138,6 +177,7 @@ export default function RestaurantsPage() {
 
             <select value={sort} onChange={e => setSort(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
               <option value="">Sort by</option>
+              <option value="nearest">📍 Nearest</option>
               <option value="rating">⭐ Rating</option>
               <option value="deliveryTime">Delivery Time</option>
               <option value="deliveryFee">Delivery Fee</option>
@@ -183,7 +223,7 @@ export default function RestaurantsPage() {
                 )
               ) : (
                 <div className="vendor-grid">
-                  {restaurants.map(r => <RestaurantCard key={r._id} restaurant={r} />)}
+                  {displayedRestaurants.map(r => <RestaurantCard key={r._id} restaurant={r} userCoords={userCoords} />)}
                 </div>
               )}
             </div>
@@ -223,27 +263,35 @@ export default function RestaurantsPage() {
   );
 }
 
-function RestaurantCard({ restaurant }) {
+function RestaurantCard({ restaurant, userCoords }) {
+  const dist = getVendorDistance(restaurant, userCoords);
+  const distStr = formatDistance(dist);
+
   return (
     <Link to={`/restaurants/${restaurant._id}`} className="card" style={{ textDecoration: 'none' }}>
-      <div style={{ position: 'relative', height: 170, background: 'var(--bg-card2)' }}>
+      <div style={{ position: 'relative', height: 170, background: 'var(--bg-card2)', overflow: 'hidden' }}>
         {restaurant.image ? (
           <img loading="lazy" src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}></div>
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🍽️</div>
         )}
-        {!restaurant.isOpen && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>Closed</div>}
+        {!restaurant.isOpen && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>Closed</div>}
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', padding: '3px 10px', borderRadius: 100, fontSize: 12 }}>
-          ⭐ {restaurant.rating?.toFixed(1)}
+          <span style={{ color: '#FFD700' }}>⭐ {restaurant.rating?.toFixed(1)}</span>
         </div>
+        {distStr && (
+          <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', padding: '3px 9px', borderRadius: 100, fontSize: 11, color: '#fff', fontWeight: 600 }}>
+            📍 {distStr}
+          </div>
+        )}
       </div>
       <div style={{ padding: '14px 16px' }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{restaurant.name}</div>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{restaurant.cuisine?.join(' • ')}</div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-          <span>{restaurant.deliveryTime}</span>
-          <span>₹{restaurant.deliveryFee}</span>
-          <span> Min ₹{restaurant.minOrder}</span>
+          <span>⏱ {restaurant.deliveryTime}</span>
+          <span>₹{restaurant.deliveryFee} delivery</span>
+          <span>Min ₹{restaurant.minOrder}</span>
         </div>
       </div>
     </Link>
