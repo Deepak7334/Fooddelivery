@@ -241,20 +241,74 @@ export default function HomePage() {
   // Determine if we're "out of range" only when the user explicitly used GPS
   const isOutOfRange = userCoords && (restaurants.length > 0 || stores.length > 0) && visibleRestaurants.length === 0 && visibleStores.length === 0;
 
+  // Set of restaurant IDs that serve items matching the active category
+  const matchingRestIds = useMemo(() => {
+    if (!activeCategory) return new Set();
+    const target = activeCategory.toLowerCase().trim();
+    return new Set(
+      foods
+        .filter(f => {
+          const c = (f.category || '').toLowerCase().trim();
+          const n = (f.name || '').toLowerCase().trim();
+          return (c && (c === target || c.includes(target) || target.includes(c))) || (n && n.includes(target));
+        })
+        .map(f => (f.restaurantId?._id || f.restaurantId)?.toString())
+        .filter(Boolean)
+    );
+  }, [foods, activeCategory]);
+
+  // Set of store IDs that have products matching the active category
+  const matchingStoreIds = useMemo(() => {
+    if (!activeCategory) return new Set();
+    const target = activeCategory.toLowerCase().trim();
+    return new Set(
+      products
+        .filter(p => {
+          const c = (p.category || '').toLowerCase().trim();
+          const n = (p.name || '').toLowerCase().trim();
+          return (c && (c === target || c.includes(target) || target.includes(c))) || (n && n.includes(target));
+        })
+        .map(p => (p.storeId?._id || p.storeId)?.toString())
+        .filter(Boolean)
+    );
+  }, [products, activeCategory]);
+
   const mixedVendors = useMemo(() => {
     const allVendors = [
       ...visibleRestaurants.map(r => ({ ...r, isStore: false })),
       ...visibleStores.map(s => ({ ...s, isStore: true })),
     ];
     const searchLower = search.toLowerCase();
+    const targetCat = activeCategory ? activeCategory.toLowerCase().trim() : null;
+
     return allVendors
       .filter(v => {
-        if (search && !v.name.toLowerCase().includes(searchLower)) return false;
-        if (!activeCategory) return true;
-        return v.isStore ? v.storeType === activeCategory : v.cuisine?.includes(activeCategory);
+        if (search && !v.name?.toLowerCase().includes(searchLower)) return false;
+        if (!targetCat) return true;
+
+        const vId = (v._id || '')?.toString();
+
+        if (v.isStore) {
+          const storeType = (v.storeType || '').toLowerCase().trim();
+          const storeName = (v.name || '').toLowerCase().trim();
+          return (
+            storeType === targetCat ||
+            storeType.includes(targetCat) ||
+            targetCat.includes(storeType) ||
+            storeName.includes(targetCat) ||
+            (vId && matchingStoreIds.has(vId))
+          );
+        } else {
+          const restName = (v.name || '').toLowerCase().trim();
+          const hasCuisine = Array.isArray(v.cuisine)
+            ? v.cuisine.some(c => typeof c === 'string' && (c.toLowerCase().includes(targetCat) || targetCat.includes(c.toLowerCase())))
+            : (typeof v.cuisine === 'string' && (v.cuisine.toLowerCase().includes(targetCat) || targetCat.includes(v.cuisine.toLowerCase())));
+          const hasName = restName.includes(targetCat);
+          return hasCuisine || hasName || (vId && matchingRestIds.has(vId));
+        }
       })
       .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  }, [visibleRestaurants, visibleStores, search, activeCategory]);
+  }, [visibleRestaurants, visibleStores, search, activeCategory, matchingRestIds, matchingStoreIds]);
 
   const visibleFoods = useMemo(() => {
     return foods;
@@ -286,9 +340,34 @@ export default function HomePage() {
           ) return false;
         }
         if (!activeCategory) return true;
-        return item.isProduct
-          ? item.storeId?.storeType === activeCategory || item.category === activeCategory
-          : item.category === activeCategory || item.restaurantId?.cuisine?.includes(activeCategory);
+        const targetCat = activeCategory.toLowerCase().trim();
+        if (item.isProduct) {
+          const storeType = (item.storeId?.storeType || '').toLowerCase().trim();
+          const cat = (item.category || '').toLowerCase().trim();
+          const name = (item.name || '').toLowerCase().trim();
+          return (
+            storeType === targetCat ||
+            storeType.includes(targetCat) ||
+            targetCat.includes(storeType) ||
+            cat === targetCat ||
+            cat.includes(targetCat) ||
+            targetCat.includes(cat) ||
+            name.includes(targetCat)
+          );
+        } else {
+          const cat = (item.category || '').toLowerCase().trim();
+          const name = (item.name || '').toLowerCase().trim();
+          const hasCuisine = Array.isArray(item.restaurantId?.cuisine)
+            ? item.restaurantId.cuisine.some(c => typeof c === 'string' && (c.toLowerCase().includes(targetCat) || targetCat.includes(c.toLowerCase())))
+            : (typeof item.restaurantId?.cuisine === 'string' && (item.restaurantId.cuisine.toLowerCase().includes(targetCat) || targetCat.includes(item.restaurantId.cuisine.toLowerCase())));
+          return (
+            cat === targetCat ||
+            cat.includes(targetCat) ||
+            targetCat.includes(cat) ||
+            name.includes(targetCat) ||
+            hasCuisine
+          );
+        }
       })
       // Use a stable shuffle seeded once, not on every render
       .sort((a, b) => {
@@ -585,14 +664,14 @@ export default function HomePage() {
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* ALL VENDORS (Restaurants & Stores) */}
-          {(mixedVendors.length > 0 || mixedItems.length === 0 || true) && (
+          {(mixedVendors.length > 0 || !activeCategory) && (
             <section style={{ padding: '8px 0 32px', order: search ? 2 : 1 }}>
               <div className="container">
                 <div className="section-header">
                   <h2 className="section-title">
-                    {userCoords || (locationText && locationText !== ' Current Location') ? 'Near' : 'Top'} <span>Restaurants & Stores</span>
+                    {userCoords || (locationText && !locationText.includes('Current Location')) ? 'Near' : 'Top'} <span>Restaurants & Stores</span>
                     {userCoords && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(within {DELIVERY_RADIUS_KM} km)</span>}
-                    {!userCoords && locationText && locationText !== ' Current Location' && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(near {locationText})</span>}
+                    {!userCoords && locationText && !locationText.includes('Current Location') && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>(near {locationText})</span>}
                   </h2>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <Link to="/restaurants" style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>All Restaurants →</Link>
@@ -607,10 +686,10 @@ export default function HomePage() {
                       v.isStore ? <StoreCard key={v._id} store={v} /> : <RestaurantCard key={v._id} restaurant={v} userCoords={userCoords} />
                     ))}
                   </div>
-                ) : !loading && (
+                ) : !loading && !activeCategory && (
                   <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
                     
-                    {(userCoords || (locationText && locationText !== '📍 Current Location')) ? (
+                    {(userCoords || (locationText && !locationText.includes('Current Location'))) ? (
                       <>
                         <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 800, marginBottom: 16, color: 'var(--text-primary)' }}>"Our service hasn't reached your area yet! We're expanding soon."</h2>
                         <button className="btn btn-primary" style={{ marginTop: 16, padding: '10px 24px' }} onClick={clearLocation}>
@@ -624,6 +703,20 @@ export default function HomePage() {
                 )}
               </div>
             </section>
+          )}
+
+          {/* Clean fallback when active category has neither vendors nor items */}
+          {activeCategory && mixedVendors.length === 0 && mixedItems.length === 0 && !loading && (
+            <div className="container" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🍽️</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+                No items or restaurants found for "{activeCategory}"
+              </h3>
+              <p style={{ fontSize: 14, marginBottom: 16 }}>Try selecting another category or clear the filter.</p>
+              <button className="btn btn-primary" onClick={() => setActiveCategory(null)} style={{ padding: '8px 20px' }}>
+                Show All
+              </button>
+            </div>
           )}
 
             {/* ALL ITEMS (Dishes & Products) */}
