@@ -129,14 +129,72 @@ export default function AuthPage() {
       </div>
 
       <div style={{ width: '100%', maxWidth: 440, position: 'relative' }}>
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <Link to="/" style={{ display: 'inline-block', fontSize: 28, fontWeight: 900, color: 'var(--primary)' }}>JDkart</Link>
-          <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 8 }}>
-            {view === 'customer' ? 'Login or signup to place your order.' : 'Partner Portal'}
+        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+          <Link to="/" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none' }}>
+            {/* Swiggy-like modern floating brand badge */}
+            <div style={{
+              width: 82,
+              height: 82,
+              borderRadius: 24,
+              background: 'linear-gradient(145deg, rgba(255, 87, 34, 0.14), rgba(255, 152, 0, 0.22))',
+              border: '1.5px solid rgba(255, 87, 34, 0.35)',
+              boxShadow: '0 12px 30px rgba(255, 87, 34, 0.25), 0 2px 6px rgba(0, 0, 0, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 10,
+              marginBottom: 12,
+              transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+              e.currentTarget.style.boxShadow = '0 18px 36px rgba(255, 87, 34, 0.38)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 12px 30px rgba(255, 87, 34, 0.25), 0 2px 6px rgba(0, 0, 0, 0.08)';
+            }}
+            >
+              <img
+                src="/logo.png"
+                alt="JDkart Logo"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 4px 8px rgba(255, 87, 34, 0.35))'
+                }}
+              />
+            </div>
+
+            {/* Premium Brand Typography */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              fontSize: 32,
+              fontWeight: 900,
+              fontFamily: "'Poppins', sans-serif",
+              letterSpacing: '-0.5px'
+            }}>
+              <span style={{ color: 'var(--primary)' }}>JD</span>
+              <span style={{ color: 'var(--text-primary)' }}>kart</span>
+            </div>
+          </Link>
+
+          <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 6, fontWeight: 500, letterSpacing: '0.1px' }}>
+            {view === 'customer' ? 'Login or signup to place your order.' : 'Partner Portal — Manage Orders & Menu'}
           </div>
         </div>
 
-        <div className="card" style={{ padding: 36 }}>
+        <div className="card" style={{
+          padding: 'clamp(28px, 5vw, 36px)',
+          borderRadius: 24,
+          boxShadow: '0 20px 48px rgba(0, 0, 0, 0.25)',
+          border: '1px solid var(--border)',
+          backdropFilter: 'blur(16px)',
+          background: 'var(--bg-card)'
+        }}>
           {view === 'customer' ? (
             <>
               {step === 1 ? (
@@ -150,7 +208,7 @@ export default function AuthPage() {
                     <label className="form-label">Email Address</label>
                     <input className="form-input" type="email" placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                   </div>
-                  <button type="submit" disabled={loading} className="btn btn-primary btn-full btn-lg" style={{ marginTop: 8 }}>
+                  <button type="submit" disabled={loading} className="btn btn-primary btn-full btn-lg" style={{ marginTop: 12, height: 48, borderRadius: 12, fontWeight: 700, fontSize: 15, boxShadow: '0 6px 20px rgba(255, 87, 34, 0.35)' }}>
                     {loading ? 'Sending OTP...' : 'Continue'}
                   </button>
                 </form>
@@ -176,7 +234,7 @@ export default function AuthPage() {
                     <div style={{ padding: '0 12px', fontSize: 12, fontWeight: 600 }}>OR</div>
                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
                   </div>
-                  <button type="button" onClick={handleGoogleLogin} disabled={loading} className="btn btn-secondary btn-full btn-lg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: '#fff', color: '#000' }}>
+                  <button type="button" onClick={handleGoogleLogin} disabled={loading} className="btn btn-secondary btn-full btn-lg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: '#fff', color: '#1f2937', height: 48, borderRadius: 12, border: '1px solid #e5e7eb', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                     <FcGoogle size={22} /> Continue with Google
                   </button>
                 </>
