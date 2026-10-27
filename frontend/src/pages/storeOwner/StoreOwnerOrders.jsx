@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { formatAddress } from '../../utils/address';
 
 const STATUS_COLORS = {
   pending: '#FF9800', accepted: '#2196F3', preparing: '#9C27B0',
@@ -88,7 +89,7 @@ export default function StoreOwnerOrders() {
               </div>
 
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-                📍 {order.deliveryAddress} · {new Date(order.createdAt).toLocaleString('en-IN')}
+                📍 {formatAddress(order.deliveryAddress)} · {new Date(order.createdAt).toLocaleString('en-IN')}
               </div>
 
               {/* Actions */}

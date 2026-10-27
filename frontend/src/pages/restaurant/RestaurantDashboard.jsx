@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext';
+import { formatAddress } from '../../utils/address';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ function OrderModal({ order, onClose, onAction, actionLoading }) {
             { label: 'Customer', value: order.customerId?.name || 'Customer' },
             { label: 'Phone', value: order.customerId?.phone || order.customerPhone || '—' },
             { label: 'Email', value: order.customerId?.email || order.customerEmail || '—', span: true },
-            { label: 'Address', value: order.deliveryAddress, span: true },
+            { label: 'Address', value: formatAddress(order.deliveryAddress), span: true },
             { label: 'Ordered', value: new Date(order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) },
             { label: 'Status', value: <StatusBadge status={order.status} /> },
           ].map(({ label, value, span }) => (

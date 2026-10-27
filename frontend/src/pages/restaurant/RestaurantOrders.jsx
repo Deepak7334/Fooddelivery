@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { formatAddress } from '../../utils/address';
 
 const STATUS_FLOW = { pending: 'accepted', accepted: 'preparing' };
 const STATUS_LABELS = { pending: 'Order Placed', accepted: 'Accepted', preparing: 'Preparing', out_for_delivery: 'Out for Delivery', delivered: 'Delivered', cancelled: 'Cancelled' };
@@ -98,7 +99,7 @@ export default function RestaurantOrders() {
                     <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{order.customerId?.name || 'Customer'}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}> {order.customerId?.phone || order.customerPhone || '—'} · {order.customerId?.email || '—'}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span>{order.deliveryAddress}</span>
+                      <span>{formatAddress(order.deliveryAddress)}</span>
                       {order.deliveryCoords && order.deliveryCoords.lat && (
                         <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--primary)', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
                            Open in Map

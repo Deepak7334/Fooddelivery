@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { formatAddress, getDeliveryCoords } from '../../utils/address';
 
 const STATUS_CFG = {
   assignment_pending: { label: 'New Assignment', color: '#F59E0B', icon: '' },
@@ -140,9 +141,13 @@ export default function DeliveryOrderPage() {
     finally { setActionLoading(false); }
   };
 
-  const openMaps = (address) => {
-    const q = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
+  const openMaps = (dest, coords) => {
+    if (coords && coords.lat && coords.lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`, '_blank');
+    } else {
+      const q = typeof dest === 'object' ? formatAddress(dest) : (dest || '');
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
+    }
   };
 
   if (loading) return (
@@ -158,8 +163,10 @@ export default function DeliveryOrderPage() {
   );
 
   const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
-  const vendorAddress = order.restaurantId?.address || order.storeId?.address || '—';
+  const vendorAddress = formatAddress(order.restaurantId?.address || order.storeId?.address);
   const vendorPhone = order.restaurantId?.phone || order.storeId?.phone || '—';
+  const deliveryAddressText = formatAddress(order.deliveryAddress);
+  const coords = getDeliveryCoords(order);
 
   return (
     <>
@@ -179,11 +186,11 @@ export default function DeliveryOrderPage() {
               <span style={{ fontSize: 22 }}>{STATUS_CFG[order.status]?.icon}</span>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 16, color: STATUS_CFG[order.status]?.color }}>{STATUS_CFG[order.status]?.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{order._id.slice(-8).toUpperCase()}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{order._id ? order._id.slice(-8).toUpperCase() : 'N/A'}</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 800, fontSize: 20, color: '#22C55E', fontFamily: 'monospace' }}>₹{order.deliveryFee}</div>
+              <div style={{ fontWeight: 800, fontSize: 20, color: '#22C55E', fontFamily: 'monospace' }}>₹{order.deliveryFee ?? 0}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>delivery earning</div>
             </div>
           </div>
@@ -221,19 +228,24 @@ export default function DeliveryOrderPage() {
           {/* Customer drop info */}
           <div className="info-section" style={{ background: 'rgba(34,197,94,0.05)', borderColor: 'rgba(34,197,94,0.2)' }}>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}> Deliver To</div>
-            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{order.customerId?.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{order.deliveryAddress}</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{order.customerId?.name || order.customerName || 'Customer'}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{deliveryAddressText}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>📞 {order.customerId?.phone || order.customerPhone || 'N/A'}</div>
             {order.alternatePhone && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>📱 Alt: {order.alternatePhone}</div>}
+            {coords && coords.lat && (
+              <a href={`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`} target="_blank" rel="noreferrer" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 12px', background: 'rgba(33, 150, 243, 0.12)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}>
+                🧭 Open Directions in Maps
+              </a>
+            )}
           </div>
 
           {/* Items */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Order Items</div>
             {order.items?.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#D1D5DB', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                 <span>{item.name} × {item.quantity}</span>
-                <span style={{ fontFamily: 'monospace' }}>₹{item.price * item.quantity}</span>
+                <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontWeight: 600 }}>₹{(item.price || 0) * (item.quantity || 1)}</span>
               </div>
             ))}
           </div>
@@ -241,10 +253,10 @@ export default function DeliveryOrderPage() {
           {/* Navigation Buttons */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             <button className="map-btn" onClick={() => openMaps(vendorAddress)}>
-              Vendor
+              Vendor Map
             </button>
-            <button className="map-btn green" onClick={() => openMaps(order.deliveryAddress)}>
-              Customer
+            <button className="map-btn green" onClick={() => openMaps(deliveryAddressText, coords)}>
+              Customer Map
             </button>
           </div>
 
@@ -298,7 +310,7 @@ export default function DeliveryOrderPage() {
 }
 
 const S = {
-  root: { fontFamily: "'DM Sans',sans-serif", background: 'var(--bg-dark)', minHeight: '100vh', padding: '16px', maxWidth: 540, margin: '0 auto', color: 'var(--text-primary)', paddingBottom: 32 },
+  root: { fontFamily: "'DM Sans',sans-serif", background: 'transparent', maxWidth: 540, margin: '0 auto', color: 'var(--text-primary)', padding: '0 0 32px' },
 };
 
 const CSS = `
@@ -307,9 +319,9 @@ const CSS = `
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
 * { box-sizing: border-box; }
 
-.active-card { background: var(--bg-card); border: 1px solid rgba(249,115,22,0.3); border-radius: 18px; padding: 20px; animation: fadeIn 0.3s ease; box-shadow: 0 0 24px rgba(249,115,22,0.08); }
+.active-card { background: var(--bg-card); border: 1px solid rgba(249,115,22,0.3); border-radius: 18px; padding: 20px; animation: fadeIn 0.3s ease; box-shadow: var(--shadow-card); transition: background 0.25s ease, border-color 0.25s ease; }
 .progress-steps { display: flex; align-items: flex-start; gap: 0; margin-bottom: 18px; }
-.info-section { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.info-section { background: var(--bg-card2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
 
 .map-btn { padding: 12px; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); border-radius: 10px; color: #3B82F6; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
 .map-btn:hover { background: rgba(59,130,246,0.22); }
@@ -319,4 +331,24 @@ const CSS = `
 .action-main { flex: 1; padding: 14px; background: #F97316; border: none; border-radius: 12px; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; width: 100%; }
 .action-main:hover { background: #EA6C0C; }
 .action-main:disabled { opacity: 0.5; cursor: not-allowed; }
+
+:root[data-theme="light"] .active-card {
+  background: #ffffff;
+  border-color: rgba(249, 115, 22, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+:root[data-theme="light"] .info-section {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+:root[data-theme="light"] .map-btn {
+  color: #2563EB;
+  background: rgba(37,99,235,0.08);
+  border-color: rgba(37,99,235,0.25);
+}
+:root[data-theme="light"] .map-btn.green {
+  color: #16A34A;
+  background: rgba(22,163,74,0.08);
+  border-color: rgba(22,163,74,0.25);
+}
 `;

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { formatAddress } from '../../utils/address';
 
 const MAIN_STEPS = ['pending', 'accepted', 'preparing', 'out_for_delivery', 'delivered'];
 const STEP_MAP = {
@@ -146,7 +147,7 @@ export default function OrderTrackingPage() {
         <div className="card" style={{ padding: 24 }}>
           <h3 style={{ fontWeight: 700, marginBottom: 16 }}> Order Details</h3>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
-            {order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart'} ·  {order.deliveryAddress}
+            {order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart'} ·  {formatAddress(order.deliveryAddress)}
           </div>
           {order.items?.map((item, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>

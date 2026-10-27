@@ -99,12 +99,12 @@ const PrivateRoute = ({ children, role }) => {
 import ChatBox from './components/ChatBox';
 
 const CustomerLayout = ({ children }) => (
-  <>
+  <div className="customer-layout">
     <Navbar />
     <main>{children}</main>
     <ChatBox />
     <Footer />
-  </>
+  </div>
 );
 
 const AdminLayout = ({ children }) => {

@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { formatAddress, getDeliveryCoords } from '../../utils/address';
 
 // ── Status Config ─────────────────────────────────────────────────────────────
 const STATUS_CFG = {
@@ -87,6 +90,7 @@ function OTPModal({ order, onVerify, onClose, loading }) {
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DeliveryDashboard() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [activeOrders, setActiveOrders]   = useState([]);
   const [pendingOrders, setPendingOrders] = useState([]);
   const [profile, setProfile]             = useState(null);
@@ -98,17 +102,17 @@ export default function DeliveryDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [activeRes, ordersRes, profileRes, earningsRes] = await Promise.all([
+      const [activeRes, ordersRes, profileRes, earningsRes] = await Promise.allSettled([
         api.get('/delivery/orders/active'),
         api.get('/delivery/orders?status=assignment_pending'),
         api.get('/delivery/profile'),
         api.get('/delivery/earnings'),
       ]);
-      setActiveOrders(activeRes.data.orders || []);
-      setPendingOrders(ordersRes.data.orders || []);
-      setProfile(profileRes.data.user);
-      setEarnings(earningsRes.data.stats);
-    } catch (e) { console.error(e); }
+      if (activeRes.status === 'fulfilled') setActiveOrders(activeRes.value.data.orders || []);
+      if (ordersRes.status === 'fulfilled') setPendingOrders(ordersRes.value.data.orders || []);
+      if (profileRes.status === 'fulfilled') setProfile(profileRes.value.data.user);
+      if (earningsRes.status === 'fulfilled') setEarnings(earningsRes.value.data.stats);
+    } catch (e) { console.error('Failed to load dashboard data:', e); }
     finally { setLoading(false); }
   }, []);
 
@@ -130,17 +134,17 @@ export default function DeliveryDashboard() {
         if (next.length < prev.length) toast.error('An active order was cancelled');
         return next;
       });
-      if (otpOrder?._id === orderId) setOtpOrder(null);
+      setOtpOrder(prev => prev?._id === orderId ? null : prev);
     });
     return () => socket.disconnect();
-  }, [user?._id, otpOrder?._id]);
+  }, [user?._id]);
 
   const lastLocUpdateRef = useRef(0);
 
   useEffect(() => {
     if (!profile || profile.deliveryStatus === 'offline') return;
     let watchId;
-    if ('geolocation' in navigator) {
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
       watchId = navigator.geolocation.watchPosition(
         ({ coords: { latitude, longitude } }) => {
           const now = Date.now();
@@ -150,11 +154,11 @@ export default function DeliveryDashboard() {
             lastLocUpdateRef.current = now;
           }
         },
-        err => {}, // Silently ignore geo errors (e.g. user denied)
-        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+        () => {}, // Silently ignore geo errors (e.g. user denied or desktop)
+        { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
       );
     }
-    return () => { if (watchId) navigator.geolocation.clearWatch(watchId); };
+    return () => { if (watchId && navigator.geolocation) navigator.geolocation.clearWatch(watchId); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.deliveryStatus, user?._id]);
 
@@ -210,8 +214,13 @@ export default function DeliveryDashboard() {
     } catch { toast.error('Failed to update availability'); }
   };
 
-  const openMaps = (address) => {
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+  const openMaps = (dest, coords) => {
+    if (coords && coords.lat && coords.lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`, '_blank');
+    } else {
+      const q = typeof dest === 'object' ? formatAddress(dest) : (dest || '');
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
+    }
   };
 
   const isOnline = profile?.deliveryStatus !== 'offline';
@@ -243,6 +252,14 @@ export default function DeliveryDashboard() {
             </div>
           </div>
           <div className="dd-topbar-right">
+            <button
+              onClick={toggleTheme}
+              className="dd-theme-toggle"
+              title={theme === 'dark' ? 'Switch to Day Mode' : 'Switch to Night Mode'}
+              aria-label="Toggle Day / Night Mode"
+            >
+              {theme === 'dark' ? <FiSun size={16} /> : <FiMoon size={16} />}
+            </button>
             <button
               className={`dd-status-toggle ${isOnline ? (isBusy ? 'busy' : 'online') : 'offline'}`}
               onClick={toggleAvailability}
@@ -286,24 +303,26 @@ export default function DeliveryDashboard() {
 
             {pendingOrders.map(order => {
               const vendorName = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
-              const vendorAddress = order.restaurantId?.address || order.storeId?.address || '—';
+              const vendorAddress = formatAddress(order.restaurantId?.address || order.storeId?.address);
               const vendorPhone   = order.restaurantId?.phone   || order.storeId?.phone   || '—';
+              const deliveryAddressText = formatAddress(order.deliveryAddress);
+              const coords = getDeliveryCoords(order);
               return (
                 <div key={order._id} className="dd-pending-card">
                   <div className="dd-pending-top">
                     <div>
-                      <div className="dd-order-id">#{order._id.slice(-8).toUpperCase()}</div>
+                      <div className="dd-order-id">#{order._id ? order._id.slice(-8).toUpperCase() : 'N/A'}</div>
                       <div className="dd-vendor-name">{vendorName}</div>
                       <div className="dd-delivery-addr">📦 {vendorAddress} (📞 {vendorPhone})</div>
-                      <div className="dd-delivery-addr">📍 {order.deliveryAddress?.slice(0, 45)}…</div>
-                      {order.deliveryCoords && order.deliveryCoords.lat && (
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '4px 10px', background: 'rgba(33, 150, 243, 0.1)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 6 }}>
-                          Navigate to Customer
+                      <div className="dd-delivery-addr">📍 {deliveryAddressText.length > 50 ? `${deliveryAddressText.slice(0, 50)}…` : deliveryAddressText}</div>
+                      {coords && coords.lat && (
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '4px 10px', background: 'rgba(33, 150, 243, 0.1)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 6 }}>
+                          🧭 Navigate to Customer
                         </a>
                       )}
                     </div>
                     <div className="dd-earn-pill">
-                      <div className="dd-earn-pill-amt">₹{order.deliveryFee}</div>
+                      <div className="dd-earn-pill-amt">₹{order.deliveryFee ?? 0}</div>
                       <div className="dd-earn-pill-lbl">earn</div>
                     </div>
                   </div>
@@ -350,8 +369,10 @@ export default function DeliveryDashboard() {
           ) : (
             activeOrders.map(order => {
               const vendorName    = order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart';
-              const vendorAddress = order.restaurantId?.address || order.storeId?.address || '—';
+              const vendorAddress = formatAddress(order.restaurantId?.address || order.storeId?.address);
               const vendorPhone   = order.restaurantId?.phone   || order.storeId?.phone   || '—';
+              const deliveryAddressText = formatAddress(order.deliveryAddress);
+              const coords        = getDeliveryCoords(order);
               const cfg           = STATUS_CFG[order.status] || {};
               const curIdx        = STATUS_ORDER.indexOf(order.status);
 
@@ -364,11 +385,11 @@ export default function DeliveryDashboard() {
                       <span className="dd-status-icon">{cfg.icon}</span>
                       <div>
                         <div className="dd-status-label" style={{ color: cfg.color }}>{cfg.label}</div>
-                        <div className="dd-order-id">#{order._id.slice(-8).toUpperCase()}</div>
+                        <div className="dd-order-id">#{order._id ? order._id.slice(-8).toUpperCase() : 'N/A'}</div>
                       </div>
                     </div>
                     <div className="dd-fee-display">
-                      <div className="dd-fee-amt">₹{order.deliveryFee}</div>
+                      <div className="dd-fee-amt">₹{order.deliveryFee ?? 0}</div>
                       <div className="dd-fee-lbl">your cut</div>
                     </div>
                   </div>
@@ -407,13 +428,13 @@ export default function DeliveryDashboard() {
                   {/* Drop Info */}
                   <div className="dd-info-block drop">
                     <div className="dd-info-label">🏠 Drop Off</div>
-                    <div className="dd-info-name">{order.customerId?.name}</div>
-                    <div className="dd-info-detail">{order.deliveryAddress}</div>
+                    <div className="dd-info-name">{order.customerId?.name || order.customerName || 'Customer'}</div>
+                    <div className="dd-info-detail">{deliveryAddressText}</div>
                     <div className="dd-info-detail">📞 {order.customerId?.phone || order.customerPhone || 'N/A'}</div>
-                    {order.alternatePhone && <div className="dd-info-detail"> Alt: {order.alternatePhone}</div>}
-                    {order.deliveryCoords && order.deliveryCoords.lat && (
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 12px', background: 'rgba(33, 150, 243, 0.1)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 6, fontWeight: 700 }}>
-                           Open in Google Maps
+                    {order.alternatePhone && <div className="dd-info-detail">📱 Alt: {order.alternatePhone}</div>}
+                    {coords && coords.lat && (
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 12px', background: 'rgba(33, 150, 243, 0.1)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 6, fontWeight: 700 }}>
+                           🧭 Open in Google Maps
                         </a>
                     )}
                   </div>
@@ -424,12 +445,12 @@ export default function DeliveryDashboard() {
                     {order.items?.map((item, i) => (
                       <div key={i} className="dd-item-row">
                         <span>{item.name} <span className="dd-item-qty">×{item.quantity}</span></span>
-                        <span className="dd-item-price">₹{item.price * item.quantity}</span>
+                        <span className="dd-item-price">₹{(item.price || 0) * (item.quantity || 1)}</span>
                       </div>
                     ))}
                     <div className="dd-items-total">
                       <span>Total</span>
-                      <span>₹{order.finalAmount}</span>
+                      <span>₹{order.finalAmount || 0}</span>
                     </div>
                   </div>
 
@@ -438,16 +459,31 @@ export default function DeliveryDashboard() {
                     <button className="dd-map-btn blue" onClick={() => openMaps(vendorAddress)}>
                       Vendor Map
                     </button>
-                    <button className="dd-map-btn green" onClick={() => openMaps(order.deliveryAddress)}>
+                    <button className="dd-map-btn green" onClick={() => openMaps(deliveryAddressText, coords)}>
                       Customer Map
                     </button>
                   </div>
 
                   {/* Action Button */}
-                  <div className="dd-action-row">
+                  <div className="dd-action-row" style={{ flexWrap: 'wrap' }}>
                     {order.status === 'accepted_by_driver' && (
+                      <>
+                        <button className="dd-action-btn teal" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'reached_restaurant')}>
+                           At Vendor
+                        </button>
+                        <button className="dd-action-btn cyan" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'on_the_way')}>
+                           Heading to Customer
+                        </button>
+                      </>
+                    )}
+                    {order.status === 'reached_restaurant' && (
+                      <button className="dd-action-btn purple" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'picked_up')}>
+                         Confirm Pickup
+                      </button>
+                    )}
+                    {order.status === 'picked_up' && (
                       <button className="dd-action-btn cyan" disabled={actionLoading} onClick={() => handleStatusUpdate(order._id, 'on_the_way')}>
-                         Start for Customer (On the Way)
+                         Heading to Customer
                       </button>
                     )}
                     {order.status === 'on_the_way' && (
@@ -486,7 +522,7 @@ const CSS = `
 /* ── Loader ── */
 .dd-loader {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 100vh; background: #080C14; gap: 14px; font-family: 'Inter', sans-serif;
+  min-height: 100vh; background: var(--bg-dark); gap: 14px; font-family: 'Inter', sans-serif;
   color: var(--text-muted); font-size: 14px;
 }
 .dd-spinner {
@@ -500,12 +536,12 @@ const CSS = `
 /* ── Root ── */
 .dd-root {
   font-family: 'Inter', sans-serif;
-  background: #080C14;
-  min-height: 100vh;
+  background: transparent;
+  min-height: auto;
   color: var(--text-primary);
   max-width: 600px;
   margin: 0 auto;
-  padding: 16px 16px 48px;
+  padding: 0 0 48px;
 }
 
 /* ── Top Bar ── */
@@ -513,12 +549,14 @@ const CSS = `
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #111827;
-  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
   border-radius: 16px;
   padding: 14px 16px;
   margin-bottom: 14px;
   gap: 12px;
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 .dd-topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .dd-avatar {
@@ -531,6 +569,16 @@ const CSS = `
 .dd-name  { font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-vehicle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .dd-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.dd-theme-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--glass); border: 1px solid var(--border);
+  color: var(--text-primary); cursor: pointer; transition: all 0.2s;
+}
+.dd-theme-toggle:hover {
+  background: var(--glass-border);
+}
 
 .dd-status-toggle {
   display: flex; align-items: center; gap: 6px;
@@ -545,7 +593,7 @@ const CSS = `
 }
 .dd-status-toggle.online  { background: rgba(34,197,94,0.1);  border-color: rgba(34,197,94,0.4);  color: #22C55E; }
 .dd-status-toggle.busy    { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.4); color: #F59E0B; }
-.dd-status-toggle.offline { background: rgba(107,114,128,0.1);border-color: rgba(107,114,128,0.4);color: var(--text-secondary); }
+.dd-status-toggle.offline { background: var(--glass); border-color: var(--border); color: var(--text-secondary); }
 .dd-status-dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: currentColor;
@@ -565,16 +613,18 @@ const CSS = `
 /* ── Earnings Strip ── */
 .dd-earnings-strip {
   display: flex;
-  background: #111827;
-  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 18px;
   gap: 0;
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 .dd-earn-card { flex: 1; text-align: center; }
 .dd-earn-divider {
-  width: 1px; background: var(--glass-border);
+  width: 1px; background: var(--border);
   align-self: stretch; margin: 0 4px;
 }
 .dd-earn-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 5px; }
@@ -606,13 +656,14 @@ const CSS = `
 
 /* ── Pending Card ── */
 .dd-pending-card {
-  background: #111827;
+  background: var(--bg-card);
   border: 1px solid rgba(245,158,11,0.3);
+  box-shadow: var(--shadow-card);
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 12px;
   animation: dd-fadein 0.25s ease;
-  box-shadow: 0 0 20px rgba(245,158,11,0.06);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 .dd-pending-top {
   display: flex; justify-content: space-between;
@@ -650,18 +701,19 @@ const CSS = `
 
 /* ── Active Card ── */
 .dd-active-card {
-  background: #111827;
+  background: var(--bg-card);
   border: 1px solid rgba(249,115,22,0.25);
   border-radius: 20px;
   padding: 20px;
   margin-bottom: 16px;
   animation: dd-fadein 0.3s ease;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(249,115,22,0.05);
+  box-shadow: var(--shadow-card);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 .dd-active-header {
   display: flex; justify-content: space-between; align-items: center;
   padding-bottom: 16px;
-  border-bottom: 1px solid;
+  border-bottom: 1px solid var(--border);
   margin-bottom: 16px;
 }
 .dd-status-info { display: flex; align-items: center; gap: 10px; }
@@ -683,8 +735,8 @@ const CSS = `
 }
 .dd-step-circle {
   width: 32px; height: 32px; border-radius: 50%;
-  background: var(--glass);
-  border: 2px solid var(--glass-border);
+  background: var(--bg-card2);
+  border: 2px solid var(--border);
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 700;
   transition: all 0.3s;
@@ -698,16 +750,15 @@ const CSS = `
   margin-top: 5px; text-align: center;
   text-transform: uppercase; letter-spacing: 0.05em;
 }
-.dd-step-label.done { color: #D1D5DB; }
+.dd-step-label.done { color: var(--text-primary); }
 .dd-step-connector {
   position: absolute;
   top: 16px; left: calc(50% + 16px);
   width: calc(100% - 32px);
   height: 2px;
-  background: var(--glass-border);
+  background: var(--border);
   transition: background 0.3s;
 }
-.dd-step-connector.done { }
 
 /* ── Info Blocks ── */
 .dd-info-block {
@@ -715,12 +766,12 @@ const CSS = `
   border: 1px solid;
 }
 .dd-info-block.pickup {
-  background: rgba(249,115,22,0.05);
-  border-color: rgba(249,115,22,0.15);
+  background: rgba(249,115,22,0.06);
+  border-color: rgba(249,115,22,0.2);
 }
 .dd-info-block.drop {
-  background: rgba(34,197,94,0.05);
-  border-color: rgba(34,197,94,0.15);
+  background: rgba(34,197,94,0.06);
+  border-color: rgba(34,197,94,0.2);
 }
 .dd-info-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
 .dd-info-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
@@ -735,17 +786,18 @@ const CSS = `
 }
 .dd-item-row {
   display: flex; justify-content: space-between;
-  font-size: 13px; color: #D1D5DB;
+  font-size: 13px; color: var(--text-secondary);
   padding: 6px 0;
-  border-bottom: 1px solid var(--glass);
+  border-bottom: 1px solid var(--border);
 }
 .dd-item-qty { color: var(--text-muted); }
-.dd-item-price { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-secondary); }
+.dd-item-price { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-primary); }
 .dd-items-total {
   display: flex; justify-content: space-between;
   padding-top: 8px;
   font-size: 13px; font-weight: 700; color: var(--text-primary);
   font-family: 'JetBrains Mono', monospace;
+  border-top: 1px solid var(--border);
 }
 
 /* ── Map Row ── */
@@ -796,18 +848,19 @@ const CSS = `
 /* ── Empty / Idle States ── */
 .dd-empty-state {
   text-align: center; padding: 36px 20px;
-  background: rgba(255,255,255,0.025);
-  border: 1px dashed var(--glass-border);
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
   border-radius: 16px;
+  box-shadow: var(--shadow-card);
 }
 .dd-empty-icon  { font-size: 44px; margin-bottom: 10px; }
-.dd-empty-title { font-size: 15px; font-weight: 700; color: var(--text-secondary); }
+.dd-empty-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .dd-empty-sub   { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
 .dd-idle-banner {
   text-align: center; padding: 18px 20px;
-  background: rgba(34,197,94,0.05);
-  border: 1px solid rgba(34,197,94,0.15);
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.25);
   border-radius: 14px;
   color: #22C55E; font-weight: 700; font-size: 13px;
   margin-top: 4px;
@@ -816,20 +869,21 @@ const CSS = `
 /* ── OTP Modal ── */
 .dd-modal-backdrop {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0,0,0,0.75);
   backdrop-filter: blur(10px);
   z-index: 1000;
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
 .dd-modal {
-  background: #111827;
-  border: 1px solid var(--glass-border);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 32px 24px;
   width: 100%; max-width: 380px;
   animation: dd-fadein 0.2s ease;
   text-align: center;
+  box-shadow: var(--shadow);
 }
 .dd-modal-icon  { font-size: 52px; margin-bottom: 12px; line-height: 1; }
 .dd-modal-title { font-size: 22px; font-weight: 900; color: var(--text-primary); margin-bottom: 8px; }
@@ -844,8 +898,8 @@ const CSS = `
   text-align: center;
   font-size: 26px; font-weight: 900;
   font-family: 'JetBrains Mono', monospace;
-  background: var(--glass-border);
-  border: 2px solid var(--glass-border);
+  background: var(--bg-card2);
+  border: 2px solid var(--border);
   border-radius: 12px; color: var(--text-primary);
   outline: none; transition: all 0.2s;
 }
@@ -854,8 +908,8 @@ const CSS = `
 .dd-modal-actions  { display: flex; gap: 10px; }
 .dd-btn-ghost {
   flex: 1; padding: 13px;
-  background: var(--glass-border);
-  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  border: 1px solid var(--border);
   border-radius: 12px; color: var(--text-secondary);
   font-size: 14px; font-weight: 700;
   cursor: pointer; font-family: 'Inter', sans-serif;
@@ -872,6 +926,60 @@ const CSS = `
 }
 .dd-btn-confirm:hover:not(:disabled) { background: #16A34A; }
 .dd-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Light Mode Specific Refinements ── */
+:root[data-theme="light"] .dd-topbar,
+:root[data-theme="light"] .dd-earnings-strip,
+:root[data-theme="light"] .dd-pending-card,
+:root[data-theme="light"] .dd-active-card,
+:root[data-theme="light"] .dd-empty-state,
+:root[data-theme="light"] .dd-modal {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+:root[data-theme="light"] .dd-pending-card {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+:root[data-theme="light"] .dd-active-card {
+  border-color: rgba(249, 115, 22, 0.35);
+}
+:root[data-theme="light"] .dd-earn-value.green,
+:root[data-theme="light"] .dd-earn-pill-amt,
+:root[data-theme="light"] .dd-fee-amt {
+  color: #16A34A;
+}
+:root[data-theme="light"] .dd-earn-value.cyan {
+  color: #0891B2;
+}
+:root[data-theme="light"] .dd-earn-value.purple {
+  color: #7C3AED;
+}
+:root[data-theme="light"] .dd-map-btn.blue {
+  background: rgba(37,99,235,0.08);
+  border-color: rgba(37,99,235,0.25);
+  color: #2563EB;
+}
+:root[data-theme="light"] .dd-map-btn.green {
+  background: rgba(22,163,74,0.08);
+  border-color: rgba(22,163,74,0.25);
+  color: #16A34A;
+}
+:root[data-theme="light"] .dd-step-circle {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+:root[data-theme="light"] .dd-step-label.done {
+  color: #1e293b;
+}
+:root[data-theme="light"] .dd-otp-box {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+:root[data-theme="light"] .dd-idle-banner {
+  background: rgba(22,163,74,0.08);
+  border-color: rgba(22,163,74,0.22);
+  color: #16A34A;
+}
 
 /* ── Animations ── */
 @keyframes dd-spin    { to { transform: rotate(360deg); } }
