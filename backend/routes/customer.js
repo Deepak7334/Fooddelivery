@@ -578,7 +578,7 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
 });
 
 // Get my orders
-router.get('/orders', protect, authorize('customer'), async (req, res) => {
+router.get('/orders', protect, authorize('customer', 'admin', 'sub_admin'), async (req, res) => {
   try {
     const orders = await Order.find({ customerId: req.user._id })
       .sort({ createdAt: -1 })
@@ -591,9 +591,12 @@ router.get('/orders', protect, authorize('customer'), async (req, res) => {
 });
 
 // Get single order (for tracking)
-router.get('/orders/:id', protect, authorize('customer'), async (req, res) => {
+router.get('/orders/:id', protect, authorize('customer', 'admin', 'sub_admin'), async (req, res) => {
   try {
-    const order = await Order.findOne({ _id: req.params.id, customerId: req.user._id })
+    const query = (req.user.role === 'admin' || req.user.role === 'sub_admin')
+      ? { _id: req.params.id }
+      : { _id: req.params.id, customerId: req.user._id };
+    const order = await Order.findOne(query)
       .populate('restaurantId', 'name image address phone')
       .populate('storeId', 'name image address phone')
       .populate('deliveryAgentId', 'name phone vehicleNumber').lean();

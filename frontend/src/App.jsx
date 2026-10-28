@@ -85,6 +85,8 @@ const PrivateRoute = ({ children, role }) => {
   if (role) {
     if (role === 'admin' && user.role === 'sub_admin') {
       // sub_admin is allowed in admin routes
+    } else if (role === 'customer' && (user.role === 'admin' || user.role === 'sub_admin')) {
+      // admin and sub_admin are allowed to access customer routes (e.g. testing links or checking customer orders)
     } else if (user.role !== role) {
       if (user.role === 'admin' || user.role === 'sub_admin') return <Navigate to="/admin" replace />;
       if (user.role === 'restaurant') return <Navigate to="/restaurant" replace />;

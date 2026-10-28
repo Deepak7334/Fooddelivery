@@ -72,7 +72,7 @@ function sendOrderWhatsApp(order) {
   const orderNumber = order._id ? order._id.slice(-8).toUpperCase() : '';
   const statusLabel = STATUS_CONFIG[order.status]?.label || order.status || 'Confirmed';
   const amount = (order.finalAmount || order.total || 0).toLocaleString('en-IN');
-  const trackingLink = `${window.location.origin}/orders/${order._id}/track`;
+  const trackingLink = `${window.location.origin}/orders`;
   const websiteLink = window.location.origin;
 
   // Safe Unicode escape codes — completely immune to Windows file encoding errors
