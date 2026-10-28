@@ -142,37 +142,23 @@ router.patch('/orders/:id/status', async (req, res) => {
     order.statusHistory = order.statusHistory || [];
     order.statusHistory.push({ status, timestamp: new Date() });
 
-    // Generate and send OTP if marking out for delivery
+    // Generate and send OTP if marking out for delivery (only once)
     if (status === 'out_for_delivery') {
-      const crypto = require('crypto');
-      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const generatedOtp = order.deliveryOTP || Math.floor(100000 + Math.random() * 900000).toString();
+      const hadOtp = !!order.deliveryOTP;
       order.deliveryOTP = generatedOtp;
 
       const customerEmail = order.customerEmail || order.customerId?.email;
-      if (customerEmail) {
+      const customerName = (order.customerId?.name || 'Customer').replace(/^[0-9.eE+]+\s+/, '').trim() || 'Customer';
+      if (!hadOtp && customerEmail) {
         const sendEmail = require('../utils/sendEmail');
+        const { getDeliveryOtpEmailHtml } = require('../utils/emailTemplates');
+        const agentName = order.deliveryAgentName || order.deliveryAgentId?.name || '';
         await sendEmail({
           to: customerEmail,
-          subject: 'JDkart — Your Delivery OTP (Store Order)',
-          html: `
-            <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-              <div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center">
-                <h1 style="color:#fff;margin:0;font-size:22px">JDkart</h1>
-                <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px">Your store order is on the way!</p>
-              </div>
-              <div style="padding:28px 24px">
-                <p style="font-size:15px;color:#333">Hi <strong>${order.customerId?.name || 'Customer'}</strong>,</p>
-                <p style="font-size:14px;color:#555">Your store delivery is arriving shortly. Share this OTP with the delivery agent to confirm:</p>
-                <div style="text-align:center;margin:24px 0">
-                  <div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px">
-                    <div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div>
-                    <div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${generatedOtp}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `
-        }).catch(err => console.error('Failed to send OTP email:', err));
+          subject: 'Your Delivery OTP - JDkart',
+          html: getDeliveryOtpEmailHtml({ customerName, agentName, otp: generatedOtp }),
+        }).catch(err => console.error('Failed to send store OTP email:', err));
         console.log(`📦 OTP for Store Order ${order._id}: ${generatedOtp} → sent to ${customerEmail}`);
       }
     }

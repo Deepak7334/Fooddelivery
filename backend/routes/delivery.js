@@ -5,6 +5,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const generateOTP = require('../utils/generateOTP');
 const sendEmail = require('../utils/sendEmail');
+const { getDeliveryOtpEmailHtml } = require('../utils/emailTemplates');
 
 // All delivery routes require auth + delivery role
 router.use(protect, authorize('delivery'));
@@ -83,18 +84,21 @@ router.patch('/orders/:id/accept', async (req, res) => {
     order.agentAccepted = true;
     order.statusHistory.push({ status: 'accepted_by_driver', timestamp: new Date(), note: 'Accepted by delivery agent' });
 
-    // Generate and send OTP to customer
+    // Generate and send OTP to customer (only once)
     if (!order.deliveryOTP) {
       const otp = generateOTP();
       order.deliveryOTP = otp;
       const customerEmail = order.customerEmail || order.customerId?.email;
       const customerName = order.customerId?.name || 'Customer';
+      const agentName = req.user.name || order.deliveryAgentName || '';
 
-      sendEmail({
-        to: customerEmail,
-        subject: 'JDkart — Your Delivery Agent is Assigned',
-        html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDkart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Delivery Partner Assigned!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p><strong>${req.user.name}</strong> has been assigned to your order and is heading out.</p><p>Share this OTP with them to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
-      }).catch(err => console.error('Failed to send OTP email on agent accept', err));
+      if (customerEmail) {
+        sendEmail({
+          to: customerEmail,
+          subject: 'Your Delivery OTP - JDkart',
+          html: getDeliveryOtpEmailHtml({ customerName, agentName, otp }),
+        }).catch(err => console.error('Failed to send OTP email on agent accept', err));
+      }
     }
 
     await order.save();
@@ -164,38 +168,18 @@ router.patch('/orders/:id/status', async (req, res) => {
     if (!order) return res.status(404).json({ success: false, message: 'Order not found or wrong state' });
 
     if (status === 'reached_customer' && order.status !== 'reached_customer') {
-      // Generate OTP
-      const otp = generateOTP();
-      order.deliveryOTP = otp;
-
-      // Send Email (do not await so it doesn't block response)
-      if (order.customerId && order.customerId.email) {
-        const html = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-            <h2 style="color: #F97316; text-align: center;">Delivery Arrived! </h2>
-            <p>Hi ${order.customerId.name || 'Customer'},</p>
-            <p>Your delivery agent <strong>${req.user.name}</strong> has reached your location with your order.</p>
-            <p>Please provide the following OTP to the agent to securely receive your order:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <span style="font-size: 32px; font-weight: 800; background: #f3f4f6; padding: 10px 24px; border-radius: 8px; letter-spacing: 4px; color: #111827;">${otp}</span>
-            </div>
-            <p style="color: #6b7280; font-size: 14px;">Do not share this OTP with anyone else. The agent needs it to mark your order as delivered.</p>
-            <p style="margin-top: 30px;">Thank you for choosing us!<br><strong>The JDkart Team</strong></p>
-          </div>
-        `;
-        sendEmail({
-          to: order.customerId.email,
-          subject: 'Your Delivery OTP - JDkart',
-          html
-        }).catch(err => console.error('Failed to send OTP email:', err));
+      // Ensure OTP exists (reuse existing OTP, never overwrite it with a new one)
+      if (!order.deliveryOTP) {
+        order.deliveryOTP = generateOTP();
       }
+      const otp = order.deliveryOTP;
 
-      // Send Push Notification
+      // Send In-App & Push Notification only (no duplicate email)
       const NotificationService = require('../services/notificationService');
       await NotificationService.sendToCustomer(
-        order.customerId._id || order.customerId,
+        order.customerId?._id || order.customerId,
         'Delivery Arrived!',
-        `Your agent is here. Your delivery OTP is: ${otp}`,
+        `Your delivery agent ${req.user.name} has arrived. Please share your delivery OTP: ${otp}`,
         'ORDER_STATUS',
         req.app.get('io')
       ).catch(console.error);

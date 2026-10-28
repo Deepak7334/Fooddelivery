@@ -13,6 +13,7 @@ const Product = require('../models/Product');
 const Settings = require('../models/Settings');
 const generateOTP = require('../utils/generateOTP');
 const sendEmail = require('../utils/sendEmail');
+const { getDeliveryOtpEmailHtml } = require('../utils/emailTemplates');
 
 // All admin routes require auth + admin role
 // All admin routes require auth + admin or sub_admin role
@@ -470,16 +471,22 @@ router.patch('/orders/:id/status', async (req, res) => {
 
     let devOtp;
     if (status === 'out_for_delivery') {
-      const otp = generateOTP();
+      const otp = order.deliveryOTP || generateOTP();
+      const hadOtp = !!order.deliveryOTP;
       order.deliveryOTP = otp;
       devOtp = otp;
       const customerEmail = order.customerEmail || order.customerId?.email;
-      const customerName = order.customerId?.name || 'Customer';
-      await sendEmail({
-        to: customerEmail,
-        subject: 'JDkart — Thank you for ordering from JDkart! your order is on the way. Please share this OTP with the delivery agent to confirm delivery. Do not share this OTP with anyone else before the agent arrives.',
-        html: `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center"><h1 style="color:#fff;margin:0">🍕 JDkart</h1><p style="color:rgba(255,255,255,0.9);margin:6px 0 0">Your order is on the way!</p></div><div style="padding:28px 24px"><p>Hi <strong>${customerName}</strong>,</p><p>Share this OTP with the delivery agent to confirm delivery:</p><div style="text-align:center;margin:24px 0"><div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px"><div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div><div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div></div></div><p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share before the agent arrives.</p></div></div>`,
-      });
+      const customerName = (order.customerId?.name || 'Customer').replace(/^[0-9.eE+]+\s+/, '').trim() || 'Customer';
+      
+      // Only send OTP email if it was not already sent
+      if (!hadOtp && customerEmail) {
+        const agentName = order.deliveryAgentName || order.deliveryAgentId?.name || '';
+        await sendEmail({
+          to: customerEmail,
+          subject: 'Your Delivery OTP - JDkart',
+          html: getDeliveryOtpEmailHtml({ customerName, agentName, otp }),
+        }).catch(err => console.error('Failed to send admin dispatch OTP email:', err));
+      }
       
       // Send Push Notification
       const NotificationService = require('../services/notificationService');

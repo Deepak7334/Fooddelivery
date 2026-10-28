@@ -6,6 +6,7 @@ const Food = require('../models/Food');
 const Order = require('../models/Order');
 const generateOTP = require('../utils/generateOTP');
 const sendEmail = require('../utils/sendEmail');
+const { getDeliveryOtpEmailHtml } = require('../utils/emailTemplates');
 
 // All restaurant routes require auth + restaurant role
 router.use(protect, authorize('restaurant'));
@@ -133,42 +134,26 @@ router.patch('/orders/:id/status', async (req, res) => {
     order.status = status;
     order.statusHistory.push({ status, timestamp: new Date() });
 
-    // Auto-generate and send OTP when order goes out for delivery
+    // Auto-generate and send OTP when order goes out for delivery (only once)
     if (status === 'out_for_delivery') {
-      const otp = generateOTP();
+      const otp = order.deliveryOTP || generateOTP();
+      const hadOtp = !!order.deliveryOTP;
       order.deliveryOTP = otp;
 
       const customerEmail = order.customerEmail || order.customerId?.email;
-      const customerName = order.customerId?.name || 'Customer';
+      const customerName = (order.customerId?.name || 'Customer').replace(/^[0-9.eE+]+\s+/, '').trim() || 'Customer';
 
-      // Send OTP email
-      await sendEmail({
-        to: customerEmail,
-        subject: 'JDkart — Your Delivery OTP',
-        html: `
-          <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:500px;margin:auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-            <div style="background:linear-gradient(135deg,#FF5722,#FF9800);padding:28px 24px;text-align:center">
-              <h1 style="color:#fff;margin:0;font-size:22px">JDkart</h1>
-              <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px">Your order is on the way!</p>
-            </div>
-            <div style="padding:28px 24px">
-              <p style="font-size:15px;color:#333">Hi <strong>${customerName}</strong>,</p>
-              <p style="font-size:14px;color:#555">Your delivery agent is arriving shortly. Share this OTP with them to confirm delivery:</p>
-              <div style="text-align:center;margin:24px 0">
-                <div style="display:inline-block;background:#FFF3E0;border:2px dashed #FF5722;border-radius:12px;padding:16px 32px">
-                  <div style="font-size:11px;font-weight:700;color:#FF5722;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Delivery OTP</div>
-                  <div style="font-size:42px;font-weight:900;color:#FF5722;letter-spacing:12px;font-family:monospace">${otp}</div>
-                </div>
-              </div>
-              <p style="font-size:13px;color:#888;text-align:center">⚠️ Do NOT share this OTP before the delivery agent arrives at your door.</p>
-              <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0">
-              <p style="font-size:12px;color:#aaa;text-align:center">© JDkart — Fast, Fresh, Delivered</p>
-            </div>
-          </div>
-        `,
-      });
+      // Send OTP email only if not already sent
+      if (!hadOtp && customerEmail) {
+        const agentName = order.deliveryAgentName || order.deliveryAgentId?.name || '';
+        await sendEmail({
+          to: customerEmail,
+          subject: 'Your Delivery OTP - JDkart',
+          html: getDeliveryOtpEmailHtml({ customerName, agentName, otp }),
+        }).catch(err => console.error('Failed to send restaurant OTP email:', err));
 
-      console.log(` OTP for Order ${order._id}: ${otp} → sent to ${customerEmail}`);
+        console.log(` OTP for Order ${order._id}: ${otp} → sent to ${customerEmail}`);
+      }
     }
 
     if (status === 'delivered') {
