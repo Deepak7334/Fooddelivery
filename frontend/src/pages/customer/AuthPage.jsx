@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +24,8 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const { login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
 
   useEffect(() => {
     if (user) {
@@ -31,9 +33,9 @@ export default function AuthPage() {
       else if (user.role === 'restaurant') navigate('/restaurant', { replace: true });
       else if (user.role === 'store_owner') navigate('/store-owner', { replace: true });
       else if (user.role === 'delivery') navigate('/delivery', { replace: true });
-      else navigate('/', { replace: true });
+      else navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, from]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -78,20 +80,36 @@ export default function AuthPage() {
   };
 
   const handleGoogleLogin = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
+      // Forces immediate display of account chooser with all accounts listed without delay
+      provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider);
+      if (!result?.user) return;
+
       const idToken = await result.user.getIdToken();
+      const displayName = result.user.displayName || result.user.email?.split('@')[0] || 'JDkart Customer';
       
-      const res = await firebaseLogin(idToken, result.user.displayName, 'google');
-      if (res.success) {
+      const res = await firebaseLogin(idToken, displayName, 'google');
+      if (res?.success) {
         toast.success('Welcome to JDkart!');
-        navigate('/');
+        // Redirection is handled smoothly by the useEffect([user]) without race conditions
+      } else {
+        toast.error(res?.message || 'Google login failed');
       }
     } catch (error) {
-      console.error(error);
-      toast.error(error.message || 'Google login failed');
+      // Ignore when user voluntarily closes popup or clicks away
+      if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+        return;
+      }
+      if (error?.code === 'auth/popup-blocked') {
+        toast.error('Popup was blocked by your browser. Please allow popups for JDkart.');
+        return;
+      }
+      console.error('Google login error:', error);
+      toast.error(error?.response?.data?.message || error?.message || 'Google login failed');
     } finally {
       setLoading(false);
     }
