@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { FaWhatsapp } from 'react-icons/fa';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -59,7 +60,64 @@ function StatusBadge({ status }) {
     </span>
   );
 }
+// Helper: Send Order Confirmation & Tracking Link to Customer via WhatsApp
+function sendOrderWhatsApp(order) {
+  if (!order) return;
+  const rawPhone = order.customerId?.phone || order.customerPhone || '';
+  
+  // Clean customer name: remove Excel scientific notation like "9.50E+11 "
+  let customerName = order.customerId?.name || order.customerName || 'ग्राहक';
+  customerName = customerName.replace(/^[0-9.eE+]+\s+/, '').trim() || 'ग्राहक';
 
+  const orderNumber = order._id ? order._id.slice(-8).toUpperCase() : '';
+  const statusLabel = STATUS_CONFIG[order.status]?.label || order.status || 'Confirmed';
+  const amount = (order.finalAmount || order.total || 0).toLocaleString('en-IN');
+  const trackingLink = `${window.location.origin}/orders/${order._id}/track`;
+  const websiteLink = window.location.origin;
+
+  // Safe Unicode escape codes — completely immune to Windows file encoding errors
+  const message = [
+    `\u{1F389} *JDKart से ऑर्डर करने के लिए धन्यवाद!* \u{1F49A}`,
+    ``,
+    `नमस्ते ${customerName} जी \u{1F60A}`,
+    ``,
+    `आपका ऑर्डर *#${orderNumber}* सफलतापूर्वक मिल गया है। \u{1F6D2}`,
+    ``,
+    `\u{1F4E6} *Order Status:* ${statusLabel}`,
+    `\u{1F4B0} *कुल राशि:* ₹${amount}`,
+    ``,
+    `\u{1F4F2} *अपने ऑर्डर को यहाँ ट्रैक करें:*`,
+    `\u{1F517} ${trackingLink}`,
+    ``,
+    `\u2B50\u{1F49A} *आपका अनुभव हमारे लिए खास है!*`,
+    `सामान मिलने के बाद अपनी रेटिंग ज़रूर दें और JDKart को अपने दोस्तों के साथ भी शेयर करें। \u{1F970}\u{1F6CD}\uFE0F`,
+    ``,
+    `\u{1F517} ${websiteLink}`,
+    ``,
+    `\u{1F4AC} *कोई सवाल या परेशानी हो?*`,
+    `हमें इसी WhatsApp पर मैसेज करें। हम आपकी मदद के लिए यहाँ हैं! \u{1F60A}`,
+    ``,
+    `*JDKart — आपकी अपनी शॉपिंग सेवा* \u{1F49A}`
+  ].join('\n');
+
+  // Copy to clipboard as a 100% reliable backup with full emojis
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(message).catch(() => {});
+  }
+
+  // Clean phone number: strip non-digits, add India country code 91 if 10 digits
+  let cleaned = String(rawPhone || '').replace(/\D/g, '');
+  if (cleaned.length === 10) cleaned = '91' + cleaned;
+  else if (cleaned.startsWith('0') && cleaned.length === 11) cleaned = '91' + cleaned.slice(1);
+
+  // Use direct api.whatsapp.com to avoid buggy wa.me redirects
+  const url = cleaned
+    ? `https://api.whatsapp.com/send/?phone=${cleaned}&text=${encodeURIComponent(message)}`
+    : `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}`;
+
+  window.open(url, '_blank', 'noopener,noreferrer');
+  toast.success('WhatsApp खोला जा रहा है! (Message copied to clipboard)', { icon: '💬' });
+}
 // ── Order Detail Modal ─────────────────────────────────────────────────────
 
 function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loading }) {
@@ -130,11 +188,74 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
           </div>
         )}
 
+        {/* WhatsApp Customer Update Card */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(37,211,102,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FaWhatsapp size={20} color="#25D366" />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Customer WhatsApp Update</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Send order confirmation &amp; live tracking link</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => sendOrderWhatsApp(order)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#25D366',
+              color: '#fff',
+              padding: '8px 14px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(37,211,102,0.25)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <FaWhatsapp size={16} /> Send on WhatsApp
+          </button>
+        </div>
+
         {/* Info grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           {[
             { label: 'Customer', value: order.customerId?.name || '—' },
-            { label: 'Phone', value: order.customerId?.phone || order.customerPhone || '—' },
+            { 
+              label: 'Phone', 
+              value: (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                  <span>{order.customerId?.phone || order.customerPhone || '—'}</span>
+                  {(order.customerId?.phone || order.customerPhone) && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); sendOrderWhatsApp(order); }}
+                      title="Send tracking link on WhatsApp"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        background: 'rgba(37,211,102,0.15)',
+                        color: '#25D366',
+                        border: '1px solid rgba(37,211,102,0.3)',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <FaWhatsapp size={12} /> WhatsApp
+                    </button>
+                  )}
+                </div>
+              )
+            },
             { label: 'Email', value: order.customerId?.email || order.customerEmail || '—', span: true },
             { 
               label: 'Address', 
@@ -476,6 +597,15 @@ export default function AdminOrders() {
                       <td onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           <button className="ao-btn" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => setSelectedOrder(o)}>View</button>
+                          <button
+                            type="button"
+                            className="ao-btn"
+                            style={{ padding: '4px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(37,211,102,0.12)', color: '#25D366', border: '1px solid rgba(37,211,102,0.35)' }}
+                            onClick={(e) => { e.stopPropagation(); sendOrderWhatsApp(o); }}
+                            title="Send WhatsApp update to customer"
+                          >
+                            <FaWhatsapp size={12} /> WhatsApp
+                          </button>
                           {nextStatuses.filter(s => s !== 'cancelled').map(ns => (
                             <button key={ns} className="ao-btn-primary" style={{ padding: '4px 10px', fontSize: 11 }} disabled={actionLoading} onClick={() => handleStatusChange(o._id, ns)}>
                               {ns === 'accepted' ? 'Accept' : ns === 'preparing' ? 'Prepare' : ns === 'out_for_delivery' ? '🚴 Dispatch' : ns === 'delivered' ? '✅ Done' : ns}
@@ -509,9 +639,18 @@ export default function AdminOrders() {
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDkart'} · {o.items?.map(i => i.name).join(', ')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, color: 'var(--success)', fontSize: 15 }}>₹{o.finalAmount}</span>
-                  <span style={{ fontSize: 12, color: o.deliveryAgentId ? '#06B6D4' : 'var(--text-muted)' }}>
-                    {o.deliveryAgentId ? `🚴 ${o.deliveryAgentId?.name || o.deliveryAgentName}` : 'No agent'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: o.deliveryAgentId ? '#06B6D4' : 'var(--text-muted)' }}>
+                      {o.deliveryAgentId ? `🚴 ${o.deliveryAgentId?.name || o.deliveryAgentName}` : 'No agent'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); sendOrderWhatsApp(o); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 6, background: 'rgba(37,211,102,0.15)', color: '#25D366', border: '1px solid rgba(37,211,102,0.4)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      <FaWhatsapp size={12} /> WhatsApp
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
