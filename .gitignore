@@ -21,11 +21,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Flutter tooling (JDkart customer app)
+# Flutter tooling (JDkart customer + restaurant apps)
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 *.iml
-
-# Separate mobile workspaces (tracked in their own repos)
-restaurant_app/
