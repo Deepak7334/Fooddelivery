@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'notifications_screen.dart';
 import 'restaurant_details_screen.dart';
 import 'categories_screen.dart';
 import 'checkout_screen.dart';
 import 'cart_screen.dart';
 import 'product_details_screen.dart';
-import 'search_screen.dart';
 import 'select_location_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/cart_service.dart';
@@ -25,7 +25,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool isVegMode = false;
   int _selectedCategoryIndex = 0; // 0 = All
   String _currentAddress = 'Akbarpur, Rohtas, Bihar';
   String _currentLocationTitle = 'Home';
@@ -144,9 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<FoodItemModel> get _filteredFoods {
     List<FoodItemModel> list = _backendFoods;
-    if (isVegMode) {
-      list = list.where((f) => f.isVeg).toList();
-    }
     if (_selectedCategoryIndex > 0 && _selectedCategoryIndex <= _backendCategories.length) {
       final selectedCat = _backendCategories[_selectedCategoryIndex - 1].name.toLowerCase();
       list = list.where((f) => f.category.toLowerCase().contains(selectedCat) || selectedCat.contains(f.category.toLowerCase())).toList();
@@ -219,15 +215,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 12, bottom: 8),
                   child: _buildTopBar(),
                 ),
-              ),
-            ),
-
-            // Sticky search bar
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _StickySearchBarDelegate(
-                height: MediaQuery.of(context).padding.top + 70.0,
-                child: _buildSearchBarContainer(),
               ),
             ),
 
@@ -399,81 +386,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 12),
           GestureDetector(
-            onTap: widget.onProfileTap,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
             child: CircleAvatar(
               backgroundColor: jdkartOrange,
               radius: 19,
-              child: const Icon(Icons.person, color: Colors.white, size: 21),
+              child: const Icon(Icons.notifications_rounded, color: Colors.white, size: 21),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBarContainer() {
-    final double statusBarHeight = MediaQuery.of(context).padding.top;
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.only(top: statusBarHeight + 6, bottom: 8),
-      child: _buildSearchBar(),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
-              },
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey[200]!),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 14),
-                    Icon(Icons.search, color: coralRed, size: 26),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Search food, dishes, restaurants...',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 14, fontWeight: FontWeight.w500),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // VEG MODE Toggle
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('VEG\nMODE', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 8.5, letterSpacing: 0.5)),
-              SizedBox(
-                height: 22,
-                child: Switch(
-                  value: isVegMode,
-                  onChanged: (v) => setState(() => isVegMode = v),
-                  activeThumbColor: Colors.green,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              )
-            ],
-          )
         ],
       ),
     );
@@ -724,7 +648,6 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               setState(() {
                 _selectedCategoryIndex = 0;
-                isVegMode = false;
               });
             },
             child: _buildFilterChip(Icons.restart_alt, 'Reset'),
@@ -890,7 +813,7 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 120,
         alignment: Alignment.center,
         child: Text(
-          isVegMode ? 'No pure veg items in this category' : 'No food items found',
+          'No food items found',
           style: TextStyle(color: Colors.grey[500], fontSize: 14),
         ),
       );
@@ -1387,28 +1310,5 @@ class _HomeScreenState extends State<HomeScreen> {
         childCount: _backendRestaurants.length,
       ),
     );
-  }
-}
-
-class _StickySearchBarDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  final double height;
-
-  _StickySearchBarDelegate({required this.child, required this.height});
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
-  }
-
-  @override
-  double get maxExtent => height;
-
-  @override
-  double get minExtent => height;
-
-  @override
-  bool shouldRebuild(covariant _StickySearchBarDelegate oldDelegate) {
-    return oldDelegate.height != height || oldDelegate.child != child;
   }
 }
