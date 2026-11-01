@@ -198,46 +198,102 @@ router.post('/verify-email-otp', async (req, res) => {
 });
 
 // @POST /api/auth/firebase-login
+// Dual-strategy verification:
+// 1. Firebase Auth ID tokens (sent by Web frontend via Firebase Web SDK)
+// 2. Google OAuth ID tokens (sent by Flutter mobile app via google_sign_in)
 router.post('/firebase-login', async (req, res) => {
   try {
-    const { idToken, name, loginProvider } = req.body;
+    const { idToken, name, loginProvider = 'google' } = req.body;
     if (!idToken) return res.status(400).json({ success: false, message: 'No ID token provided' });
 
-    const { getAuth, getApps } = require('../services/firebase');
-    if (getApps().length === 0) {
-      return res.status(500).json({ success: false, message: 'Firebase Admin not configured on server' });
+    let verifiedEmail = null;
+    let verifiedName = name || null;
+    let firebaseUid = null;
+    let phoneNumber = null;
+
+    // Strategy 1: Verify as Firebase Auth ID token (Web Frontend)
+    try {
+      const { getAuth, getApps } = require('../services/firebase');
+      if (getApps().length > 0) {
+        const decodedToken = await getAuth().verifyIdToken(idToken);
+        if (decodedToken) {
+          verifiedEmail = decodedToken.email;
+          firebaseUid = decodedToken.uid;
+          phoneNumber = decodedToken.phone_number;
+          verifiedName = verifiedName || decodedToken.name;
+        }
+      }
+    } catch (firebaseErr) {
+      // Not a Firebase Auth token (likely Google OAuth ID token from mobile app). Fall through to Strategy 2.
     }
 
-    const decodedToken = await getAuth().verifyIdToken(idToken);
-    const { uid, phone_number, email } = decodedToken;
+    // Strategy 2: Verify as Google OAuth ID token (Flutter Mobile App)
+    if (!verifiedEmail) {
+      const audiences = [
+        process.env.GOOGLE_WEB_CLIENT_ID,
+        process.env.GOOGLE_ANDROID_CLIENT_ID,
+        '331203442565-4e95r580udt4hsjhj860ojotd94blm3p.apps.googleusercontent.com',
+        '331203442565-7mn17n85280034sgjh724jf4rf0bcksa.apps.googleusercontent.com',
+      ].filter(Boolean);
 
-    // Try to find user by firebaseUid, or phone, or email
-    let user = await User.findOne({ 
+      try {
+        const { OAuth2Client } = require('google-auth-library');
+        const ticket = await new OAuth2Client().verifyIdToken({ idToken, audience: audiences });
+        const payload = ticket.getPayload();
+        if (payload && payload.email_verified === true) {
+          verifiedEmail = payload.email;
+          verifiedName = verifiedName || payload.name;
+          firebaseUid = firebaseUid || payload.sub;
+        }
+      } catch (googleErr) {
+        console.error('Google OAuth verification failed:', googleErr.message);
+      }
+    }
+
+    if (!verifiedEmail) {
+      return res.status(401).json({
+        success: false,
+        message: 'Google did not verify this sign-in. Invalid or expired token. Please try again or use Email OTP.',
+      });
+    }
+
+    // Locate or create user record
+    let user = await User.findOne({
       $or: [
-        { firebaseUid: uid },
-        ...(phone_number ? [{ phone: phone_number }] : []),
-        ...(email ? [{ email: email }] : [])
-      ]
+        ...(firebaseUid ? [{ firebaseUid }] : []),
+        { email: verifiedEmail },
+        ...(phoneNumber ? [{ phone: phoneNumber }] : []),
+      ],
     });
 
-    if (user) {
-      // Update missing firebase fields if we matched by phone/email
-      if (!user.firebaseUid) {
-        user.firebaseUid = uid;
-        user.loginProvider = loginProvider || 'phone';
-        await user.save();
-      }
-    } else {
-      // Create new customer
+    if (!user) {
       user = new User({
-        firebaseUid: uid,
-        phone: phone_number,
-        email: email,
-        name: name || 'JDkart Customer',
+        email: verifiedEmail,
+        name: verifiedName || 'JDkart Customer',
+        phone: phoneNumber || '',
+        firebaseUid: firebaseUid || '',
         role: 'customer',
-        loginProvider: loginProvider || 'phone'
+        loginProvider,
       });
       await user.save();
+    } else {
+      if (user.role !== 'customer') {
+        return res.status(403).json({ success: false, message: 'Please log in from the restaurant app.' });
+      }
+      let changed = false;
+      if (!user.name && verifiedName) {
+        user.name = verifiedName;
+        changed = true;
+      }
+      if (!user.firebaseUid && firebaseUid) {
+        user.firebaseUid = firebaseUid;
+        changed = true;
+      }
+      if (!user.loginProvider) {
+        user.loginProvider = loginProvider;
+        changed = true;
+      }
+      if (changed) await user.save();
     }
 
     // Generate JWT
@@ -260,8 +316,8 @@ router.post('/firebase-login', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Firebase Login Error:', err);
-    res.status(401).json({ success: false, message: 'Invalid or expired Firebase token' });
+    console.error('Unified Auth Error:', err);
+    res.status(500).json({ success: false, message: 'Login failed. Please try again.' });
   }
 });
 

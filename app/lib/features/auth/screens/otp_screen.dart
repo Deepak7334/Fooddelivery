@@ -394,7 +394,7 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    disabledBackgroundColor: _jdkartOrange.withOpacity(0.6),
+                    disabledBackgroundColor: _jdkartOrange.withValues(alpha: 0.6),
                   ),
                   child: _isLoading
                       ? const SizedBox(

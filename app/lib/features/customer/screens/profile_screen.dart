@@ -1,19 +1,39 @@
 import 'package:flutter/material.dart';
 import 'orders_screen.dart';
 import 'addresses_screen.dart';
+import 'my_bookings_screen.dart';
 import 'notifications_screen.dart';
 import 'wishlist_screen.dart';
 import 'offers_screen.dart';
-import 'table_booking_screen.dart';
 import '../../auth/screens/login_screen.dart';
+import '../../../models/user_model.dart';
 import '../../../services/auth_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final Color jdkartOrange = const Color(0xFFF97316);
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncFromServer();
+  }
+
+  Future<void> _syncFromServer() async {
+    if (!AuthService.instance.isAuthenticated) return;
+    final user = await AuthService.instance.refreshProfile();
+    if (mounted && user != null) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final Color jdkartOrange = const Color(0xFFF97316);
     final user = AuthService.instance.currentUser;
     final userName = user != null && user.name.isNotEmpty ? user.name : 'JDKart Customer';
     final userEmail = user != null && user.email.isNotEmpty ? user.email : 'customer@jdkart.in';
@@ -57,6 +77,11 @@ class ProfileScreen extends StatelessWidget {
                           ],
                         ),
                       ),
+                      IconButton(
+                        tooltip: 'Edit profile',
+                        onPressed: () => _openProfileEditor(user),
+                        icon: Icon(Icons.edit_outlined, color: jdkartOrange, size: 22),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -77,7 +102,7 @@ class ProfileScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withOpacity(0.2),
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 20),
@@ -111,7 +136,7 @@ class ProfileScreen extends StatelessWidget {
               _MenuItem(icon: Icons.shopping_bag_outlined, title: 'My Orders', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()))),
               _MenuItem(icon: Icons.favorite_border_rounded, title: 'Wishlist & Favorites', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WishlistScreen()))),
               _MenuItem(icon: Icons.location_on_outlined, title: 'Saved Addresses', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressesScreen()))),
-              _MenuItem(icon: Icons.table_restaurant_rounded, title: 'Table Reservations', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TableBookingScreen()))),
+              _MenuItem(icon: Icons.table_restaurant_rounded, title: 'My Table Reservations', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyBookingsScreen()))),
             ]),
             const SizedBox(height: 14),
 
@@ -239,8 +264,148 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(BuildContext context, List<_MenuItem> items) {
-    return Container(
+  void _openProfileEditor(UserModel? user) {
+    if (user == null || !AuthService.instance.isAuthenticated) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
+    final nameController = TextEditingController(text: user.name);
+    final phoneController = TextEditingController(text: user.phone);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Edit profile',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E293B)),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Mobile Number',
+                  border: OutlineInputBorder(),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Email ${user.email} is managed by your login and cannot be changed here.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12.5),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : () => _saveProfile(ctx, nameController, phoneController, setSheetState),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: jdkartOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : const Text('Save Changes',
+                          style:
+                              TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).whenComplete(() {
+      nameController.dispose();
+      phoneController.dispose();
+    });
+  }
+
+  Future<void> _saveProfile(
+    BuildContext sheetContext,
+    TextEditingController nameController,
+    TextEditingController phoneController,
+    StateSetter setSheetState,
+  ) async {
+    final name = nameController.text.trim();
+    final phone = phoneController.text.trim();
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(sheetContext).showSnackBar(
+        const SnackBar(
+            content: Text('Please enter your name.'),
+            backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    setSheetState(() => _saving = true);
+    final result =
+        await AuthService.instance.updateProfile(name: name, phone: phone);
+    if (!mounted) return;
+    setSheetState(() => _saving = false);
+
+    if (result['success'] == true) {
+      Navigator.pop(sheetContext);
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Profile updated'),
+            backgroundColor: Color(0xFF16A34A)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ??
+              'Could not update your profile. Please try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Widget _buildSection(BuildContext context, List<_MenuItem> items) {    return Container(
       color: Colors.white,
       child: Column(
         children: items.map((item) {

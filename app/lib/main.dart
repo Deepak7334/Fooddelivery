@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
 import 'features/auth/screens/splash_screen.dart';
+import 'features/customer/screens/notifications_screen.dart';
 import 'services/auth_service.dart';
 import 'services/cart_service.dart';
+import 'services/push_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AuthService.instance.loadSession();
   await CartService.instance.loadCart();
   ApiClient.tokenProvider = () => AuthService.instance.token;
+  PushService.instance.onNotificationOpened = _openNotificationList;
   runApp(const FoodhubApp());
+}
+
+void _openNotificationList() {
+  final context = PushService.instance.navigatorKey.currentContext;
+  if (context == null) return;
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+  );
 }
 
 class FoodhubApp extends StatelessWidget {
@@ -20,6 +31,7 @@ class FoodhubApp extends StatelessWidget {
     return MaterialApp(
       title: 'JDkart',
       debugShowCheckedModeBanner: false,
+      navigatorKey: PushService.instance.navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.orange,
         primaryColor: const Color(0xFFF97316),

@@ -76,7 +76,7 @@ class _OffersScreenState extends State<OffersScreen> {
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFFF97316).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                      BoxShadow(color: const Color(0xFFF97316).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
                     ],
                   ),
                   child: Column(
@@ -127,7 +127,7 @@ class _OffersScreenState extends State<OffersScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 3)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 3)),
         ],
       ),
       child: Column(
@@ -209,7 +209,7 @@ class _OffersScreenState extends State<OffersScreen> {
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: jdkartOrange,
-                          side: BorderSide(color: jdkartOrange.withOpacity(0.5)),
+                          side: BorderSide(color: jdkartOrange.withValues(alpha: 0.5)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),

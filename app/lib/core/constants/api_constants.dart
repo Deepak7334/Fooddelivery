@@ -5,29 +5,27 @@ class ApiConstants {
   static const String sendEmailOtp = '$baseUrl/auth/send-email-otp';
   static const String verifyEmailOtp = '$baseUrl/auth/verify-email-otp';
   static const String firebaseLogin = '$baseUrl/auth/firebase-login';
-  static const String login = '$baseUrl/auth/login';
-  static const String register = '$baseUrl/auth/register';
   static const String me = '$baseUrl/auth/me';
+  static const String profile = '$baseUrl/auth/profile';
 
-  // Customer Catalog
+  // Customer catalog
   static const String categories = '$baseUrl/customer/categories';
   static const String restaurants = '$baseUrl/customer/restaurants';
   static const String foods = '$baseUrl/customer/foods';
-  static const String promo = '$baseUrl/customer/settings/promo';
 
-  // Stores & Products
-  static const String stores = '$baseUrl/store/stores';
-  static const String products = '$baseUrl/store/products';
-
-  // Checkout & Orders
-  static const String checkoutInfo = '$baseUrl/customer/checkout-info';
+  // Orders
   static const String orders = '$baseUrl/customer/orders';
 
-  // Addresses & Notifications
+  // Addresses & notifications
   static const String addresses = '$baseUrl/addresses';
   static const String notifications = '$baseUrl/notifications';
+  static const String saveFcmToken = '$baseUrl/notifications/save-token';
+  static const String removeFcmToken = '$baseUrl/notifications/remove-token';
 
-  // Table Bookings
+  // Serviceability
+  static const String checkServiceability = '$baseUrl/serviceability/check';
+
+  // Table bookings
   static const String bookings = '$baseUrl/booking/customer/bookings';
   static const String myBookings = '$baseUrl/booking/customer/bookings/mine';
   static const String bookingAvailability = '$baseUrl/booking/availability';

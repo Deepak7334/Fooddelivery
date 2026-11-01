@@ -6,6 +6,7 @@ import 'categories_screen.dart';
 import 'search_screen.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
+import '../../../services/push_service.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({Key? key}) : super(key: key);
@@ -17,6 +18,14 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
   final ValueNotifier<bool> _isNavbarVisible = ValueNotifier<bool>(true);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PushService.instance.registerForPush();
+    });
+  }
 
   @override
   void dispose() {
@@ -99,7 +108,7 @@ class _MainLayoutState extends State<MainLayout> {
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08), 
+                      color: Colors.black.withValues(alpha: 0.08), 
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     )

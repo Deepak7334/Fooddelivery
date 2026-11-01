@@ -78,9 +78,19 @@ class ApiClient {
         }
 
         if (response.statusCode == 401) {
-          throw const ApiException(
-              'Session expired. Please log in again.',
-              statusCode: 401);
+          // A 401 on a login-type call has no session to expire; the server
+          // message explains what was rejected (e.g. a bad Google token).
+          if (auth) {
+            throw const ApiException(
+                'Session expired. Please log in again.',
+                statusCode: 401);
+          }
+          final loginMessage =
+              data is Map && data['message'] != null ? data['message'].toString() : null;
+          throw ApiException(
+            loginMessage ?? 'We could not verify those details. Please try again.',
+            statusCode: 401,
+          );
         }
         if (response.statusCode >= 400) {
           final serverMessage =

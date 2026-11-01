@@ -19,6 +19,14 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
 
+  static const String _googleServerClientId =
+      '331203442565-4e95r580udt4hsjhj860ojotd94blm3p.apps.googleusercontent.com';
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: _googleServerClientId,
+  );
+
   static const Color _jdkartOrange = Color(0xFFF97316);
   static const Color _jdkartSlate = Color(0xFF1E293B);
 
@@ -78,26 +86,23 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleLoading) return;
     setState(() => _isGoogleLoading = true);
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId: '331203442565-4e95r580udt4hsjhj860ojotd94blm3p.apps.googleusercontent.com',
-      );
+      // Clear any stale/partial session first. Without this, a previously
+      // half-completed sign-in makes signIn() auto-resolve and the chooser
+      // flash closed ("glitching" button).
+      await _googleSignIn.signOut();
 
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
-      if (account == null) {
-        if (mounted) setState(() => _isGoogleLoading = false);
-        return;
-      }
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account == null) return; // user dismissed the chooser
 
       final GoogleSignInAuthentication auth = await account.authentication;
-      final String? idToken = auth.idToken;
 
       final result = await AuthService.instance.completeGoogleSignIn(
         email: account.email,
         name: account.displayName ?? 'JDkart Customer',
-        idToken: idToken,
+        idToken: auth.idToken,
       );
 
       if (!mounted) return;
@@ -123,14 +128,25 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-In: ' + e.toString()),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+      final error = e.toString();
+      if (error.contains('cancel') || error.contains('Cancel')) return;
+      if (!mounted) return;
+
+      String message = 'Google sign-in failed. Please try again or use Email OTP.';
+      if (error.contains('DEVELOPER_ERROR') ||
+          error.contains('sign_in_failed') ||
+          error.contains('ApiException: 10')) {
+        message = 'Google login is not configured for this build yet '
+            '(app fingerprint missing in Firebase). Please use Email OTP.';
+      } else if (error.contains('network') ||
+          error.contains('io-error') ||
+          error.contains('SocketException') ||
+          error.contains('Timeout')) {
+        message = 'Could not reach Google. Check your internet connection and try again.';
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+      );
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -299,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          disabledBackgroundColor: _jdkartOrange.withOpacity(0.6),
+                          disabledBackgroundColor: _jdkartOrange.withValues(alpha: 0.6),
                         ),
                         child: _isLoading
                             ? const SizedBox(
@@ -359,30 +375,32 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _isGoogleLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CustomPaint(
-                              size: const Size(22, 22),
-                              painter: _GoogleLogoPainter(),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Continue with Google',
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: _jdkartSlate,
-                                fontWeight: FontWeight.w600,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: _isGoogleLoading
+                            ? const CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: _jdkartOrange,
+                              )
+                            : CustomPaint(
+                                painter: _GoogleLogoPainter(),
                               ),
-                            ),
-                          ],
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Continue with Google',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: _jdkartSlate,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 

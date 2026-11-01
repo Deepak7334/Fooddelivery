@@ -96,6 +96,6 @@ class OrderService {
   /// Cancel order. Throws [ApiException] on failure.
   Future<void> cancelOrder(String orderId) async {
     await ApiClient.instance
-        .put('${ApiConstants.orders}/$orderId/cancel', auth: true);
+        .patch('${ApiConstants.orders}/$orderId/cancel', auth: true);
   }
 }

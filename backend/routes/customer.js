@@ -648,7 +648,7 @@ router.post('/orders/:id/verify-otp', protect, authorize('customer'), async (req
 });
 
 // Cancel order
-router.patch('/orders/:id/cancel', protect, authorize('customer'), async (req, res) => {
+const cancelOrderHandler = async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, customerId: req.user._id });
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
@@ -664,7 +664,9 @@ router.patch('/orders/:id/cancel', protect, authorize('customer'), async (req, r
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-});
+};
+router.patch('/orders/:id/cancel', protect, authorize('customer'), cancelOrderHandler);
+router.put('/orders/:id/cancel', protect, authorize('customer'), cancelOrderHandler);
 
 // ========== STORE ORDER PLACEMENT ==========
 router.post('/store-orders', protect, authorize('customer'), async (req, res) => {

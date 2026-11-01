@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/api_constants.dart';
 import '../core/network/api_client.dart';
 import '../core/network/api_exception.dart';
 import '../models/user_model.dart';
+import 'push_service.dart';
 
 class AuthService {
   AuthService._();
@@ -153,8 +155,64 @@ class AuthService {
     return firebaseLogin(idToken: idToken, name: name);
   }
 
+  /// Pull the authoritative profile from the backend. Silently keeps the
+  /// cached user when the request fails, so offline launches still work.
+  Future<UserModel?> refreshProfile() async {
+    if (!isAuthenticated) return null;
+    try {
+      final data = await ApiClient.instance.get(ApiConstants.me, auth: true);
+      if (data is Map && data['user'] is Map) {
+        final user =
+            UserModel.fromJson(Map<String, dynamic>.from(data['user']));
+        _currentUser = user;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('foodhub_user', jsonEncode(user.toJson()));
+        return user;
+      }
+    } on ApiException catch (e) {
+      debugPrint('Profile refresh failed: ${e.message}');
+    }
+    return _currentUser;
+  }
+
+  /// Save profile edits on the server, then update the local cache.
+  Future<Map<String, dynamic>> updateProfile({
+    String? name,
+    String? phone,
+    String? address,
+  }) async {
+    if (!isAuthenticated) {
+      return {'success': false, 'message': 'Please log in first.'};
+    }
+    try {
+      final data = await ApiClient.instance.put(ApiConstants.profile, body: {
+        if (name != null) 'name': name,
+        if (phone != null) 'phone': phone,
+        if (address != null) 'address': address,
+      }, auth: true);
+
+      if (data is Map && data['success'] == true && data['user'] is Map) {
+        final user =
+            UserModel.fromJson(Map<String, dynamic>.from(data['user']));
+        _currentUser = user;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('foodhub_user', jsonEncode(user.toJson()));
+        return {'success': true, 'message': 'Profile updated'};
+      }
+      return {
+        'success': false,
+        'message': data is Map && data['message'] != null
+            ? data['message'].toString()
+            : 'Could not update your profile. Please try again.',
+      };
+    } on ApiException catch (e) {
+      return {'success': false, 'message': e.message};
+    }
+  }
+
   /// Log out and clear session
   Future<void> logout() async {
+    await PushService.instance.unregister();
     _token = null;
     _currentUser = null;
     try {

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,6 +11,10 @@ import 'package:foodhub/services/auth_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // flutter_test swaps dart:io's HttpClient for a mock that replies to every
+  // request with an empty 400, so the stub-server tests below need real sockets.
+  // Must happen before ApiClient builds its pooled client.
+  HttpOverrides.global = null;
 
   group('Google login session contract', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -41,6 +48,56 @@ void main() {
         ApiClient.instance.get('http://127.0.0.1:9/api/nothing'),
         throwsA(isA<ApiException>()
             .having((e) => e.message, 'message', isNotEmpty)),
+      );
+    });
+
+    test('401 on a login call keeps the server reason', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((req) async {
+        await req.drain();
+        req.response
+          ..statusCode = HttpStatus.unauthorized
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({
+            'success': false,
+            'message': 'Google did not verify this sign-in. Please try again.',
+          }));
+        await req.response.close();
+      });
+      addTearDown(() => server.close(force: true));
+
+      await expectLater(
+        ApiClient.instance
+            .post('http://127.0.0.1:${server.port}/api/auth/firebase-login', {
+          'idToken': 'not-a-real-token',
+          'name': 'Dev',
+        }),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', contains('Google did not verify'))
+            .having((e) => e.statusCode, 'statusCode', 401)),
+      );
+    });
+
+    test('401 on an authenticated call reports an expired session', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((req) async {
+        await req.drain();
+        req.response
+          ..statusCode = HttpStatus.unauthorized
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({
+            'success': false,
+            'message': 'Token invalid or expired',
+          }));
+        await req.response.close();
+      });
+      addTearDown(() => server.close(force: true));
+
+      await expectLater(
+        ApiClient.instance.get('http://127.0.0.1:${server.port}/api/customer/orders',
+            auth: true),
+        throwsA(isA<ApiException>().having(
+            (e) => e.message, 'message', 'Session expired. Please log in again.')),
       );
     });
   });

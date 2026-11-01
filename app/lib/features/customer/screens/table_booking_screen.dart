@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/network/api_exception.dart';
+import '../../../core/widgets/error_widget.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/booking_service.dart';
-import '../../../core/network/api_exception.dart';
+import 'my_bookings_screen.dart';
 
 class TableBookingScreen extends StatefulWidget {
   final String? restaurantId;
@@ -22,22 +25,18 @@ class TableBookingScreen extends StatefulWidget {
 class _TableBookingScreenState extends State<TableBookingScreen> {
   DateTime _selectedDate = DateTime.now();
   int _guestsCount = 2;
-  String _selectedSlot = '01:00 PM';
-  int _selectedTableNumber = 1;
-  bool _isLoading = false;
+  int? _selectedTableNumber;
+  String _selectedSlot = '';
+
+  List<AvailableTable> _tables = [];
+  bool _isLoadingTables = false;
+  String? _tablesError;
+  bool _isSubmitting = false;
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final Color jdkartOrange = const Color(0xFFF97316);
-
-  final List<String> _defaultSlots = [
-    '12:00 PM',
-    '01:00 PM',
-    '02:00 PM',
-    '07:00 PM',
-    '08:00 PM',
-    '09:00 PM',
-  ];
 
   @override
   void initState() {
@@ -46,6 +45,11 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     if (user != null) {
       _nameController.text = user.name;
       _phoneController.text = user.phone;
+    }
+    if (widget.restaurantId == null || widget.restaurantId!.isEmpty) {
+      _tablesError = 'Open a restaurant to reserve its table.';
+    } else {
+      _loadAvailability();
     }
   }
 
@@ -61,62 +65,152 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     if (widget.restaurantName != null && widget.restaurantName!.isNotEmpty) {
       return widget.restaurantName!;
     }
-    return 'Annapurna Family Restaurant';
+    return 'this restaurant';
   }
 
   String get _displayLocation {
     if (widget.restaurantAddress != null && widget.restaurantAddress!.isNotEmpty) {
       return widget.restaurantAddress!;
     }
-    return 'Akbarpur, Rohtas, Bihar';
+    return 'Rohtas, Bihar';
+  }
+
+  String get _dateStr =>
+      '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+
+  List<AvailableTable> get _tablesForGuests =>
+      _tables.where((t) => t.maxGuests >= _guestsCount).toList();
+
+  AvailableTable? get _selectedTable {
+    final number = _selectedTableNumber;
+    if (number == null) return null;
+    final matches = _tables.where((t) => t.number == number);
+    return matches.isEmpty ? null : matches.first;
+  }
+
+  Future<void> _loadAvailability() async {
+    final restId = widget.restaurantId;
+    if (restId == null || restId.isEmpty) return;
+
+    setState(() {
+      _isLoadingTables = true;
+      _tablesError = null;
+    });
+
+    try {
+      final tables =
+          await BookingService.instance.getAvailableTables(restId, _dateStr);
+      if (!mounted) return;
+      setState(() {
+        _tables = tables;
+        _isLoadingTables = false;
+        _syncSelection();
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingTables = false;
+        _tablesError = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingTables = false;
+        _tablesError = 'Could not check table availability. Please try again.';
+      });
+    }
+  }
+
+  void _syncSelection() {
+    final options = _tablesForGuests;
+    if (_selectedTableNumber == null ||
+        !options.any((t) => t.number == _selectedTableNumber)) {
+      _selectedTableNumber = options.isEmpty ? null : options.first.number;
+    }
+
+    final slots = _selectedTable?.slots ?? [];
+    if (!slots.contains(_selectedSlot)) {
+      _selectedSlot = slots.isEmpty ? '' : slots.first;
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() => _selectedDate = picked);
+      _loadAvailability();
+    }
+  }
+
+  void _showSnack(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? Colors.redAccent : const Color(0xFF16A34A),
+      ),
+    );
   }
 
   Future<void> _submitBooking() async {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
+    final table = _selectedTable;
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your name.')),
-      );
+      _showSnack('Please enter your name.', error: true);
       return;
     }
-
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your contact phone number.')),
-      );
+      _showSnack('Please enter your contact phone number.', error: true);
+      return;
+    }
+    if (table == null || _selectedSlot.isEmpty) {
+      _showSnack('Select an available table and time slot first.', error: true);
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isSubmitting = true);
 
-    final restId = widget.restaurantId ?? '6ab4048cdbe3ed2d4ab3ff89';
-    final dateStr = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+    final result = await BookingService.instance.createBooking(
+      restaurantId: widget.restaurantId!,
+      tableNumber: table.number,
+      timeSlot: _selectedSlot,
+      partySize: _guestsCount,
+      customerName: name,
+      phone: phone,
+      notes: _notesController.text.trim(),
+      date: _dateStr,
+    );
 
-    try {
-      final result = await BookingService.instance.createBooking(
-        restaurantId: restId,
-        tableNumber: _selectedTableNumber,
-        timeSlot: _selectedSlot,
-        partySize: _guestsCount,
-        customerName: name,
-        phone: phone,
-        notes: _notesController.text.trim(),
-        date: dateStr,
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (result['success'] == true) {
+      _showSuccessDialog(result['message']?.toString() ??
+          'The restaurant will confirm your table shortly.');
+    } else {
+      _showSnack(
+        result['message'] ?? 'Failed to book the table. Please try again.',
+        error: true,
       );
+    }
+  }
 
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-
-      if (result['success'] == true) {
-        showDialog(
+  void _showSuccessDialog(String message) {
+    final table = _selectedTable;
+    showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: const Color(0xFF16A34A), size: 28),
+            const Icon(Icons.check_circle_rounded,
+                color: Color(0xFF16A34A), size: 28),
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
@@ -130,57 +224,48 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Restaurant: $_displayName', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Restaurant: $_displayName',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
+            Text('Table: ${table?.number ?? '-'}'),
             Text('Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
-            Text('Time: $_selectedSlot'),
+            Text('Time: ${AvailableTable.formatSlot(_selectedSlot)}'),
             Text('Guests: $_guestsCount people'),
             const SizedBox(height: 12),
             Text(
-              result['message'] ?? 'Your table reservation request has been submitted. The restaurant will confirm shortly.',
+              message,
               style: TextStyle(color: Colors.grey[700], fontSize: 13),
             ),
           ],
         ),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
+            child: const Text('Close',
+                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: jdkartOrange,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('OK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('My Reservations',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
-        ),
-      );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Failed to book the table. Please try again.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: Colors.redAccent),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not book your table. Please try again.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
+      ),
+    );
   }
 
   @override
@@ -188,17 +273,27 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Book a Table', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('Book a Table',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          IconButton(
+            tooltip: 'My reservations',
+            icon: const Icon(Icons.list_alt_rounded, color: Colors.black54),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Restaurant Header Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -216,7 +311,8 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
-                      child: Icon(Icons.table_restaurant_rounded, color: jdkartOrange, size: 28),
+                      child: Icon(Icons.table_restaurant_rounded,
+                          color: jdkartOrange, size: 28),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -226,14 +322,16 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                       children: [
                         Text(
                           _displayName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                            const Icon(Icons.location_on_outlined,
+                                size: 14, color: Colors.grey),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
@@ -253,21 +351,11 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Select Date
-            const Text('Reservation Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const Text('Reservation Date',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 8),
             InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 30)),
-                );
-                if (picked != null) {
-                  setState(() => _selectedDate = picked);
-                }
-              },
+              onTap: _pickDate,
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -280,28 +368,31 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.calendar_today_rounded, color: jdkartOrange, size: 18),
+                        Icon(Icons.calendar_today_rounded,
+                            color: jdkartOrange, size: 18),
                         const SizedBox(width: 10),
                         Text(
                           '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 15),
                         ),
                       ],
                     ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+                    const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: Colors.grey),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
 
-            // Number of Guests
-            const Text('Number of Guests', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const Text('Number of Guests',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: List.generate(8, (i) {
+                children: List.generate(12, (i) {
                   final count = i + 1;
                   final isSel = _guestsCount == count;
                   return Padding(
@@ -315,7 +406,12 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                       onSelected: (val) {
-                        if (val) setState(() => _guestsCount = count);
+                        if (val) {
+                          setState(() {
+                            _guestsCount = count;
+                            _syncSelection();
+                          });
+                        }
                       },
                     ),
                   );
@@ -324,33 +420,32 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Available Time Slots
-            const Text('Select Time Slot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _defaultSlots.map((slot) {
-                final isSel = _selectedSlot == slot;
-                return ChoiceChip(
-                  label: Text(slot),
-                  selected: isSel,
-                  selectedColor: jdkartOrange,
-                  labelStyle: TextStyle(
-                    color: isSel ? Colors.white : Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedSlot = slot);
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
+            if (_isLoadingTables)
+              _sectionCard(
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: jdkartOrange),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text('Checking live table availability…',
+                          style: TextStyle(color: Colors.grey[700])),
+                    ),
+                  ],
+                ),
+              )
+            else if (_tablesError != null)
+              AppErrorState(message: _tablesError!, onRetry: _loadAvailability)
+            else ...[
+              _availabilitySection(),
+            ],
 
-            // Contact Info
-            const Text('Contact Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const SizedBox(height: 20),
+            const Text('Contact Information',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(16),
@@ -366,7 +461,8 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Your Name *',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -376,7 +472,8 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Phone Number *',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -385,7 +482,8 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Special Requests / Notes (Optional)',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),
                 ],
@@ -393,25 +491,32 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
             ),
             const SizedBox(height: 30),
 
-            // Submit Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _submitBooking,
+                onPressed: _isSubmitting || _selectedTable == null
+                    ? null
+                    : _submitBooking,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: jdkartOrange,
+                  disabledBackgroundColor: jdkartOrange.withValues(alpha: 0.45),
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                child: _isLoading
+                child: _isSubmitting
                     ? const SizedBox(
                         width: 22,
                         height: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
                       )
                     : const Text(
                         'Confirm Table Reservation',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16),
                       ),
               ),
             ),
@@ -419,6 +524,120 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _sectionCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _availabilitySection() {
+    final options = _tablesForGuests;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Available Tables',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            TextButton.icon(
+              onPressed: _loadAvailability,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Refresh'),
+              style: TextButton.styleFrom(
+                  foregroundColor: jdkartOrange,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(60, 30)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (options.isEmpty)
+          _sectionCard(
+            child: Row(
+              children: [
+                Icon(Icons.event_busy_rounded, color: Colors.grey[600], size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'No table fits $_guestsCount guests on this date. '
+                    'Try fewer guests or another day.',
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13.5),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: options.map((table) {
+              final isSel = _selectedTableNumber == table.number;
+              return ChoiceChip(
+                label: Text('Table ${table.number} • up to ${table.maxGuests}'),
+                selected: isSel,
+                selectedColor: jdkartOrange,
+                labelStyle: TextStyle(
+                  color: isSel ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                onSelected: (val) {
+                  if (val) {
+                    setState(() {
+                      _selectedTableNumber = table.number;
+                      _selectedSlot =
+                          table.slots.isEmpty ? '' : table.slots.first;
+                    });
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+          const Text('Select Time Slot',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 8),
+          if ((_selectedTable?.slots ?? []).isEmpty)
+            _sectionCard(
+              child: Text('This table is fully booked for the selected date.',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13.5)),
+            )
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: (_selectedTable?.slots ?? []).map((slot) {
+                final isSel = _selectedSlot == slot;
+                return ChoiceChip(
+                  label: Text(AvailableTable.formatSlot(slot)),
+                  selected: isSel,
+                  selectedColor: jdkartOrange,
+                  labelStyle: TextStyle(
+                    color: isSel ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  onSelected: (val) {
+                    if (val) setState(() => _selectedSlot = slot);
+                  },
+                );
+              }).toList(),
+            ),
+        ],
+      ],
     );
   }
 }

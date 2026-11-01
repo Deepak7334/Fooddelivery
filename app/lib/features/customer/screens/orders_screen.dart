@@ -135,7 +135,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               border: Border.all(color: const Color(0xFFE2E8F0)),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
+                                  color: Colors.black.withValues(alpha: 0.03),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -215,7 +215,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                           decoration: BoxDecoration(
                                             color: const Color(0xFFFFF7ED),
                                             borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: jdkartOrange.withOpacity(0.5)),
+                                            border: Border.all(color: jdkartOrange.withValues(alpha: 0.5)),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,

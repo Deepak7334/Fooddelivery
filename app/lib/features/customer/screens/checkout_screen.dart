@@ -8,6 +8,8 @@ import '../../../services/address_service.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/location_service.dart';
 import '../../../models/address_model.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
@@ -68,53 +70,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void dispose() {
     _instructionsController.dispose();
     super.dispose();
-  }
-
-  void _showOnlinePaymentDisabledDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.info_outline_rounded, color: Color(0xFFF97316), size: 26),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Online Payment Disabled',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Currently not accepting online payments. Please choose Cash on Delivery.',
-          style: TextStyle(fontSize: 14.5, height: 1.4, color: Color(0xFF334155)),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() {
-                _paymentMethod = 'cod';
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Switched to Cash on Delivery'),
-                  backgroundColor: Color(0xFF16A34A),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: jdkartOrange,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Choose Cash on Delivery', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -264,15 +219,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ),
                         child: Row(
                           children: [
-                            Radio(
-                              value: index,
+                            RadioGroup<int>(
                               groupValue: _selectedAddressIndex,
                               onChanged: (value) {
+                                if (value == null) return;
                                 setState(() {
-                                  _selectedAddressIndex = value as int;
+                                  _selectedAddressIndex = value;
                                 });
                               },
-                              activeColor: jdkartOrange,
+                              child: Radio(
+                                value: index,
+                                activeColor: jdkartOrange,
+                              ),
                             ),
                             Expanded(
                               child: Column(
@@ -337,24 +295,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 _buildSectionTitle('Payment Method'),
                 const SizedBox(height: 12),
                 
-                // COD is active and recommended
+                // COD is the only accepted payment method for now.
                 _buildActivePaymentOption(
                   'cod',
                   'Cash on Delivery',
                   'Pay cash when food arrives at your door',
                   badge: 'AVAILABLE & RECOMMENDED',
-                ),
-
-                // Online payment options (Disabled per user requirement)
-                _buildDisabledPaymentOption(
-                  'upi',
-                  'UPI / Online Payment',
-                  'Google Pay, PhonePe, Paytm, BHIM',
-                ),
-                _buildDisabledPaymentOption(
-                  'cards',
-                  'Cards & Net Banking',
-                  'Credit / Debit Card, Net Banking',
                 ),
 
                 const SizedBox(height: 30),
@@ -366,7 +312,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, -5))
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, -5))
               ],
             ),
             child: SafeArea(
@@ -389,11 +335,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             context,
                             MaterialPageRoute(builder: (_) => const LoginScreen()),
                           );
-                          return;
-                        }
-
-                        if (_paymentMethod != 'cod') {
-                          _showOnlinePaymentDisabledDialog();
                           return;
                         }
 
@@ -439,6 +380,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             'lng': addr?.longitude ?? LocationService.instance.selectedLng,
                           };
 
+                          // Dynamically verify serviceability and resolve service area
+                          String? resolvedServiceAreaId;
+                          try {
+                            final checkRes = await ApiClient.instance.post(
+                              ApiConstants.checkServiceability,
+                              {'address': deliveryAddressObj},
+                            );
+                            if (checkRes is Map) {
+                              if (checkRes['serviceable'] == false) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(checkRes['message']?.toString() ??
+                                        'Selected delivery address is currently not serviceable.'),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                                setState(() => _isPlacingOrder = false);
+                                return;
+                              }
+                              if (checkRes['serviceAreaId'] != null) {
+                                resolvedServiceAreaId = checkRes['serviceAreaId'].toString();
+                              }
+                            }
+                          } catch (_) {
+                            // Fallback to default if network check encounters transient error
+                          }
+
+                          // Fallback to default central service area
+                          resolvedServiceAreaId ??= '6ab55c81fdf553743734e6e2';
+
                           final result = await OrderService.instance.placeOrder(
                             restaurantId: restId,
                             items: payloadItems,
@@ -446,7 +418,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             deliveryAddress: deliveryAddressObj,
                             deliveryCoords: deliveryCoords,
                             specialInstructions: _instructionsController.text.trim(),
-                            serviceAreaId: '6ab55c81fdf553743734e6e2',
+                            serviceAreaId: resolvedServiceAreaId,
                             paymentMethod: 'COD',
                           );
 
@@ -538,13 +510,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
         child: Row(
           children: [
-            Radio(
-              value: id,
+            RadioGroup<String>(
               groupValue: _paymentMethod,
-              onChanged: (val) {
-                setState(() => _paymentMethod = val.toString());
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _paymentMethod = value);
               },
-              activeColor: jdkartOrange,
+              child: Radio(
+                value: id,
+                activeColor: jdkartOrange,
+              ),
             ),
             const SizedBox(width: 4),
             Expanded(
@@ -576,67 +551,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDisabledPaymentOption(String id, String title, String subtitle) {
-    return GestureDetector(
-      onTap: () {
-        _showOnlinePaymentDisabledDialog();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9).withOpacity(0.7),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: const Color(0xFFCBD5E1),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.block_rounded, color: Colors.grey, size: 22),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5, color: Color(0xFF64748B)),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'NOT ACCEPTED',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.info_outline_rounded, color: Color(0xFF94A3B8), size: 18),
           ],
         ),
       ),

@@ -138,7 +138,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final timeStr = '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}';
 
     return Container(
-      color: item.isRead ? Colors.white : const Color(0xFFFFF7ED).withOpacity(0.4),
+      color: item.isRead ? Colors.white : const Color(0xFFFFF7ED).withValues(alpha: 0.4),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

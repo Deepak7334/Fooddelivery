@@ -37,7 +37,7 @@ class ProductDetailsScreen extends StatelessWidget {
         leading: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             shape: BoxShape.circle,
           ),
           child: IconButton(
@@ -66,9 +66,9 @@ class ProductDetailsScreen extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.4),
+                          Colors.black.withValues(alpha: 0.4),
                           Colors.transparent,
-                          Colors.black.withOpacity(0.2),
+                          Colors.black.withValues(alpha: 0.2),
                         ],
                         stops: const [0.0, 0.5, 1.0],
                       ),
@@ -224,7 +224,7 @@ class ProductDetailsScreen extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),

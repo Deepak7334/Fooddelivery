@@ -408,7 +408,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0).withOpacity(0.8), width: 1.0),
+        border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.8), width: 1.0),
       ),
       child: ListTile(
         onTap: () => _selectSavedAddress(addr),
@@ -503,7 +503,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0).withOpacity(0.8), width: 1.0),
+        border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.8), width: 1.0),
       ),
       child: ListTile(
         onTap: () => _selectRecentSearch(item),

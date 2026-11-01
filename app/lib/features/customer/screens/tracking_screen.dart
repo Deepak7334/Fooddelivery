@@ -159,7 +159,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2)),
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2)),
                             ],
                           ),
                           child: Row(
@@ -374,7 +374,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
               decoration: BoxDecoration(
                 color: isCompleted ? activeColor : Colors.grey[200],
                 shape: BoxShape.circle,
-                border: isCurrent ? Border.all(color: activeColor.withOpacity(0.3), width: 4) : null,
+                border: isCurrent ? Border.all(color: activeColor.withValues(alpha: 0.3), width: 4) : null,
               ),
               child: Icon(icon, color: isCompleted ? Colors.white : Colors.grey[500], size: 16),
             ),
@@ -414,16 +414,16 @@ class _MapGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint linePaint = Paint()
-      ..color = Colors.grey.withOpacity(0.2)
+      ..color = Colors.grey.withValues(alpha: 0.2)
       ..strokeWidth = 1.5;
 
     final Paint roadPaint = Paint()
-      ..color = Colors.white.withOpacity(0.8)
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..strokeWidth = 10
       ..strokeCap = StrokeCap.round;
 
     final Paint routePaint = Paint()
-      ..color = const Color(0xFFF97316).withOpacity(0.7)
+      ..color = const Color(0xFFF97316).withValues(alpha: 0.7)
       ..strokeWidth = 4
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

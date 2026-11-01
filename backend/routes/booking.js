@@ -16,7 +16,7 @@ const DEFAULT_SLOTS = [
 ];
 
 // Customer routes
-router.get('/availability/:restaurantId/:date', protect, async (req, res) => {
+router.get('/availability/:restaurantId/:date', async (req, res) => {
   try {
     const { restaurantId, date } = req.params;
     

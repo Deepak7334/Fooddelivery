@@ -186,9 +186,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withOpacity(0.6),
+                              Colors.black.withValues(alpha: 0.6),
                               Colors.transparent,
-                              Colors.black.withOpacity(0.85),
+                              Colors.black.withValues(alpha: 0.85),
                             ],
                           ),
                         ),
@@ -250,7 +250,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
+                                      color: Colors.white.withValues(alpha: 0.2),
                                       border: Border.all(color: Colors.white70),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
@@ -344,7 +344,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, -4)),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, -4)),
                     ],
                   ),
                   child: SafeArea(
@@ -410,7 +410,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -518,7 +518,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2)),
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2)),
                         ],
                       ),
                       child: SafeImage(
@@ -541,7 +541,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: jdkartOrange, width: 1.5),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2)),
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2)),
                           ],
                         ),
                         child: qty == 0
