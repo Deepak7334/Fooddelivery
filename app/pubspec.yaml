@@ -1,0 +1,34 @@
+name: foodhub
+description: A new Flutter project.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  geolocator: ^14.1.1
+  geocoding: ^5.0.0
+  flutter_native_splash: ^2.4.7
+  shared_preferences: ^2.5.6
+  google_sign_in: ^6.2.2
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/images/restaurants/
+    - assets/images/products/
+    - assets/images/banners/
+    - assets/icons/

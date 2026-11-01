@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "331203442565",
+    "project_id": "jdkart-f119a",
+    "storage_bucket": "jdkart-f119a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:331203442565:android:988d1577d586b85984b6ec",
+        "android_client_info": {
+          "package_name": "in.jdkart.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "331203442565-7mn17n85280034sgjh724jf4rf0bcksa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.jdkart.app",
+            "certificate_hash": "54768c7d8033db4333ced322d956c0b0f27ed5cf"
+          }
+        },
+        {
+          "client_id": "331203442565-4e95r580udt4hsjhj860ojotd94blm3p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3r6lIhH7NkegT4osB66AhpGbHTPkZTHc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "331203442565-4e95r580udt4hsjhj860ojotd94blm3p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
