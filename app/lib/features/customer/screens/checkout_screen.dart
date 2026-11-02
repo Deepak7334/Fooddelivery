@@ -347,7 +347,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                         setState(() => _isPlacingOrder = true);
                         try {
-                          final restId = CartService.instance.restaurantId ?? '6ab4048cdbe3ed2d4ab3ff89';
+                          final restId = CartService.instance.restaurantId ??
+                              (items.isNotEmpty && items.first.restaurantId.isNotEmpty
+                                  ? items.first.restaurantId
+                                  : 'default_partner');
 
                           final payloadItems = items.map((i) => {
                             'foodId': i.id,

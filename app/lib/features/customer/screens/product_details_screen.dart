@@ -119,7 +119,7 @@ class ProductDetailsScreen extends StatelessWidget {
                       Icon(Icons.storefront_rounded, size: 16, color: jdkartOrange),
                       const SizedBox(width: 4),
                       Text(
-                        food.restaurantName.isNotEmpty ? food.restaurantName : 'Annapurna Family Restaurant',
+                        food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner',
                         style: TextStyle(fontSize: 14, color: jdkartOrange, fontWeight: FontWeight.bold),
                       ),
                       if (food.category.isNotEmpty) ...[
@@ -233,8 +233,8 @@ class ProductDetailsScreen extends StatelessWidget {
         child: SafeArea(
           child: ElevatedButton(
             onPressed: () {
-              final restId = food.restaurantId.isNotEmpty ? food.restaurantId : '6ab4048cdbe3ed2d4ab3ff89';
-              final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'Annapurna Family Restaurant';
+              final restId = food.restaurantId.isNotEmpty ? food.restaurantId : 'food_partner_default';
+              final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner';
               CartService.instance.addItem(food, restaurantId: restId, restaurantName: restName);
 
               ScaffoldMessenger.of(context).hideCurrentSnackBar();

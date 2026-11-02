@@ -117,8 +117,8 @@ class _OffersScreenState extends State<OffersScreen> {
 
   Widget _buildOfferCard(FoodItemModel food) {
     final originalPrice = food.price + 25;
-    final restId = food.restaurantId.isNotEmpty ? food.restaurantId : '6ab4048cdbe3ed2d4ab3ff89';
-    final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'Annapurna Family Restaurant';
+    final restId = food.restaurantId.isNotEmpty ? food.restaurantId : 'food_partner_default';
+    final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

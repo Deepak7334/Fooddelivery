@@ -167,7 +167,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    order.restaurantName.isNotEmpty ? order.restaurantName : 'Annapurna Family Restaurant',
+                                    order.restaurantName.isNotEmpty ? order.restaurantName : 'JDKart Partner',
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                   ),
                                 ),

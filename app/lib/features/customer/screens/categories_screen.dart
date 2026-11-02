@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'food_items_screen.dart';
 import 'restaurants_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../models/category_model.dart';
@@ -85,27 +86,32 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     ],
                   ),
                 )
-              : GridView.builder(
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 120),
-                  physics: const BouncingScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 0.88,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                  ),
-                  itemCount: _backendCategories.length,
-                  itemBuilder: (context, index) {
-                    final cat = _backendCategories[index];
+              : Builder(
+                  builder: (context) {
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final int crossAxisCount = screenWidth >= 600 ? (screenWidth >= 900 ? 5 : 4) : 3;
 
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const RestaurantsScreen()),
-                        );
-                      },
-                      child: Container(
+                    return GridView.builder(
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 120),
+                      physics: const BouncingScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: 0.88,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 14,
+                      ),
+                      itemCount: _backendCategories.length,
+                      itemBuilder: (context, index) {
+                        final cat = _backendCategories[index];
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => FoodItemsScreen(initialCategory: cat.name)),
+                            );
+                          },
+                          child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -165,7 +171,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       ),
                     );
                   },
-                ),
+                );
+              },
+            ),
     );
   }
 }

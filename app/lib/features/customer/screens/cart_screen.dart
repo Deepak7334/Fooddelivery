@@ -127,7 +127,7 @@ class _CartScreenState extends State<CartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              CartService.instance.restaurantName ?? 'Annapurna Family Restaurant',
+                              CartService.instance.restaurantName ?? 'JDKart Partner',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

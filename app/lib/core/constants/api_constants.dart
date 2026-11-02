@@ -25,6 +25,11 @@ class ApiConstants {
   // Serviceability
   static const String checkServiceability = '$baseUrl/serviceability/check';
 
+  // Store & Grocery
+  static const String storeTypes = '$baseUrl/store/types';
+  static const String stores = '$baseUrl/store/stores';
+  static const String storeProducts = '$baseUrl/store/products';
+
   // Table bookings
   static const String bookings = '$baseUrl/booking/customer/bookings';
   static const String myBookings = '$baseUrl/booking/customer/bookings/mine';

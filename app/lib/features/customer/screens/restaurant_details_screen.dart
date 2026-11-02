@@ -201,7 +201,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _effectiveRestName.isNotEmpty ? _effectiveRestName : 'Annapurna Family Restaurant',
+                              _effectiveRestName.isNotEmpty ? _effectiveRestName : 'JDKart Partner Restaurant',
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,

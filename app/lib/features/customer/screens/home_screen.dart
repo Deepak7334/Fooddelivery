@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 import 'notifications_screen.dart';
 import 'restaurant_details_screen.dart';
-import 'categories_screen.dart';
-import 'checkout_screen.dart';
-import 'cart_screen.dart';
-import 'product_details_screen.dart';
+import 'restaurants_screen.dart';
+import 'food_items_screen.dart';
+import 'grocery_items_screen.dart';
 import 'select_location_screen.dart';
 import '../../../services/restaurant_service.dart';
-import '../../../services/cart_service.dart';
 import '../../../services/location_service.dart';
 import '../../../models/restaurant_model.dart';
-import '../../../models/product_model.dart';
-import '../../../models/category_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
@@ -25,18 +21,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedCategoryIndex = 0; // 0 = All
   String _currentAddress = 'Akbarpur, Rohtas, Bihar';
   String _currentLocationTitle = 'Home';
   double _userLat = LocationService.defaultLat;
   double _userLng = LocationService.defaultLng;
   final Color jdkartOrange = const Color(0xFFF97316);
-  final Color coralRed = const Color(0xFFE11D48);
   final Set<String> _favoriteRestaurants = {};
 
   List<RestaurantModel> _backendRestaurants = [];
-  List<FoodItemModel> _backendFoods = [];
-  List<CategoryModel> _backendCategories = [];
   bool _isLoadingBackend = true;
   String? _backendError;
 
@@ -58,16 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _userLat = LocationService.instance.selectedLat;
       _userLng = LocationService.instance.selectedLng;
 
-      final results = await Future.wait([
-        RestaurantService.instance.getRestaurants(),
-        RestaurantService.instance.getFoods(),
-        RestaurantService.instance.getCategories(),
-      ]);
+      final restaurants = await RestaurantService.instance.getRestaurants();
       if (mounted) {
         setState(() {
-          _backendRestaurants = results[0] as List<RestaurantModel>;
-          _backendFoods = results[1] as List<FoodItemModel>;
-          _backendCategories = results[2] as List<CategoryModel>;
+          _backendRestaurants = restaurants;
           _sortAndFilterNearMe();
           _isLoadingBackend = false;
         });
@@ -77,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _backendError = e is ApiException
               ? e.message
-              : 'Could not load the menu. Please try again.';
+              : 'Could not load restaurants. Please try again.';
           _isLoadingBackend = false;
         });
       }
@@ -95,15 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final distB = LocationService.instance.calculateDistanceKm(_userLat, _userLng, bLat, bLng);
       return distA.compareTo(distB);
     });
-
-    if (_backendRestaurants.isNotEmpty) {
-      final nearestRestId = _backendRestaurants.first.id;
-      _backendFoods.sort((a, b) {
-        final aIsNear = a.restaurantId == nearestRestId ? 0 : 1;
-        final bIsNear = b.restaurantId == nearestRestId ? 0 : 1;
-        return aIsNear.compareTo(bIsNear);
-      });
-    }
   }
 
   Future<void> _openSelectLocationScreen() async {
@@ -141,55 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  List<FoodItemModel> get _filteredFoods {
-    List<FoodItemModel> list = _backendFoods;
-    if (_selectedCategoryIndex > 0 && _selectedCategoryIndex <= _backendCategories.length) {
-      final selectedCat = _backendCategories[_selectedCategoryIndex - 1].name.toLowerCase();
-      list = list.where((f) => f.category.toLowerCase().contains(selectedCat) || selectedCat.contains(f.category.toLowerCase())).toList();
-    }
-    return list;
-  }
-
-  void _addFoodToCart(FoodItemModel dish) {
-    final restId = dish.restaurantId.isNotEmpty
-        ? dish.restaurantId
-        : (_backendRestaurants.isNotEmpty ? _backendRestaurants.first.id : '6ab4048cdbe3ed2d4ab3ff89');
-    final restName = dish.restaurantName.isNotEmpty
-        ? dish.restaurantName
-        : (_backendRestaurants.isNotEmpty ? _backendRestaurants.first.name : 'Annapurna Family Restaurant');
-
-    CartService.instance.addItem(dish, restaurantId: restId, restaurantName: restName);
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Added "${dish.name}" to cart!'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-        backgroundColor: jdkartOrange,
-        action: SnackBarAction(
-          label: 'VIEW CART',
-          textColor: Colors.white,
-          onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-          },
-        ),
-      ),
-    );
-  }
-
-  void _orderFoodNow(FoodItemModel dish) {
-    final restId = dish.restaurantId.isNotEmpty
-        ? dish.restaurantId
-        : (_backendRestaurants.isNotEmpty ? _backendRestaurants.first.id : '6ab4048cdbe3ed2d4ab3ff89');
-    final restName = dish.restaurantName.isNotEmpty
-        ? dish.restaurantName
-        : (_backendRestaurants.isNotEmpty ? _backendRestaurants.first.name : 'Annapurna Family Restaurant');
-
-    CartService.instance.addItem(dish, restaurantId: restId, restaurantName: restName);
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -201,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           slivers: [
-            // Top bar header with localized gradient
+            // 1. Top Bar Header
             SliverToBoxAdapter(
               child: Container(
                 decoration: BoxDecoration(
@@ -220,81 +148,55 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-            // Hero Envelope Free Delivery Banner
+            // 2. Hero Envelope Free Delivery Banner
             SliverToBoxAdapter(child: _buildEnvelopeHeroBanner()),
 
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-            // Circular Real Food Categories from Database
-            SliverToBoxAdapter(child: _buildCircularFoodCategoriesList()),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 14)),
-
-            // Filters Row
-            SliverToBoxAdapter(child: _buildFiltersRow()),
+            // 3. Food & Grocery Dual Category Cards (From Reference Design)
+            SliverToBoxAdapter(child: _buildFoodGroceryCategoryCards()),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // RECOMMENDED WITH DEALS Section (Real Foods with Discounts/Offers)
-            if (_backendFoods.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text(
-                    'RECOMMENDED WITH DEALS',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-              SliverToBoxAdapter(child: _buildDealsHorizontalSection()),
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-            ],
-
-            // POPULAR FOOD ITEMS with Add to Cart & Order buttons
+            // 4. Nearby Restaurants Header
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'POPULAR FOOD ITEMS (${_filteredFoods.length})',
-                      style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 13),
+                    const Text(
+                      'Nearby Restaurants',
+                      style: TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                    Text(
-                      'Quick Order',
-                      style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.bold, fontSize: 13),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const RestaurantsScreen()),
+                        );
+                      },
+                      child: Text(
+                        'See all →',
+                        style: TextStyle(
+                          color: jdkartOrange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 14)),
-
-            SliverToBoxAdapter(
-              child: _buildPopularFoodItemsCarousel(),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-
-            // Real Restaurants Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text(
-                  'ALL RESTAURANTS NEAR YOU (${_backendRestaurants.length})',
-                  style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 13),
-                ),
-              ),
-            ),
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
+            // 5. Restaurants List
             if (_isLoadingBackend)
               SliverToBoxAdapter(
                 child: Padding(
@@ -304,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         CircularProgressIndicator(color: jdkartOrange),
                         const SizedBox(height: 12),
-                        const Text('Loading fresh menu from server...', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        const Text('Loading fresh restaurants...', style: TextStyle(color: Colors.grey, fontSize: 13)),
                       ],
                     ),
                   ),
@@ -332,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: _loadBackendData,
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -352,6 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── TOP BAR (LOCATION & NOTIFICATION ICON) ──────────────────────────────────
   Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -379,12 +282,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       const Icon(Icons.keyboard_arrow_down, size: 22),
                     ],
                   ),
-                  Text(_currentAddress, style: TextStyle(color: Colors.grey[600], fontSize: 12.5), overflow: TextOverflow.ellipsis),
+                  Text(
+                    _currentAddress,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
+          // Notification Bell Icon (Replaced Profile Icon)
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -392,10 +301,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               );
             },
-            child: CircleAvatar(
-              backgroundColor: jdkartOrange,
-              radius: 19,
-              child: const Icon(Icons.notifications_rounded, color: Colors.white, size: 21),
+            child: Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                size: 22,
+                color: Color(0xFF1E293B),
+              ),
             ),
           ),
         ],
@@ -403,78 +327,63 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── HERO ENVELOPE FREE DELIVERY BANNER ────────────────────────────────────
   Widget _buildEnvelopeHeroBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
-        height: 175,
-        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+            colors: [Color(0xFFFEF08A), Color(0xFFFDE047)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: const Color(0xFFD97706).withValues(alpha: 0.16),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Left Rider Scooter Badge
+            // Left Decorative Coin/Discount Graphic
             Positioned(
               left: 14,
-              bottom: 24,
+              top: 18,
               child: Container(
-                padding: const EdgeInsets.all(9),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDE68A).withValues(alpha: 0.9),
+                  color: const Color(0xFFFDE68A).withValues(alpha: 0.95),
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.3)),
                 ),
-                child: const Icon(Icons.two_wheeler_rounded, size: 24, color: Color(0xFF78350F)),
+                child: const Icon(Icons.delivery_dining_rounded, size: 26, color: Color(0xFF78350F)),
               ),
             ),
 
-            // Right Rider Scooter Badge
-            Positioned(
-              right: 14,
-              top: 20,
-              child: Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFDE68A).withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.3)),
-                ),
-                child: const Icon(Icons.delivery_dining_rounded, size: 24, color: Color(0xFF78350F)),
-              ),
-            ),
-
-            // Center Envelope Card
+            // Center Envelope Card (Self-sizing, no fixed-height overflow!)
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: const Color(0xFFFEF9C3),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFFD97706).withValues(alpha: 0.08),
-                    blurRadius: 12,
+                    blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
                     'FREE DELIVERY',
@@ -482,10 +391,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.w900,
                       fontSize: 22,
                       color: Color(0xFF78350F),
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.6,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   const Text(
                     'on all orders above ₹99',
                     style: TextStyle(
@@ -496,21 +405,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.black,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: const Color(0xFFF59E0B), width: 1.2),
                     ),
-                    child: const Text(
-                      'JDKart Super Fast Delivery >',
-                      style: TextStyle(
-                        color: Color(0xFFFDE68A),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11.5,
-                      ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bolt, size: 14, color: Color(0xFFFDE68A)),
+                        SizedBox(width: 4),
+                        Text(
+                          'JDKart Super Fast Delivery >',
+                          style: TextStyle(
+                            color: Color(0xFFFDE68A),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -520,451 +436,150 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Circular Food Categories from Database
-  Widget _buildCircularFoodCategoriesList() {
-    if (_backendCategories.isEmpty && !_isLoadingBackend) {
-      return const SizedBox.shrink();
-    }
-
-    final totalCount = _backendCategories.length + 1; // 1 for "All"
-
-    return Column(
-      children: [
-        SizedBox(
-          height: 104,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: totalCount,
-            physics: const BouncingScrollPhysics(),
-            itemBuilder: (context, index) {
-              final bool isAll = index == 0;
-              final bool isSelected = index == _selectedCategoryIndex;
-              final String name = isAll ? 'All' : _backendCategories[index - 1].name;
-              final String icon = isAll ? '🍽️' : _backendCategories[index - 1].icon;
-              final String catImage = isAll ? '' : _backendCategories[index - 1].image;
-
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedCategoryIndex = index;
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 18),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 62,
-                        height: 62,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected ? const Color(0xFFFFF7ED) : const Color(0xFFF8FAFC),
-                          border: Border.all(
-                            color: isSelected ? jdkartOrange : const Color(0xFFE2E8F0),
-                            width: isSelected ? 2 : 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: catImage.isNotEmpty
-                              ? SafeImage(
-                                  image: catImage,
-                                  width: 62,
-                                  height: 62,
-                                  fit: BoxFit.cover,
-                                )
-                              : Center(
-                                  child: Text(
-                                    icon.isNotEmpty ? icon : '🍲',
-                                    style: const TextStyle(fontSize: 26),
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: 68,
-                        child: Text(
-                          name,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                            fontSize: 12,
-                            color: isSelected ? Colors.black : Colors.black87,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      if (isSelected)
-                        Container(
-                          height: 3,
-                          width: 24,
-                          decoration: BoxDecoration(
-                            color: coralRed,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        )
-                      else
-                        const SizedBox(height: 3),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFiltersRow() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      physics: const BouncingScrollPhysics(),
+  // ── FOOD & GROCERY DUAL CATEGORY CARDS (FROM USER REFERENCE DESIGN) ────────
+  Widget _buildFoodGroceryCategoryCards() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen()));
-            },
-            child: _buildFilterChip(Icons.tune, 'All Categories', hasDropdown: false),
+          // 1. Food Card -> Opens Dedicated Food Items Page
+          Expanded(
+            child: _buildCategoryCard(
+              title: 'Food',
+              subtitle: 'Order your favourite food',
+              buttonText: 'Explore Food',
+              imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FoodItemsScreen()),
+                );
+              },
+            ),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategoryIndex = 0;
-              });
-            },
-            child: _buildFilterChip(Icons.restart_alt, 'Reset'),
+          const SizedBox(width: 14),
+          // 2. Grocery Card -> Opens Dedicated Grocery & Store Page
+          Expanded(
+            child: _buildCategoryCard(
+              title: 'Grocery',
+              subtitle: 'Shop your daily essentials',
+              buttonText: 'Shop Grocery',
+              imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GroceryItemsScreen()),
+                );
+              },
+            ),
           ),
-          const SizedBox(width: 8),
-          _buildFilterChip(Icons.bolt, 'Fast Delivery'),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(IconData? icon, String label, {bool hasDropdown = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[300]!),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
-      ),
-      child: Row(
-        children: [
-          if (icon != null) ...[Icon(icon, size: 16, color: Colors.black87), const SizedBox(width: 6)],
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87)),
-          if (hasDropdown) ...[const SizedBox(width: 4), const Icon(Icons.arrow_drop_down, size: 18, color: Colors.black54)],
-        ],
-      ),
-    );
-  }
-
-  // Real Deals Section using live backend foods with discounted price or high rating
-  Widget _buildDealsHorizontalSection() {
-    final dealsList = _backendFoods.take(8).toList();
-
-    return SizedBox(
-      height: 185,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        physics: const BouncingScrollPhysics(),
-        itemCount: dealsList.length,
-        itemBuilder: (context, index) {
-          final dish = dealsList[index];
-          final discountText = dish.discountedPrice != null
-              ? 'SAVE ₹${dish.price - dish.discountedPrice!}'
-              : 'SPECIAL';
-
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: dish)),
-              );
-            },
-            child: Container(
-              width: 155,
-              margin: const EdgeInsets.only(right: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 115,
-                    width: 155,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        SafeImage(
-                          image: dish.image,
-                          width: 155,
-                          height: 115,
-                          borderRadius: BorderRadius.circular(14),
-                          fit: BoxFit.cover,
-                        ),
-                        // Top Translucent Offer Ribbon
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.68),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                            ),
-                            child: Text(
-                              discountText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                        // Bottom Left Green Rating Badge
-                        Positioned(
-                          bottom: 6,
-                          left: 6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF267E3E),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.star, color: Colors.white, size: 10),
-                                const SizedBox(width: 2),
-                                Text(
-                                  dish.rating.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    dish.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '₹${dish.discountedPrice ?? dish.price}',
-                    style: TextStyle(color: jdkartOrange, fontSize: 13, fontWeight: FontWeight.w900),
-                  ),
-                ],
+  Widget _buildCategoryCard({
+    required String title,
+    required String subtitle,
+    required String buttonText,
+    required String imageUrl,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED), // Soft warm peach / cream matching reference image
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: const Color(0xFFFED7AA).withValues(alpha: 0.9),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Top Image with increased height (135px) for bigger, professional tab look
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SafeImage(
+                image: imageUrl,
+                height: 135,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholderIcon: Icons.restaurant_rounded,
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  // Horizontal Food Items Carousel with REAL FOOD PHOTOS & LIVE DATA
-  Widget _buildPopularFoodItemsCarousel() {
-    final list = _filteredFoods;
-
-    if (list.isEmpty) {
-      return Container(
-        height: 120,
-        alignment: Alignment.center,
-        child: Text(
-          'No food items found',
-          style: TextStyle(color: Colors.grey[500], fontSize: 14),
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 235,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: list.length,
-        itemBuilder: (context, index) {
-          final dish = list[index];
-          final price = dish.discountedPrice ?? dish.price;
-
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: dish)),
-              );
-            },
-            child: Container(
-              width: 175,
-              margin: const EdgeInsets.only(right: 14, bottom: 4),
-              padding: const EdgeInsets.all(12),
+            const SizedBox(height: 12),
+            // Title
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFFC2410C), // Warm terracotta orange from reference
+                letterSpacing: 0.2,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            // Subtitle (maxLines: 2 to prevent truncation)
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF78716C), // Muted brown-gray
+                height: 1.25,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            // Soft Green Pill Button with arrow icon
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[200]!),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 3)),
-                ],
+                color: const Color(0xFFDCFCE7), // Soft mint green from screenshot
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Top Dish Photo Container with Veg/Non-Veg Badge
-                  Stack(
-                    children: [
-                      SafeImage(
-                        image: dish.image,
-                        height: 90,
-                        width: double.infinity,
-                        borderRadius: BorderRadius.circular(12),
-                        fit: BoxFit.cover,
-                      ),
-                      Positioned(
-                        top: 6,
-                        left: 6,
-                        child: Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(3),
-                            border: Border.all(color: dish.isVeg ? Colors.green : Colors.red, width: 1.5),
-                          ),
-                          child: Center(
-                            child: Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: dish.isVeg ? Colors.green : Colors.red,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
                   Text(
-                    dish.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    buttonText,
+                    style: const TextStyle(
+                      color: Color(0xFF15803D), // Emerald green
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '₹$price',
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Color(0xFFF59E0B), size: 12),
-                          const SizedBox(width: 2),
-                          Text(
-                            dish.rating.toStringAsFixed(1),
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 28,
-                          child: OutlinedButton(
-                            onPressed: () => _addFoodToCart(dish),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: jdkartOrange, width: 1.2),
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            ),
-                            child: Text(
-                              '+ Add',
-                              style: TextStyle(color: jdkartOrange, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: SizedBox(
-                          height: 28,
-                          child: ElevatedButton(
-                            onPressed: () => _orderFoodNow(dish),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: jdkartOrange,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.zero,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            ),
-                            child: const Text(
-                              'Order',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 13,
+                    color: Color(0xFF15803D),
                   ),
                 ],
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 
-  // Real Restaurant Cards from Database
+  // ── REAL RESTAURANTS SLIVER LIST ──────────────────────────────────────────
   Widget _buildAllRestaurantsSliverList() {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
@@ -1010,7 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Hero Restaurant Image Container
+                  // Restaurant Image Container
                   Stack(
                     children: [
                       SafeImage(
@@ -1021,8 +636,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         fit: BoxFit.cover,
                         placeholderIcon: Icons.restaurant_rounded,
                       ),
-
-                      // Dark gradient overlay for bottom text contrast
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
@@ -1036,7 +649,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-
                       // Top-left: Featured Badge
                       Positioned(
                         top: 12,
@@ -1053,7 +665,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-
                       // Top-right: Bookmark Heart Button
                       Positioned(
                         top: 10,
@@ -1082,7 +693,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-
                       // Bottom-left: Offer Ribbon
                       Positioned(
                         bottom: 10,
@@ -1106,8 +716,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-
-                      // Bottom-right: Time Pill
+                      // Bottom-right: Delivery Time & Distance
                       Positioned(
                         bottom: 10,
                         right: 12,
@@ -1139,13 +748,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
 
-                  // Restaurant Info Section
+                  // Info Section
                   Padding(
                     padding: const EdgeInsets.all(14.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Row 1: Restaurant Name & Green Rating Badge
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1179,8 +787,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 5),
-
-                        // Row 2: Address & Min Order
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1198,13 +804,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10.0),
                           child: Divider(height: 1, color: Colors.grey[200]),
                         ),
-
-                        // Row 3: Safety / Hygiene
                         Row(
                           children: [
                             Icon(Icons.verified_rounded, size: 14, color: jdkartOrange),
@@ -1219,10 +822,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 12),
-
-                        // Row 4: Action Buttons
                         Row(
                           children: [
                             Expanded(

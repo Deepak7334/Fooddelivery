@@ -84,7 +84,7 @@ class OrderModel {
       deliveryFee: json['deliveryFee'] ?? 0,
       paymentMethod: json['paymentMethod'] ?? 'COD',
       paymentStatus: json['paymentStatus'] ?? 'pending',
-      restaurantName: restName.isNotEmpty ? restName : 'Annapurna Family Restaurant',
+      restaurantName: restName.isNotEmpty ? restName : 'JDKart Partner',
       deliveryAddress: addrStr.isNotEmpty ? addrStr : 'Rohtas, Bihar',
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) ?? DateTime.now() : DateTime.now(),
       items: itemsList,
