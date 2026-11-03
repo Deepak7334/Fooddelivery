@@ -422,7 +422,10 @@ export default function HomePage() {
     }
     if (!search.trim()) {
       // User just entered a location and pressed Enter, do not redirect!
-      // The homepage live-filters vendors based on locationText already.
+      if (locationText.trim()) {
+        localStorage.setItem('jdkart_loc_name', locationText.trim());
+        window.dispatchEvent(new Event('locationUpdated'));
+      }
       return;
     }
 
