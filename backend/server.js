@@ -139,7 +139,6 @@ app.use('/api/service-areas', require('./routes/serviceArea'));
 app.use('/api/home-feed', require('./routes/homeFeed'));
 app.use('/api/serviceability', require('./routes/serviceability'));
 app.use('/api/addresses', require('./routes/address'));
-app.use('/api/chat', require('./routes/chat'));
 
 // Socket.io
 io.on('connection', (socket) => {

@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import api from '../lib/api';
-import { SOCKET_URL } from '../lib/socket';
 import { messaging } from '../firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import toast from 'react-hot-toast';
@@ -51,8 +50,8 @@ export const NotificationProvider = ({ children }) => {
       try {
         const { io } = await import('socket.io-client');
         if (!isMounted) return;
-        // uses centralized SOCKET_URL
-        activeSocket = io(SOCKET_URL, { withCredentials: true });
+        const apiBase = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5000';
+        activeSocket = io(apiBase, { withCredentials: true });
 
         activeSocket.on('connect', () => {
           activeSocket.emit('join_user_room', userId);

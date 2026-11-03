@@ -33,6 +33,8 @@ export default defineConfig({
           if (id.includes('leaflet') || id.includes('react-leaflet')) return 'vendor-maps';
           // Socket – medium, separate so it's only loaded when needed
           if (id.includes('socket.io-client')) return 'vendor-socket';
+          // React Query – separate so admin pages don't pay for it
+          if (id.includes('@tanstack/react-query')) return 'vendor-query';
           // Firebase – large SDK, isolate so it can be cached aggressively
           if (id.includes('firebase')) return 'vendor-firebase';
           // UI helpers

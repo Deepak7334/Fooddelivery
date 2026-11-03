@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FiSun, FiMoon } from 'react-icons/fi';
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../../lib/socket';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { formatAddress, getDeliveryCoords } from '../../utils/address';
@@ -121,7 +120,7 @@ export default function DeliveryDashboard() {
 
   useEffect(() => {
     if (!user?._id) return;
-    const socket = io(SOCKET_URL);
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
     socketRef.current = socket;
     socket.emit('join_delivery_room', user._id);
     socket.on('delivery:new_assignment', (order) => {

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../../lib/socket';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -28,7 +27,7 @@ export default function RestaurantOrders() {
 
   useEffect(() => {
     if (!user?.restaurantId) return;
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
     socketRef.current.emit('join_restaurant_room', user.restaurantId);
     socketRef.current.on('order:new', (order) => {
       toast('🔔 New order received!', { icon: '📦', duration: 5000 });
