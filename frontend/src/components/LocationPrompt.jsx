@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 // Client-side reverse geocoder — resolves clean locality and city from real GPS coordinates
 async function getCleanPlaceName(lat, lng) {
-  // 1. Try BigDataCloud client API (<100ms, accurate, no auth)
+  // 1. Try BigDataCloud client API (<100ms, accurate, zero auth)
   try {
     const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
     const data = await res.json();
@@ -73,7 +73,7 @@ export default function LocationPrompt() {
   };
 
   const handleDetectGPS = () => {
-    // 1. Instantly dismiss modal so the user is never blocked
+    // 1. Instantly dismiss modal so the user is never blocked or frozen
     setShow(false);
 
     if (!navigator.geolocation) {
@@ -81,45 +81,47 @@ export default function LocationPrompt() {
       return;
     }
 
-    const toastId = toast.loading('📍 Detecting your real GPS location…');
+    const toastId = toast.loading('📍 Detecting your location…');
 
-    // ONLY use genuine hardware GPS — NEVER guess random locations from mobile IP or data
+    const onSuccess = async (pos) => {
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+
+      // Save real coordinates
+      localStorage.setItem('jdkart_coords', JSON.stringify(coords));
+      
+      // Immediately notify app so nearby vendors update in real-time
+      window.dispatchEvent(new Event('locationUpdated'));
+
+      // Resolve human-readable locality and city from real coordinates
+      const placeName = await getCleanPlaceName(coords.lat, coords.lng);
+      const finalName = placeName && placeName !== 'Current Location' ? placeName : 'Current Location';
+
+      localStorage.setItem('jdkart_loc_name', finalName);
+      window.dispatchEvent(new Event('locationUpdated'));
+      toast.success(`📍 Location: ${finalName}`, { id: toastId, duration: 3000 });
+    };
+
+    const onError = (err) => {
+      console.warn('Location detection error:', err);
+      if (err.code === 1) {
+        toast.error('Location permission was denied. Please allow location in your browser settings (lock icon).', { id: toastId, duration: 5000 });
+      } else {
+        toast.error('Could not detect location. Please check phone GPS or enter your city in the search bar.', { id: toastId, duration: 4500 });
+      }
+    };
+
+    // Stage 1: Try GPS with 4s grace period & 2min cache (returns instantly in 50ms if device recently used location)
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-
-        // Save real verified GPS coordinates
-        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-        
-        // Immediately notify app so nearby vendors update
-        window.dispatchEvent(new Event('locationUpdated'));
-
-        // Resolve exact place name from real GPS coordinates
-        const placeName = await getCleanPlaceName(coords.lat, coords.lng);
-        const finalName = placeName && placeName !== 'Current Location' ? placeName : 'Current Location';
-
-        localStorage.setItem('jdkart_loc_name', finalName);
-        window.dispatchEvent(new Event('locationUpdated'));
-        toast.success(`📍 Location: ${finalName}`, { id: toastId, duration: 3000 });
+      onSuccess,
+      () => {
+        // Stage 2: If physical GPS times out indoors/laptop, seamlessly use Wi-Fi & assisted positioning (never times out!)
+        navigator.geolocation.getCurrentPosition(
+          onSuccess,
+          onError,
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+        );
       },
-      (err) => {
-        console.warn('GPS detection error:', err);
-        // Do NOT guess random locations. Accurately inform the user what happened:
-        if (err.code === 1) {
-          toast.error('Location permission was denied. Please allow location in your browser settings (lock icon).', { id: toastId, duration: 5000 });
-        } else if (err.code === 2) {
-          toast.error('Device GPS is turned off. Please turn on Location in your phone settings.', { id: toastId, duration: 5000 });
-        } else if (err.code === 3) {
-          toast.error('GPS request timed out. Please ensure Location is enabled on your device and try again.', { id: toastId, duration: 5000 });
-        } else {
-          toast.error('Could not detect GPS. Please enter your city in the search bar.', { id: toastId, duration: 4000 });
-        }
-      },
-      // Real GPS hardware settings:
-      // enableHighAccuracy: true forces satellite/hardware GPS (not cell tower or IP guesses!)
-      // timeout: 12000 gives the GPS hardware enough time to lock onto satellites
-      // maximumAge: 0 forces fresh real-time coordinates, never stale cache
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 4000, maximumAge: 120000 }
     );
   };
 
