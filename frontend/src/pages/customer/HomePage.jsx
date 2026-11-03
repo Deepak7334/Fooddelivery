@@ -11,7 +11,7 @@ const HERO_FOOD_EMOJIS = ['🍕', '🍔', '🍛', '🌮', '🍜', '🥗'];
 
 const getDistanceKm = calculateDistance;
 
-const DELIVERY_RADIUS_KM = 35; // deliver within 35 km
+const DELIVERY_RADIUS_KM = 5; // deliver within 5 km
 
 const STORE_TYPES = [
   { _id: 'grocery', name: 'Grocery', icon: '🛒', color: '#4CAF50', type: 'store' },
@@ -79,27 +79,18 @@ export default function HomePage() {
     const handleLocUpdate = () => {
       try {
         const storedCoords = JSON.parse(localStorage.getItem('jdkart_coords') || 'null');
-        setUserCoords(prev => {
-          if (!storedCoords && !prev) return prev;
-          if (prev && storedCoords && prev.lat === storedCoords.lat && prev.lng === storedCoords.lng) {
-            return prev;
-          }
-          return storedCoords;
-        });
+        setUserCoords(storedCoords);
       } catch {
         setUserCoords(null);
       }
       try {
         const storedLoc = localStorage.getItem('jdkart_loc_name');
-        if (storedLoc) {
-          const clean = storedLoc.replace(/^[📍\s]+/, '');
-          setLocationText(prev => prev === clean ? prev : clean);
-        }
+        if (storedLoc) setLocationText(storedLoc.replace(/^[📍\s]+/, ''));
       } catch {}
     };
     window.addEventListener('locationUpdated', handleLocUpdate);
     return () => window.removeEventListener('locationUpdated', handleLocUpdate);
-  }, []);
+      }, []);
 
   useEffect(() => {
     const handleRequestLoc = () => {
@@ -135,7 +126,7 @@ export default function HomePage() {
       qs = `?lat=${coordsObj.lat}&lng=${coordsObj.lng}`;
     }
 
-    setLoading(prev => (restaurants.length === 0 && foods.length === 0 ? true : false));
+    setLoading(true);
     Promise.all([
       api.get(`/customer/categories`).catch(() => ({ data: { categories: [] } })),
       api.get(`/customer/restaurants${qs}`).catch(() => ({ data: { restaurants: [] } })),
@@ -156,18 +147,71 @@ export default function HomePage() {
   // Removed: duplicate fetchData call — already handled by useEffect([userCoords]) above
 
 
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
 
+  const triggerLocationPrompt = () => {
+    setShowLocationPrompt(true);
+  };
+
+  const handleDetectLocation = () => {
+    setShowLocationPrompt(false);
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setLocLoading(true);
+    toast.loading('Detecting your location…', { id: 'loc' });
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoords(coords);
+        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+          const data = await res.json();
+          let locName = 'Current Location';
+          if (data && data.address) {
+            const addr = data.address;
+            const place = addr.amenity || addr.building || addr.neighbourhood || addr.suburb || addr.city_district || addr.village || addr.town || addr.city;
+            if (place) locName = place;
+          }
+          localStorage.setItem('jdkart_loc_name', locName);
+          setLocationText(locName);
+          window.dispatchEvent(new Event('locationUpdated'));
+        } catch(e) {
+          localStorage.setItem('jdkart_loc_name', 'Current Location');
+          setLocationText('Current Location');
+          window.dispatchEvent(new Event('locationUpdated'));
+        }
+
+        toast.success('Location detected!', { id: 'loc' });
+        setLocLoading(false);
+      },
+      err => {
+        setLocLoading(false);
+        console.error("Location error:", err);
+        let msg = 'Failed to detect location';
+        if (err.code === 1) msg = 'Location access denied. Please allow it in your mobile browser settings.';
+        if (err.code === 2) msg = 'Location unavailable. Ensure GPS is on.';
+        if (err.code === 3) msg = 'Location request timed out. Try entering your city manually.';
+        toast.error(msg, { id: 'loc', duration: 4000 });
+      },
+      // Mobile optimization: false for high accuracy (uses fast wifi/cell triangulation instead of slow satellite GPS) 
+      // and increased timeout to 20 seconds for slower mobile networks.
+      { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
+    );
+  };
 
   // ----- Filter restaurants by proximity or locationText -----
   const visibleRestaurants = useMemo(() => {
     if (userCoords) {
-      const near = restaurants.filter(r => {
+      return restaurants.filter(r => {
         const rLat = r.location?.coordinates ? r.location.coordinates[1] : r.location?.lat;
         const rLng = r.location?.coordinates ? r.location.coordinates[0] : r.location?.lng;
         const d = getDistanceKm(userCoords.lat, userCoords.lng, rLat, rLng);
         return d !== null && d <= DELIVERY_RADIUS_KM;
       });
-      return near;
     }
     if (locationText.trim() && !locationText.includes('Current Location')) {
       const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
@@ -183,13 +227,12 @@ export default function HomePage() {
   // ----- Filter stores by proximity or locationText -----
   const visibleStores = useMemo(() => {
     if (userCoords) {
-      const near = stores.filter(s => {
+      return stores.filter(s => {
         const sLat = s.location?.coordinates ? s.location.coordinates[1] : s.location?.lat;
         const sLng = s.location?.coordinates ? s.location.coordinates[0] : s.location?.lng;
         const d = getDistanceKm(userCoords.lat, userCoords.lng, sLat, sLng);
         return d !== null && d <= DELIVERY_RADIUS_KM;
       });
-      return near;
     }
     if (locationText.trim() && !locationText.includes('Current Location')) {
       const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
@@ -202,7 +245,7 @@ export default function HomePage() {
     return stores;
   }, [stores, userCoords, locationText]);
 
-  // Determine if we're "out of range": GPS coords set, loading done, and zero vendors within radius
+  // Determine if we're "out of range" when the user used GPS, only after loading completes
   const isOutOfRange = Boolean(userCoords) && !loading && !locLoading && visibleRestaurants.length === 0 && visibleStores.length === 0;
 
   // Set of restaurant IDs that serve items matching the active category
@@ -407,10 +450,7 @@ export default function HomePage() {
     }
     if (!search.trim()) {
       // User just entered a location and pressed Enter, do not redirect!
-      if (locationText.trim()) {
-        localStorage.setItem('jdkart_loc_name', locationText.trim());
-        window.dispatchEvent(new Event('locationUpdated'));
-      }
+      // The homepage live-filters vendors based on locationText already.
       return;
     }
 
@@ -490,7 +530,7 @@ export default function HomePage() {
               <div className="search-location">
                 <button
                   type="button"
-                  onClick={() => window.dispatchEvent(new Event('requestLocationPrompt'))}
+                  onClick={triggerLocationPrompt}
                   disabled={locLoading}
                   title="Auto-detect location"
                   style={{ background: 'transparent', border: 'none', cursor: locLoading ? 'not-allowed' : 'pointer', fontSize: 18, color: 'var(--primary)', padding: 0, marginRight: 8, display: 'flex', alignItems: 'center' }}
@@ -752,6 +792,35 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Location Permission Modal */}
+      {false && showLocationPrompt && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', width: '100%', maxWidth: 360, borderRadius: 20,
+            padding: '32px 24px', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+            border: '1px solid var(--border)', animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>📍</div>
+            <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text-primary)' }}>
+              Enter the Delivery Location
+            </h3>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+              Where should we deliver your order? Allow location access to see restaurants near you!
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button onClick={handleDetectLocation} disabled={locLoading} className="btn btn-primary btn-full btn-lg">
+                {locLoading ? 'Wait...' : ' Use My Live Location'}
+              </button>
+              <button onClick={() => setShowLocationPrompt(false)} className="btn btn-secondary btn-full btn-lg" style={{ background: 'transparent', border: '1px solid var(--border)' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

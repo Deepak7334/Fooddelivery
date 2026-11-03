@@ -2,182 +2,92 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FiMapPin, FiNavigation, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../lib/api';
-
-// Resolve clean locality from real GPS coords using the backend proxy (avoids CORS + rate-limits)
-async function resolveExactPlaceName(lat, lng) {
-  // 1. Backend Nominatim proxy — street/neighbourhood/city level accuracy
-  try {
-    const res = await api.get(`/customer/reverse-geocode?lat=${lat}&lng=${lng}`);
-    if (res.data?.success && res.data.placeName && res.data.placeName !== 'Current Location') {
-      return res.data.placeName;
-    }
-  } catch (e) {}
-
-  // 2. BigDataCloud direct (fast, no auth, no CORS issue)
-  try {
-    const res = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
-    );
-    const data = await res.json();
-    if (data) {
-      const locality = data.locality || data.city;
-      const city = data.city || data.principalSubdivision;
-      if (locality && city && locality.toLowerCase() !== city.toLowerCase()) {
-        return `${locality}, ${city}`;
-      }
-      return locality || city || null;
-    }
-  } catch (e) {}
-
-  return null;
-}
 
 export default function LocationPrompt() {
   const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
   const location = useLocation();
 
-  // Show on every home page visit / refresh
+  // Always display the location pop-up when visiting or refreshing the home page
   useEffect(() => {
     if (location.pathname === '/') {
-      const timer = setTimeout(() => setShow(true), 400);
+      const timer = setTimeout(() => {
+        setShow(true);
+      }, 400);
       return () => clearTimeout(timer);
-    } else {
-      setShow(false);
     }
   }, [location.pathname]);
 
-  // Manual trigger from Navbar 📍 button
+  // Also listen for manual trigger requests from Navbar ("📍 Enter city or detect")
   useEffect(() => {
-    const handleRequest = () => setShow(true);
-    window.addEventListener('requestLocationPrompt', handleRequest);
-    return () => window.removeEventListener('requestLocationPrompt', handleRequest);
+    const handleManualRequest = () => {
+      setShow(true);
+    };
+    window.addEventListener('requestLocationPrompt', handleManualRequest);
+    return () => window.removeEventListener('requestLocationPrompt', handleManualRequest);
   }, []);
 
-  const handleDismiss = () => setShow(false);
+  const handleDismiss = () => {
+    setShow(false);
+  };
 
   const handleDetectGPS = () => {
-    // Close modal immediately — no freeze, no wait
-    setShow(false);
-
-    // If we have cached GPS coords, notify app instantly while we refresh in background
-    try {
-      const cached = JSON.parse(localStorage.getItem('jdkart_coords') || 'null');
-      if (cached?.lat && cached?.lng) {
-        window.dispatchEvent(new Event('locationUpdated'));
-      }
-    } catch {}
-
-    const toastId = toast.loading('📍 Getting your exact location…');
-
-    // Saves GPS + resolves a human-readable place name from real coordinates
-    const applyGPSCoords = async (coords) => {
-      // Save coords immediately so the app reacts
-      localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-      localStorage.setItem('jdkart_loc_name', 'Current Location');
-      window.dispatchEvent(new Event('locationUpdated'));
-      toast.success('📍 Location detected! Showing nearby items.', { id: toastId, duration: 2500 });
-
-      // Resolve exact human-readable name in background (no UI blocking)
-      const name = await resolveExactPlaceName(coords.lat, coords.lng);
-      if (name) {
-        localStorage.setItem('jdkart_loc_name', name);
-        window.dispatchEvent(new Event('locationUpdated'));
-      }
-    };
-
-    // IP fallback — only used if GPS is explicitly denied (code 1) or device has no GPS
-    const fallbackToIP = async () => {
-      try {
-        // Use backend proxy so we get the server-side client IP (more accurate than browser IP)
-        const res = await api.get('/customer/ip-location');
-        const data = res.data;
-        if (data?.success && data.lat && data.lng) {
-          localStorage.setItem('jdkart_coords', JSON.stringify({ lat: data.lat, lng: data.lng }));
-          localStorage.setItem('jdkart_loc_name', data.city || 'Current Location');
-          window.dispatchEvent(new Event('locationUpdated'));
-          toast.success(`📍 Location set to ${data.city || 'your city'}.`, { id: toastId, duration: 2500 });
-          return;
-        }
-      } catch {}
-
-      // Direct client IP as last resort
-      try {
-        const res = await fetch('https://ipwho.is/');
-        const data = await res.json();
-        if (data?.latitude && data?.longitude) {
-          const city = data.city || data.region || 'Current Location';
-          localStorage.setItem('jdkart_coords', JSON.stringify({ lat: data.latitude, lng: data.longitude }));
-          localStorage.setItem('jdkart_loc_name', city);
-          window.dispatchEvent(new Event('locationUpdated'));
-          toast.success(`📍 Location set to ${city}.`, { id: toastId, duration: 2500 });
-          return;
-        }
-      } catch {}
-
-      toast.error('Location unavailable. Please type your city in the search bar.', { id: toastId, duration: 4000 });
-    };
-
     if (!navigator.geolocation) {
-      fallbackToIP();
+      toast.error('Geolocation is not supported by your browser');
       return;
     }
 
-    // Strategy: Two-phase GPS
-    // Phase 1 — fast network-assisted location (Wi-Fi/cell tower), no satellite wait, ~1s
-    // Phase 2 — if Phase 1 fails, try high-accuracy GPS (satellite), longer timeout
-    // If BOTH fail (GPS denied), silently fall back to IP
+    setLoading(true);
+    const toastId = toast.loading('Detecting your live location…');
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        // Got a network-assisted fix
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        applyGPSCoords(coords);
 
-        // Silently try to refine with high-accuracy GPS in background (no UI impact)
-        navigator.geolocation.getCurrentPosition(
-          (refinedPos) => {
-            const refined = { lat: refinedPos.coords.latitude, lng: refinedPos.coords.longitude };
-            // Only update if meaningfully different (>50m away)
-            const latDiff = Math.abs(refined.lat - coords.lat);
-            const lngDiff = Math.abs(refined.lng - coords.lng);
-            if (latDiff > 0.0005 || lngDiff > 0.0005) {
-              localStorage.setItem('jdkart_coords', JSON.stringify(refined));
-              window.dispatchEvent(new Event('locationUpdated'));
-              resolveExactPlaceName(refined.lat, refined.lng).then(name => {
-                if (name) {
-                  localStorage.setItem('jdkart_loc_name', name);
-                  window.dispatchEvent(new Event('locationUpdated'));
-                }
-              });
+        // 1. Instantly save coordinates
+        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
+        
+        // 2. Set default location text immediately so UI updates without waiting for network
+        const previousName = localStorage.getItem('jdkart_loc_name');
+        const instantName = previousName && !previousName.includes('Current Location') ? previousName : 'Current Location';
+        localStorage.setItem('jdkart_loc_name', instantName);
+
+        // 3. Immediately dispatch event so HomePage updates nearby vendors instantly
+        window.dispatchEvent(new Event('locationUpdated'));
+
+        // 4. Instantly close modal and dismiss loader (happens in < 1 second!)
+        setLoading(false);
+        setShow(false);
+        toast.success('📍 Live location detected! Showing nearby items.', { id: toastId });
+
+        // 5. Asynchronously fetch detailed place name in background without blocking UI
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.address) {
+              const addr = data.address;
+              const place = addr.suburb || addr.neighbourhood || addr.city_district || addr.village || addr.town || addr.city;
+              if (place) {
+                localStorage.setItem('jdkart_loc_name', place);
+                window.dispatchEvent(new Event('locationUpdated'));
+              }
             }
-          },
-          () => {}, // Silent — network fix is already applied
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-        );
+          })
+          .catch(() => {
+            // Background reverse geocode failed or timed out — coords are already active
+          });
       },
       (err) => {
-        if (err.code === 1) {
-          // Permission denied — IP fallback
-          toast.error('Location permission denied. Falling back to your approximate city.', { id: toastId, duration: 3000 });
-          fallbackToIP();
-        } else {
-          // Timeout or GPS unavailable — try high-accuracy GPS one more time
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-              applyGPSCoords(coords);
-            },
-            () => {
-              // Both GPS attempts failed — use IP
-              fallbackToIP();
-            },
-            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-          );
-        }
+        setLoading(false);
+        console.warn('Geolocation error:', err);
+        let msg = 'Could not access GPS. Please enable location permissions.';
+        if (err.code === 1) msg = 'Location access was denied. Please allow location in your browser settings.';
+        if (err.code === 2) msg = 'Location unavailable. Ensure GPS/Location is enabled on your device.';
+        if (err.code === 3) msg = 'Location request timed out. Please try again.';
+        toast.error(msg, { id: toastId, duration: 4000 });
       },
-      // Phase 1: fast, network-assisted, no satellite wait
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      // Fast cellular/Wi-Fi triangulation with 5 min cache for instantaneous response
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
     );
   };
 
@@ -195,7 +105,7 @@ export default function LocationPrompt() {
       justifyContent: 'center',
       zIndex: 99999,
       padding: '16px',
-      animation: 'fadeIn 0.2s ease'
+      animation: 'fadeIn 0.25s ease'
     }}>
       <div style={{
         background: 'var(--bg-card, #1A1D27)',
@@ -216,27 +126,34 @@ export default function LocationPrompt() {
           aria-label="Close"
           style={{
             position: 'absolute',
-            top: 14, right: 14,
+            top: 14,
+            right: 14,
             background: 'var(--bg-card2, rgba(255,255,255,0.06))',
             border: 'none',
             color: 'var(--text-secondary, #94A3B8)',
-            width: 34, height: 34,
+            width: 34,
+            height: 34,
             borderRadius: '50%',
             cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             transition: 'background 0.2s'
           }}
         >
           <FiX size={18} />
         </button>
 
-        {/* Icon */}
+        {/* Location Icon Badge */}
         <div style={{
-          width: 68, height: 68,
+          width: 68,
+          height: 68,
           background: 'linear-gradient(135deg, rgba(255,87,34,0.2), rgba(255,152,0,0.1))',
           border: '1.5px solid rgba(255,87,34,0.35)',
           borderRadius: 22,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           margin: '0 auto 18px',
           color: 'var(--primary, #FF5722)',
           boxShadow: '0 8px 24px rgba(255,87,34,0.25)'
@@ -244,6 +161,7 @@ export default function LocationPrompt() {
           <FiMapPin size={34} />
         </div>
 
+        {/* Title */}
         <h2 style={{
           fontSize: 'clamp(20px, 4.5vw, 24px)',
           fontWeight: 800,
@@ -254,18 +172,22 @@ export default function LocationPrompt() {
           Turn On Your Location
         </h2>
 
+        {/* Description */}
         <p style={{
           fontSize: 'clamp(13px, 3.5vw, 14px)',
           color: 'var(--text-secondary, #94A3B8)',
           lineHeight: 1.55,
           margin: '0 0 24px'
         }}>
-          Allow location access to see restaurants and stores near you.
+          Please allow your location to see restaurants and stores delivering to your area.
         </p>
 
+        {/* Action Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Allow / Turn On Location Button */}
           <button
             onClick={handleDetectGPS}
+            disabled={loading}
             style={{
               background: 'linear-gradient(135deg, var(--primary, #FF5722), #E64A19)',
               color: '#fff',
@@ -274,17 +196,21 @@ export default function LocationPrompt() {
               borderRadius: 12,
               fontSize: 15,
               fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.75 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               gap: 8,
               boxShadow: '0 6px 18px rgba(255, 87, 34, 0.35)',
               transition: 'transform 0.15s ease'
             }}
           >
             <FiNavigation size={17} />
-            Allow Location
+            {loading ? 'Detecting Location...' : 'Allow Location'}
           </button>
 
+          {/* Not Now Button */}
           <button
             onClick={handleDismiss}
             style={{
