@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
-import 'features/auth/screens/splash_screen.dart';
+import 'features/customer/screens/main_layout.dart';
 import 'features/customer/screens/notifications_screen.dart';
 import 'services/auth_service.dart';
 import 'services/cart_service.dart';
@@ -37,7 +37,7 @@ class FoodhubApp extends StatelessWidget {
         primaryColor: const Color(0xFFF97316),
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const SplashScreen(),
+      home: const MainLayout(),
     );
   }
 }
