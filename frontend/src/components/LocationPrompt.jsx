@@ -37,145 +37,84 @@ export default function LocationPrompt() {
     // 1. Instantly dismiss modal so the user never feels blocked or frozen
     setShow(false);
 
-    // 2. If cached coordinates exist, activate them instantaneously in 0ms
-    try {
-      const cached = localStorage.getItem('jdkart_coords');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.lat && parsed?.lng) {
+    const toastId = toast.loading('📍 Acquiring your live location…');
+
+    // Helper: Reverse-geocode coordinates using our backend proxy (bypasses browser CORS & User-Agent limits)
+    const resolvePlaceName = async (coords) => {
+      try {
+        const res = await api.get(`/customer/reverse-geocode?lat=${coords.lat}&lng=${coords.lng}`).catch(() => null);
+        if (res?.data?.success && res.data.placeName && res.data.placeName !== 'Current Location') {
+          localStorage.setItem('jdkart_loc_name', res.data.placeName);
           window.dispatchEvent(new Event('locationUpdated'));
+          toast.success(`📍 Location: ${res.data.placeName}`, { id: toastId, duration: 3000 });
+          return;
         }
-      }
-    } catch {}
 
-    const toastId = toast.loading('📍 Acquiring accurate location…');
-
-    // Helper: Smart reverse geocoding to resolve exact neighborhood and city
-    const resolvePlaceName = (coords) => {
-      // 1. Try OpenStreetMap Nominatim with English and zoom=16
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=16&addressdetails=1`, {
-        headers: { 'Accept-Language': 'en' }
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          if (data?.address) {
-            const a = data.address;
-            const loc = a.neighbourhood || a.suburb || a.quarter || a.residential || a.road || a.village || a.town;
-            const city = a.city || a.town || a.county || a.state_district;
-            let label = loc || city;
-            if (loc && city && loc !== city) {
-              label = `${loc}, ${city}`;
-            }
-            if (label) {
-              localStorage.setItem('jdkart_loc_name', label);
-              window.dispatchEvent(new Event('locationUpdated'));
-              return;
-            }
+        // Secondary client fallback: BigDataCloud
+        const bdc = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.lat}&longitude=${coords.lng}&localityLanguage=en`)
+          .then(r => r.json())
+          .catch(() => null);
+        if (bdc) {
+          const loc = bdc.locality || bdc.city;
+          const city = bdc.city || bdc.principalSubdivision;
+          let label = loc;
+          if (loc && city && loc !== city) label = `${loc}, ${city}`;
+          if (label) {
+            localStorage.setItem('jdkart_loc_name', label);
+            window.dispatchEvent(new Event('locationUpdated'));
+            toast.success(`📍 Location: ${label}`, { id: toastId, duration: 3000 });
           }
-          throw new Error('Fallback to secondary geocoder');
-        })
-        .catch(() => {
-          // 2. Fallback to BigDataCloud client API (<100ms)
-          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.lat}&longitude=${coords.lng}&localityLanguage=en`)
-            .then((r) => r.json())
-            .then((data) => {
-              const locality = data.locality || data.city;
-              const city = data.city || data.principalSubdivision;
-              let label = locality;
-              if (locality && city && locality !== city) {
-                label = `${locality}, ${city}`;
-              }
-              if (label) {
-                localStorage.setItem('jdkart_loc_name', label);
-                window.dispatchEvent(new Event('locationUpdated'));
-              }
-            })
-            .catch(() => {});
-        });
+        }
+      } catch (e) {
+        console.warn('Reverse geocode warning:', e);
+      }
     };
 
-    const applyLocation = (coords, placeName) => {
+    const applyLocation = (coords) => {
       localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-      if (placeName) {
-        localStorage.setItem('jdkart_loc_name', placeName);
-      } else {
-        const prev = localStorage.getItem('jdkart_loc_name');
-        localStorage.setItem('jdkart_loc_name', prev && !prev.includes('Current Location') ? prev : 'Current Location');
+      // Set initial placeholder while reverse-geocoding runs
+      const currentName = localStorage.getItem('jdkart_loc_name');
+      if (!currentName) {
+        localStorage.setItem('jdkart_loc_name', 'Detecting address…');
       }
       window.dispatchEvent(new Event('locationUpdated'));
-      toast.success(placeName ? `📍 Location active near ${placeName}!` : '📍 Accurate live location detected!', { id: toastId, duration: 2500 });
       resolvePlaceName(coords);
     };
 
-    // Stage 3 Fallback: IP-based location (used when GPS is unavailable/blocked)
-    const fallbackToIP = async (isPermissionDenied = false) => {
-      try {
-        const res = await api.get('/customer/ip-location').catch(() => null);
-        if (res?.data?.success && res.data.lat && res.data.lng) {
-          const city = res.data.city || 'your area';
-          applyLocation({ lat: res.data.lat, lng: res.data.lng }, city);
-          if (isPermissionDenied) {
-            toast.success(`📍 Showing items near ${city}. Enable device GPS for pinpoint accuracy.`, { id: toastId, duration: 4000 });
-          }
-          return true;
-        }
-
-        const ipRes = await fetch('https://ipwho.is/').then((r) => r.json()).catch(() => null);
-        if (ipRes && ipRes.success && ipRes.latitude && ipRes.longitude) {
-          const city = ipRes.city || ipRes.region || 'your area';
-          applyLocation({ lat: ipRes.latitude, lng: ipRes.longitude }, city);
-          if (isPermissionDenied) {
-            toast.success(`📍 Showing items near ${city}. Enable device GPS for pinpoint accuracy.`, { id: toastId, duration: 4000 });
-          }
-          return true;
-        }
-      } catch (e) {
-        console.warn('IP fallback failed:', e);
-      }
-      return false;
-    };
-
     if (!navigator.geolocation) {
-      fallbackToIP().then((ok) => {
-        if (!ok) toast.error('Geolocation is not supported by your browser', { id: toastId });
-      });
+      toast.error('Geolocation is not supported by your browser', { id: toastId });
       return;
     }
 
-    // STAGE 1: Try High Accuracy GPS first (gives pinpoint street-level accuracy on mobile!)
+    // STAGE 1: Real GPS hardware acquisition (maximumAccuracy: true, maximumAge: 0 forces FRESH GPS fix, not stale cache!)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         applyLocation(coords);
       },
       (err) => {
-        // If user explicitly denied permission, do not retry GPS; fallback to IP
+        // If user explicitly blocked/denied permission in browser
         if (err.code === 1) {
-          fallbackToIP(true).then((ok) => {
-            if (!ok) toast.error('Location access was denied. Please allow it in browser settings.', { id: toastId });
-          });
+          toast.error('Location permission was denied. Please allow location in your browser settings (lock icon).', { id: toastId, duration: 4500 });
           return;
         }
 
-        // STAGE 2: If High Accuracy timed out or failed (indoors/laptop), seamlessly try Network/Wi-Fi positioning
+        // STAGE 2: If satellite GPS hardware is unavailable (e.g. indoors or laptop), retry with network Wi-Fi positioning
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             applyLocation(coords);
           },
-          async () => {
-            // STAGE 3: If network positioning also fails, fallback to IP
-            const ok = await fallbackToIP(false);
-            if (!ok) {
-              toast.error('Could not detect location. Please select your city or try again.', { id: toastId, duration: 3500 });
-            }
+          (stage2Err) => {
+            console.warn('Network location also failed:', stage2Err);
+            toast.error('Could not get GPS fix. Please ensure location is enabled on your device.', { id: toastId, duration: 4000 });
           },
-          { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 }
         );
       },
-      // Stage 1 config: enableHighAccuracy: true gives satellite/meter accuracy on mobile phones
-      // 8-second timeout gives hardware time to lock; 60-second cache returns recent GPS fix in 0ms!
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      // 10s timeout gives the mobile GPS chip time to lock onto satellites
+      // maximumAge: 0 forces browser to query real hardware rather than returning stale cached tower data
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 

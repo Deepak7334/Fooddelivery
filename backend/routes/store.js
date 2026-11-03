@@ -35,7 +35,7 @@ router.get('/stores', async (req, res) => {
               type: "Point",
               coordinates: [parseFloat(lng), parseFloat(lat)]
             },
-            $maxDistance: 5000 // 5 km radius
+            $maxDistance: 50000 // 50 km radius
           }
         }
       });

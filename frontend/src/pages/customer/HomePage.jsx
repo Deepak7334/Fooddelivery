@@ -11,7 +11,7 @@ const HERO_FOOD_EMOJIS = ['🍕', '🍔', '🍛', '🌮', '🍜', '🥗'];
 
 const getDistanceKm = calculateDistance;
 
-const DELIVERY_RADIUS_KM = 5; // deliver within 5 km
+const DELIVERY_RADIUS_KM = 35; // deliver within 35 km
 
 const STORE_TYPES = [
   { _id: 'grocery', name: 'Grocery', icon: '🛒', color: '#4CAF50', type: 'store' },
@@ -161,11 +161,20 @@ export default function HomePage() {
   // ----- Filter restaurants by proximity or locationText -----
   const visibleRestaurants = useMemo(() => {
     if (userCoords) {
-      return restaurants.filter(r => {
+      const near = restaurants.filter(r => {
         const rLat = r.location?.coordinates ? r.location.coordinates[1] : r.location?.lat;
         const rLng = r.location?.coordinates ? r.location.coordinates[0] : r.location?.lng;
         const d = getDistanceKm(userCoords.lat, userCoords.lng, rLat, rLng);
         return d !== null && d <= DELIVERY_RADIUS_KM;
+      });
+      if (near.length > 0) return near;
+      // If beyond delivery radius, show all restaurants sorted by nearest
+      return [...restaurants].sort((a, b) => {
+        const da = getVendorDistance(a, userCoords);
+        const db = getVendorDistance(b, userCoords);
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da - db;
       });
     }
     if (locationText.trim() && !locationText.includes('Current Location')) {
@@ -182,11 +191,19 @@ export default function HomePage() {
   // ----- Filter stores by proximity or locationText -----
   const visibleStores = useMemo(() => {
     if (userCoords) {
-      return stores.filter(s => {
+      const near = stores.filter(s => {
         const sLat = s.location?.coordinates ? s.location.coordinates[1] : s.location?.lat;
         const sLng = s.location?.coordinates ? s.location.coordinates[0] : s.location?.lng;
         const d = getDistanceKm(userCoords.lat, userCoords.lng, sLat, sLng);
         return d !== null && d <= DELIVERY_RADIUS_KM;
+      });
+      if (near.length > 0) return near;
+      return [...stores].sort((a, b) => {
+        const da = getVendorDistance(a, userCoords);
+        const db = getVendorDistance(b, userCoords);
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da - db;
       });
     }
     if (locationText.trim() && !locationText.includes('Current Location')) {
@@ -201,7 +218,7 @@ export default function HomePage() {
   }, [stores, userCoords, locationText]);
 
   // Determine if we're "out of range" when the user used GPS, only after loading completes
-  const isOutOfRange = Boolean(userCoords) && !loading && !locLoading && visibleRestaurants.length === 0 && visibleStores.length === 0;
+  const isOutOfRange = false;
 
   // Set of restaurant IDs that serve items matching the active category
   const matchingRestIds = useMemo(() => {

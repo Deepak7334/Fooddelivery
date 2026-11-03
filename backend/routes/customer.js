@@ -53,6 +53,50 @@ router.get('/ip-location', async (req, res) => {
   }
 });
 
+// Reverse geocode proxy (avoids browser CORS & User-Agent restrictions)
+router.get('/reverse-geocode', async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) return res.status(400).json({ success: false, message: 'lat and lng required' });
+
+    const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`;
+    const nomRes = await fetch(nomUrl, {
+      headers: {
+        'User-Agent': 'JDKart-Delivery/1.0 (support@jdkart.in)',
+        'Accept-Language': 'en'
+      }
+    }).then(r => r.json()).catch(() => null);
+
+    if (nomRes?.address) {
+      const addr = nomRes.address;
+      const locality = addr.village || addr.suburb || addr.neighbourhood || addr.quarter || addr.residential || addr.town || addr.hamlet;
+      const city = addr.city || addr.town || addr.county || addr.state_district || addr.district;
+      const parts = [];
+      if (locality) parts.push(locality);
+      if (city && (!locality || !locality.toLowerCase().includes(city.toLowerCase()))) {
+        parts.push(city);
+      }
+      const placeName = parts.join(', ') || addr.state || 'Current Location';
+      return res.json({ success: true, placeName, address: addr });
+    }
+
+    // Secondary fallback: BigDataCloud
+    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+    const bdcRes = await fetch(bdcUrl).then(r => r.json()).catch(() => null);
+    if (bdcRes) {
+      const locality = bdcRes.locality || bdcRes.city;
+      const city = bdcRes.city || bdcRes.principalSubdivision;
+      let placeName = locality;
+      if (locality && city && locality !== city) placeName = `${locality}, ${city}`;
+      return res.json({ success: true, placeName: placeName || 'Current Location' });
+    }
+
+    res.json({ success: true, placeName: 'Current Location' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/settings/promo', async (req, res) => {
   try {
     const settings = await getCachedSettings();
@@ -285,7 +329,7 @@ router.get('/restaurants', async (req, res) => {
               type: "Point",
               coordinates: [parseFloat(lng), parseFloat(lat)]
             },
-            $maxDistance: 5000 // 5 km radius
+            $maxDistance: 50000 // 50 km radius
           }
         }
       });
