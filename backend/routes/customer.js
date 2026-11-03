@@ -28,6 +28,30 @@ async function getCachedSettings() {
 
 // ========== PUBLIC ROUTES ==========
 // Get all categories
+// IP-based location fallback (when GPS is slow, indoors, or desktop)
+router.get('/ip-location', async (req, res) => {
+  try {
+    const forwarded = req.headers['x-forwarded-for'];
+    const clientIp = forwarded ? forwarded.split(',')[0].trim() : req.socket?.remoteAddress;
+    
+    const isLocal = !clientIp || ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(clientIp);
+    const url = isLocal ? 'https://ipwho.is/' : `https://ipwho.is/${clientIp}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data && data.success) {
+      return res.json({
+        success: true,
+        city: data.city || data.region,
+        lat: data.latitude,
+        lng: data.longitude
+      });
+    }
+    res.json({ success: false });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
 
 // Reverse geocode proxy (avoids browser CORS & User-Agent restrictions, extracts exact address)
 router.get('/reverse-geocode', async (req, res) => {

@@ -3,6 +3,36 @@ import { useLocation } from 'react-router-dom';
 import { FiMapPin, FiNavigation, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
+// Resolve clean locality and city from real GPS coordinates without CORS/rate-limit blocks
+async function resolveCleanPlaceName(lat, lng) {
+  // 1. BigDataCloud (<100ms, highly accurate for Indian cities & localities, zero auth)
+  try {
+    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+    const data = await res.json();
+    if (data) {
+      const locality = data.locality || data.city;
+      const city = data.city || data.principalSubdivision;
+      if (locality && city && locality.toLowerCase() !== city.toLowerCase()) {
+        return `${locality}, ${city}`;
+      }
+      return locality || city || 'Current Location';
+    }
+  } catch (e) {}
+
+  // 2. Photon API (OpenStreetMap)
+  try {
+    const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
+    const data = await res.json();
+    const p = data.features?.[0]?.properties;
+    if (p) {
+      const name = p.name || p.city || p.town || p.district;
+      return name || 'Current Location';
+    }
+  } catch (e) {}
+
+  return 'Current Location';
+}
+
 export default function LocationPrompt() {
   const [show, setShow] = useState(false);
   const location = useLocation();
@@ -50,7 +80,7 @@ export default function LocationPrompt() {
     const toastId = toast.loading('📍 Detecting your location…');
 
     // Helper: apply coordinates, update state, and fetch human-readable place
-    const applyCoordinates = (coords, defaultPlace = 'Current Location') => {
+    const applyCoordinates = async (coords, defaultPlace = 'Current Location') => {
       localStorage.setItem('jdkart_coords', JSON.stringify(coords));
       localStorage.setItem('jdkart_loc_name', defaultPlace);
 
@@ -62,37 +92,38 @@ export default function LocationPrompt() {
         { id: toastId, duration: 2500 }
       );
 
-      // Background reverse-geocode for neighborhood/area details without blocking
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.address) {
-            const addr = data.address;
-            const place = addr.suburb || addr.neighbourhood || addr.city_district || addr.village || addr.town || addr.city;
-            if (place) {
-              localStorage.setItem('jdkart_loc_name', place);
-              window.dispatchEvent(new Event('locationUpdated'));
-            }
-          }
-        })
-        .catch(() => {});
+      // Asynchronously resolve clean human-readable locality in background
+      const place = await resolveCleanPlaceName(coords.lat, coords.lng);
+      if (place && place !== 'Current Location') {
+        localStorage.setItem('jdkart_loc_name', place);
+        window.dispatchEvent(new Event('locationUpdated'));
+      }
     };
 
     // Fallback: fast IP-based geolocation if browser GPS times out or is restricted
-    const fallbackToIP = () => {
-      fetch('https://ipwho.is/')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.success !== false && data.latitude && data.longitude) {
-            const cityName = data.city || data.region || 'Current Location';
-            applyCoordinates({ lat: data.latitude, lng: data.longitude }, cityName);
-          } else {
-            toast.error('Location detection timed out. You can also search your city directly.', { id: toastId, duration: 4000 });
-          }
-        })
-        .catch(() => {
-          toast.error('Location detection timed out. You can also search your city directly.', { id: toastId, duration: 4000 });
-        });
+    const fallbackToIP = async () => {
+      // 1. Direct browser IP geolocation (<200ms)
+      try {
+        const res = await fetch('https://ipwho.is/');
+        const data = await res.json();
+        if (data && data.success !== false && data.latitude && data.longitude) {
+          const cityName = data.city || data.region || 'Current Location';
+          applyCoordinates({ lat: data.latitude, lng: data.longitude }, cityName);
+          return;
+        }
+      } catch (e) {}
+
+      // 2. Backend IP proxy fallback
+      try {
+        const res = await fetch('/api/customer/ip-location');
+        const data = await res.json();
+        if (data?.success && data.lat && data.lng) {
+          applyCoordinates({ lat: data.lat, lng: data.lng }, data.city || 'Current Location');
+          return;
+        }
+      } catch (e) {}
+
+      toast.error('Could not detect location. You can search your city in the search bar.', { id: toastId, duration: 4000 });
     };
 
     if (!navigator.geolocation) {
