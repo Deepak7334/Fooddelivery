@@ -167,15 +167,7 @@ export default function HomePage() {
         const d = getDistanceKm(userCoords.lat, userCoords.lng, rLat, rLng);
         return d !== null && d <= DELIVERY_RADIUS_KM;
       });
-      if (near.length > 0) return near;
-      // If beyond delivery radius, show all restaurants sorted by nearest
-      return [...restaurants].sort((a, b) => {
-        const da = getVendorDistance(a, userCoords);
-        const db = getVendorDistance(b, userCoords);
-        if (da === null) return 1;
-        if (db === null) return -1;
-        return da - db;
-      });
+      return near;
     }
     if (locationText.trim() && !locationText.includes('Current Location')) {
       const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
@@ -197,14 +189,7 @@ export default function HomePage() {
         const d = getDistanceKm(userCoords.lat, userCoords.lng, sLat, sLng);
         return d !== null && d <= DELIVERY_RADIUS_KM;
       });
-      if (near.length > 0) return near;
-      return [...stores].sort((a, b) => {
-        const da = getVendorDistance(a, userCoords);
-        const db = getVendorDistance(b, userCoords);
-        if (da === null) return 1;
-        if (db === null) return -1;
-        return da - db;
-      });
+      return near;
     }
     if (locationText.trim() && !locationText.includes('Current Location')) {
       const tokens = locationText.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean);
@@ -217,8 +202,8 @@ export default function HomePage() {
     return stores;
   }, [stores, userCoords, locationText]);
 
-  // Determine if we're "out of range" when the user used GPS, only after loading completes
-  const isOutOfRange = false;
+  // Determine if we're "out of range": GPS coords set, loading done, and zero vendors within radius
+  const isOutOfRange = Boolean(userCoords) && !loading && !locLoading && visibleRestaurants.length === 0 && visibleStores.length === 0;
 
   // Set of restaurant IDs that serve items matching the active category
   const matchingRestIds = useMemo(() => {
