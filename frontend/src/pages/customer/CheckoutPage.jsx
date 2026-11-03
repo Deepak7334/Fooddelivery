@@ -65,17 +65,55 @@ export default function CheckoutPage() {
     }
   }, [showNewAddressForm]);
 
-  const hasGPS = !!localStorage.getItem('jdkart_coords');
+  
+  const [locLoading, setLocLoading] = useState(false);
+
+  const handleAutoDetectAddress = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setLocLoading(true);
+    toast.loading('Detecting current location...', { id: 'chk-loc' });
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
+        try {
+          const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + coords.lat + '&lon=' + coords.lng);
+          const data = await res.json();
+          if (data && data.address) {
+            const addr = data.address;
+            const locality = addr.neighbourhood || addr.suburb || addr.village || addr.residential || addr.road || '';
+            const district = addr.city_district || addr.district || addr.city || addr.town || addr.county || '';
+            const state = addr.state || 'Bihar';
+            const postcode = addr.postcode || '';
+            if (locality) setAddrArea(locality);
+            if (district) setAddrDistrict(district);
+            if (state) setAddrState(state);
+            if (postcode) setAddrPincode(postcode);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+        setLocLoading(false);
+        toast.success('Location detected and filled!', { id: 'chk-loc' });
+      },
+      (err) => {
+        setLocLoading(false);
+        toast.error('Could not detect GPS location. Please enter manually.', { id: 'chk-loc' });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
 
   const getActiveAddressString = () => {
     if (!showNewAddressForm && selectedAddressIndex >= 0 && savedAddresses[selectedAddressIndex]) {
       const sa = savedAddresses[selectedAddressIndex];
       return sa.address || [sa.addressLine1, sa.area, sa.city, sa.state, sa.pincode].filter(Boolean).join(', ');
     }
-    if (hasGPS) {
-      return [addrHouse, addrLandmark].filter(Boolean).join(', ');
-    }
-    return [addrHouse, addrArea, addrLandmark, addrDistrict, addrState, addrPincode].filter(Boolean).join(', ');
+    return [addrHouse, addrArea, addrLandmark, addrDistrict, addrState, addrPincode].filter(Boolean).join(", ");
   };
 
   const address = getActiveAddressString();
@@ -229,12 +267,8 @@ export default function CheckoutPage() {
       if (!customerName.trim()) { toast.error('Please enter your full name'); return; }
       if (!addrHouse.trim()) { toast.error('Please enter your House/Flat/Block number'); return; }
       
-      if (!hasGPS) {
-        if (!addrArea.trim()) { toast.error('Please select or enter your Area/Locality'); return; }
-        if (!addrDistrict.trim()) { toast.error('Please select or enter your District/City'); return; }
-        if (!addrState.trim()) { toast.error('Please select or enter your State'); return; }
-        if (!addrPincode.trim()) { toast.error('Please enter your Pincode'); return; }
-      }
+      if (!addrArea.trim()) { toast.error('Please enter your Area/Locality'); return; }
+      if (!addrDistrict.trim()) { toast.error('Please enter your District/City'); return; }
 
       if (!alternatePhone.trim()) { toast.error('Please enter a Delivery Mobile Number'); return; }
 
@@ -517,12 +551,43 @@ export default function CheckoutPage() {
               ) : (
                 <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    {['Home', 'Work', 'Other'].map(lbl => (
-                      <button key={lbl} type="button" onClick={() => setAddrLabel(lbl)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${addrLabel === lbl ? 'var(--primary)' : 'var(--border)'}`, background: addrLabel === lbl ? 'var(--primary)' : 'transparent', color: addrLabel === lbl ? '#fff' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                        {lbl}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {['Home', 'Work', 'Other'].map(lbl => (
+                        <button key={lbl} type="button" onClick={() => setAddrLabel(lbl)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${addrLabel === lbl ? 'var(--primary)' : 'var(--border)'}`, background: addrLabel === lbl ? 'var(--primary)' : 'transparent', color: addrLabel === lbl ? '#fff' : 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          {lbl}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAutoDetectAddress}
+                      disabled={locLoading}
+                      title="Use Current Location"
+                      aria-label="Use Current Location"
+                      style={{
+                        background: 'rgba(255,87,34,0.1)',
+                        border: '1px solid rgba(255,87,34,0.3)',
+                        color: 'var(--primary)',
+                        width: 34,
+                        height: 34,
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: locLoading ? 'not-allowed' : 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      {locLoading ? (
+                        <span style={{ fontSize: 13, animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                          <circle cx="12" cy="9" r="2.5" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                   <div>
                     <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Full Name</label>
@@ -532,8 +597,7 @@ export default function CheckoutPage() {
                     <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>House / Flat / Block No.</label>
                     <input type="text" className="form-input" placeholder="e.g. Flat 101, Galaxy Apts" value={addrHouse} onChange={e => setAddrHouse(e.target.value)} />
                   </div>
-                  {!hasGPS && (
-                    <div>
+                  <div>
                       <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Area / Sector / Locality</label>
                       {ALLOWED_AREAS.length > 0 ? (
                         <select className="form-input" value={addrArea} onChange={e => setAddrArea(e.target.value)}>
@@ -546,16 +610,13 @@ export default function CheckoutPage() {
                         <input type="text" className="form-input" placeholder="e.g. Koramangala 4th Block" value={addrArea} onChange={e => setAddrArea(e.target.value)} />
                       )}
                     </div>
-                  )}
                   <div>
                     <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Landmark (Optional)</label>
                     <input type="text" className="form-input" placeholder="e.g. Near Apollo Hospital" value={addrLandmark} onChange={e => setAddrLandmark(e.target.value)} />
                   </div>
                   
                   {/* District & State Row */}
-                  {!hasGPS && (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
                           <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>District</label>
                           {ALLOWED_DISTRIC.length > 0 ? (
@@ -588,8 +649,6 @@ export default function CheckoutPage() {
                         <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Pincode</label>
                         <input type="text" className="form-input" placeholder="e.g. 821304" value={addrPincode} onChange={e => setAddrPincode(e.target.value)} />
                       </div>
-                    </>
-                  )}
                 </div>
               
               {/* Delivery Phone Number */}

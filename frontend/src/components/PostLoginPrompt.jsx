@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { FiBell, FiX } from 'react-icons/fi';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 
 export default function PostLoginPrompt() {
   const { user } = useAuth();
+  const location = useLocation();
   const { requestFCMPermission } = useNotification();
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ export default function PostLoginPrompt() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [user]);
+  }, [user, location.pathname]);
 
   const handleEnable = async () => {
     setLoading(true);
@@ -44,7 +46,7 @@ export default function PostLoginPrompt() {
     setShow(false);
   };
 
-  if (!show) return null;
+  if (!show || location.pathname === '/') return null;
 
   return (
     <div style={{

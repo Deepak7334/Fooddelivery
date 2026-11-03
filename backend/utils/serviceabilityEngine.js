@@ -3,14 +3,14 @@ const Restaurant = require('../models/Restaurant');
 const Store = require('../models/Store');
 
 const checkServiceability = async (address) => {
-  if (!address || (!address.pincode && !address.latitude && !address.longitude)) {
+  if (!address || (!address.pincode && !address.latitude && !address.longitude && !address.addressLine1 && !address.city)) {
     return {
       serviceable: false,
       message: "Location is required to check serviceability."
     };
   }
 
-  // Find matching service area by pincode primarily
+  // 1. Find matching service area by pincode primarily
   let serviceArea = null;
   if (address.pincode) {
     serviceArea = await ServiceArea.findOne({
@@ -19,9 +19,22 @@ const checkServiceability = async (address) => {
     });
   }
 
-  // Fallback to geometric check if we have lat/lng but no pincode match? 
-  // For now, prompt specified pincode based approach: "1. Is the pincode supported?"
-  // If no service area is found, AND no GPS is provided, it's not serviceable.
+  // 2. Fallback: match by city or area name if pincode didn't match
+  if (!serviceArea && (address.city || address.area)) {
+    const searchName = (address.city || address.area || '').trim();
+    if (searchName) {
+      serviceArea = await ServiceArea.findOne({
+        city: new RegExp(searchName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+        status: 'ACTIVE'
+      });
+    }
+  }
+
+  // 3. Fallback: For manual address entries or GPS orders, fallback to any active service area
+  if (!serviceArea) {
+    serviceArea = await ServiceArea.findOne({ status: 'ACTIVE' });
+  }
+
   if (!serviceArea && !(address.latitude && address.longitude)) {
     return {
       serviceable: false,
@@ -79,7 +92,11 @@ const checkVendorServiceability = async (vendorType, vendorId, serviceAreaId, de
     return vendor.serviceAreaIds.map(id => id.toString()).includes(serviceAreaId.toString());
   }
 
-  // Strictly enforce service areas. If a restaurant has no service area assigned, it cannot deliver.
+  // If it's a manual text address without GPS coordinates, allow delivery from active & open vendor
+  if (!deliveryAddress?.latitude && !deliveryAddress?.longitude) {
+    return true;
+  }
+
   return false; 
 };
 
