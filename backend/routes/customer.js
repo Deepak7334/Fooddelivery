@@ -53,13 +53,13 @@ router.get('/ip-location', async (req, res) => {
   }
 });
 
-// Reverse geocode proxy (avoids browser CORS & User-Agent restrictions)
+// Reverse geocode proxy (avoids browser CORS & User-Agent restrictions, extracts exact address)
 router.get('/reverse-geocode', async (req, res) => {
   try {
     const { lat, lng } = req.query;
     if (!lat || !lng) return res.status(400).json({ success: false, message: 'lat and lng required' });
 
-    const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`;
+    const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
     const nomRes = await fetch(nomUrl, {
       headers: {
         'User-Agent': 'JDKart-Delivery/1.0 (support@jdkart.in)',
@@ -68,16 +68,28 @@ router.get('/reverse-geocode', async (req, res) => {
     }).then(r => r.json()).catch(() => null);
 
     if (nomRes?.address) {
-      const addr = nomRes.address;
-      const locality = addr.village || addr.suburb || addr.neighbourhood || addr.quarter || addr.residential || addr.town || addr.hamlet;
-      const city = addr.city || addr.town || addr.county || addr.state_district || addr.district;
+      const a = nomRes.address;
+      const landmark = a.amenity || a.shop || a.building || a.office || a.school || a.hospital || a.hotel || a.house_name;
+      const road = a.road || a.street || a.pedestrian;
+      const locality = a.suburb || a.neighbourhood || a.village || a.colony || a.residential || a.quarter || a.hamlet;
+      const city = a.city || a.town || a.county || a.state_district || a.district;
+      const pincode = a.postcode;
+
       const parts = [];
-      if (locality) parts.push(locality);
-      if (city && (!locality || !locality.toLowerCase().includes(city.toLowerCase()))) {
-        parts.push(city);
+      if (landmark) parts.push(landmark);
+      if (road && !parts.includes(road) && !road.startsWith('NH') && !road.startsWith('SH')) parts.push(road);
+      if (locality && !parts.includes(locality)) parts.push(locality);
+      if (city && !parts.includes(city) && city !== locality) parts.push(city);
+      if (pincode && !parts.includes(pincode)) parts.push(pincode);
+
+      let placeName = parts.length >= 2 ? parts.join(', ') : (parts[0] || '');
+      if (!placeName && nomRes.display_name) {
+        const split = nomRes.display_name.split(',').map(s => s.trim()).filter(Boolean);
+        if (split[split.length - 1] === 'India') split.pop();
+        placeName = split.slice(0, 3).join(', ');
       }
-      const placeName = parts.join(', ') || addr.state || 'Current Location';
-      return res.json({ success: true, placeName, address: addr });
+
+      return res.json({ success: true, placeName: placeName || 'Current Location', address: a });
     }
 
     // Secondary fallback: BigDataCloud
@@ -94,6 +106,41 @@ router.get('/reverse-geocode', async (req, res) => {
     res.json({ success: true, placeName: 'Current Location' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Search location autocomplete (for exact landmark/street/village search)
+router.get('/search-location', async (req, res) => {
+  try {
+    const q = req.query.q || '';
+    if (!q.trim()) return res.json({ success: true, results: [] });
+
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q.trim())}&countrycodes=in&limit=6&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'JDKart-Delivery/1.0 (support@jdkart.in)',
+        'Accept-Language': 'en'
+      }
+    });
+    const data = await response.json();
+
+    const results = (Array.isArray(data) ? data : []).map(item => {
+      const a = item.address || {};
+      const locality = a.village || a.suburb || a.neighbourhood || a.colony || a.town || a.city || item.name;
+      const city = a.city || a.town || a.county || a.state_district;
+      return {
+        name: item.display_name.split(',').slice(0, 3).join(', '),
+        fullAddress: item.display_name,
+        locality,
+        city,
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon)
+      };
+    });
+
+    res.json({ success: true, results });
+  } catch (err) {
+    res.json({ success: false, results: [] });
   }
 });
 
