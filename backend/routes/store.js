@@ -114,4 +114,16 @@ router.get('/products', async (req, res) => {
   }
 });
 
+// GET /api/store/products/:id — single product
+router.get('/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id)
+      .populate('storeId', 'name storeType city deliveryTime deliveryFee isOpen location');
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.json({ success: true, product });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

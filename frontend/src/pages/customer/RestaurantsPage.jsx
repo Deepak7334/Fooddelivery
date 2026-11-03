@@ -271,7 +271,7 @@ function RestaurantCard({ restaurant, userCoords }) {
     <Link to={`/restaurants/${restaurant._id}`} className="card" style={{ textDecoration: 'none' }}>
       <div style={{ position: 'relative', height: 170, background: 'var(--bg-card2)', overflow: 'hidden' }}>
         {restaurant.image ? (
-          <img loading="lazy" src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img loading="lazy" src={restaurant.image} alt={restaurant.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🍽️</div>
         )}
@@ -343,7 +343,7 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </div>
         <div className="item-img" style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
           {food.image ? (
-            <img loading="lazy" src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={food.image} alt={food.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🍽️</div>
           )}

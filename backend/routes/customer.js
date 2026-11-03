@@ -225,6 +225,21 @@ router.get('/foods', async (req, res) => {
   }
 });
 
+// Get single food item by ID
+router.get('/foods/:id', async (req, res) => {
+  try {
+    const food = await Food.findById(req.params.id)
+      .populate('restaurantId', 'name image address cuisine deliveryTime deliveryFee isOpen location')
+      .lean();
+    if (!food) {
+      return res.status(404).json({ success: false, message: 'Food item not found' });
+    }
+    res.json({ success: true, food });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Get all restaurants (with search & filter)
 router.get('/restaurants', async (req, res) => {
   try {

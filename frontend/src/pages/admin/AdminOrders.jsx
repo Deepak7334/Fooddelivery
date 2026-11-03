@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../../lib/socket';
 import { FaWhatsapp } from 'react-icons/fa';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -136,7 +137,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
 
   useEffect(() => {
     if (showMap && order?.deliveryAgentId) {
-      const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
+      const socket = io(SOCKET_URL);
       socketRef.current = socket;
       socket.emit('join_admin_tracking_room');
 

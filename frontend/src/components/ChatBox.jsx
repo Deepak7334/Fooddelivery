@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { FiMessageSquare, FiX, FiSend } from 'react-icons/fi';
+import api from '../lib/api';
 
 export default function ChatBox() {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,62 +29,16 @@ export default function ChatBox() {
     setInput('');
     setIsLoading(true);
 
-    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    
-    if (!apiKey) {
-      setMessages(prev => [...prev, { role: 'assistant', text: 'Error: API key is missing. Please add VITE_GROQ_API_KEY to your frontend/.env file.' }]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          messages: [
-            { 
-              role: 'system', 
-              content: `You are the official Customer Support Assistant for JDkart, a premium food and grocery delivery app. 
-You must act highly professional, warm, and welcoming. 
-
-CRITICAL RULES FOR YOUR RESPONSES:
-1. NEVER use markdown symbols like ** or *. Do not bold or italicize anything.
-2. Structure your answers clearly using short paragraphs.
-3. Use a friendly tone and include emojis strategically (e.g., 🛒, 🍕, 🚀, 😊) to make the chat engaging.
-4. Keep answers concise but complete.
-              
-JDkart Knowledge Base:
-- Services: We deliver hot food from local restaurants and fresh groceries from local stores.
-- Delivery Time: Our average delivery time is lightning fast at 30-45 minutes.
-- Delivery Fee: Delivery fee is usually ₹5 to ₹10 depending on order value.
-- Order Tracking: Customers can track active orders in real-time in the 'Orders' section of their profile.
-- Payment Options: We accept UPI, Credit/Debit cards, and Cash on Delivery (COD).
-- Cancellations: Orders can only be cancelled before they are accepted by the restaurant or store.
-- Refunds: Refunds for cancelled or problematic orders are processed within 3-5 business days.
-- Support: For urgent issues or order problems, ask the customer to email support@jdkart.com.`
-            },
-            ...messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.text })),
-            { role: 'user', content: input }
-          ]
-        })
+      const res = await api.post('/chat', {
+        messages: [...messages, userMessage],
       });
 
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error.message || 'API Error');
-      }
-
-      const botReply = data.choices?.[0]?.message?.content || 'Sorry, I could not understand that.';
-      
+      const botReply = res.data?.reply || 'Sorry, I could not understand that. How can I assist you?';
       setMessages(prev => [...prev, { role: 'assistant', text: botReply }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', text: `Error: ${error.message}` }]);
+      const errText = error.response?.data?.message || 'Unable to connect to assistant. Please try again later.';
+      setMessages(prev => [...prev, { role: 'assistant', text: errText }]);
     } finally {
       setIsLoading(false);
     }

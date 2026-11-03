@@ -2,9 +2,19 @@ User-agent: *
 Allow: /
 Allow: /restaurants
 Allow: /stores
+Allow: /offers
+Allow: /about
+Allow: /terms
+Allow: /privacy
 Disallow: /admin
 Disallow: /restaurant
 Disallow: /store-owner
 Disallow: /delivery
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /profile
+Disallow: /login
+Disallow: /payment/
 
-Sitemap: https://jdkart.vercel.app/sitemap.xml
+Sitemap: https://jdkart.in/sitemap.xml

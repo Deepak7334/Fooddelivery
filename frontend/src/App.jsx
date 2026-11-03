@@ -13,7 +13,7 @@ import AdminSidebar from './components/AdminSidebar';
 import RestaurantSidebar from './components/RestaurantSidebar';
 import DeliveryLayout from './components/DeliveryLayout';
 
-import PostLoginPrompt from './components/PostLoginPrompt';
+import LocationPrompt from './components/LocationPrompt';
 
 // ── Customer Pages (lazy) ─────────────────────────────────────────────────────
 const HomePage             = lazy(() => import('./pages/customer/HomePage'));
@@ -157,7 +157,7 @@ const RestaurantLayout = ({ children }) => {
 export default function App() {
   return (
     <Suspense fallback={<PageLoader />}>
-      <PostLoginPrompt />
+      <LocationPrompt />
       <Routes>
         {/* Global Protected Routes */}
         <Route path="/profile"               element={<PrivateRoute><CustomerLayout><ProfilePage /></CustomerLayout></PrivateRoute>} />

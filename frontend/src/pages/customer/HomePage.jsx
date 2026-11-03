@@ -73,8 +73,24 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchData(userCoords);
-    // eslint-disable-next-line
   }, [userCoords]);
+
+  useEffect(() => {
+    const handleLocUpdate = () => {
+      try {
+        const storedCoords = JSON.parse(localStorage.getItem('jdkart_coords') || 'null');
+        setUserCoords(storedCoords);
+      } catch {
+        setUserCoords(null);
+      }
+      try {
+        const storedLoc = localStorage.getItem('jdkart_loc_name');
+        if (storedLoc) setLocationText(storedLoc.replace(/^[📍\s]+/, ''));
+      } catch {}
+    };
+    window.addEventListener('locationUpdated', handleLocUpdate);
+    return () => window.removeEventListener('locationUpdated', handleLocUpdate);
+      }, []);
 
   useEffect(() => {
     const handleRequestLoc = () => {
@@ -777,7 +793,7 @@ export default function HomePage() {
       </section>
 
       {/* Location Permission Modal */}
-      {showLocationPrompt && (
+      {false && showLocationPrompt && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
@@ -817,7 +833,7 @@ function RestaurantCard({ restaurant, userCoords }) {
     <Link to={`/restaurants/${restaurant._id}`} className="card" style={{ textDecoration: 'none' }}>
       <div style={{ position: 'relative', height: 160, background: 'var(--bg-card2)', overflow: 'hidden' }}>
         {restaurant.image ? (
-          <img loading="lazy" src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'var(--transition)' }} />
+          <img loading="lazy" src={restaurant.image} alt={restaurant.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'var(--transition)' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, background: 'linear-gradient(135deg, var(--bg-card), var(--bg-card2))' }}>🍽️</div>
         )}
@@ -905,7 +921,7 @@ function HomeFoodCard({ food, onAddToCart, onBuy }) {
         </div>
         <div className="item-img" style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
           {food.image ? (
-            <img loading="lazy" src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={food.image} alt={food.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🍽️</div>
           )}
@@ -993,7 +1009,7 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
         </div>
         <div style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
           {product.image ? (
-            <img loading="lazy" src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={product.image} alt={product.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>
           )}
@@ -1044,7 +1060,7 @@ function StoreCard({ store, userCoords }) {
     <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none', overflow: 'hidden' }}>
       <div style={{ position: 'relative', height: 160, background: 'linear-gradient(135deg, var(--bg-card), var(--bg-card2))', overflow: 'hidden' }}>
         {store.image ? (
-          <img loading="lazy" src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img loading="lazy" src={store.image} alt={store.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder.png'; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>
             {typeInfo?.icon || '🏬'}
