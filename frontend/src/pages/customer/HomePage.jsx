@@ -79,18 +79,27 @@ export default function HomePage() {
     const handleLocUpdate = () => {
       try {
         const storedCoords = JSON.parse(localStorage.getItem('jdkart_coords') || 'null');
-        setUserCoords(storedCoords);
+        setUserCoords(prev => {
+          if (!storedCoords && !prev) return prev;
+          if (prev && storedCoords && prev.lat === storedCoords.lat && prev.lng === storedCoords.lng) {
+            return prev;
+          }
+          return storedCoords;
+        });
       } catch {
         setUserCoords(null);
       }
       try {
         const storedLoc = localStorage.getItem('jdkart_loc_name');
-        if (storedLoc) setLocationText(storedLoc.replace(/^[📍\s]+/, ''));
+        if (storedLoc) {
+          const clean = storedLoc.replace(/^[📍\s]+/, '');
+          setLocationText(prev => prev === clean ? prev : clean);
+        }
       } catch {}
     };
     window.addEventListener('locationUpdated', handleLocUpdate);
     return () => window.removeEventListener('locationUpdated', handleLocUpdate);
-      }, []);
+  }, []);
 
   useEffect(() => {
     const handleRequestLoc = () => {
@@ -126,7 +135,7 @@ export default function HomePage() {
       qs = `?lat=${coordsObj.lat}&lng=${coordsObj.lng}`;
     }
 
-    setLoading(true);
+    setLoading(prev => (restaurants.length === 0 && foods.length === 0 ? true : false));
     Promise.all([
       api.get(`/customer/categories`).catch(() => ({ data: { categories: [] } })),
       api.get(`/customer/restaurants${qs}`).catch(() => ({ data: { restaurants: [] } })),
@@ -147,61 +156,7 @@ export default function HomePage() {
   // Removed: duplicate fetchData call — already handled by useEffect([userCoords]) above
 
 
-  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
 
-  const triggerLocationPrompt = () => {
-    setShowLocationPrompt(true);
-  };
-
-  const handleDetectLocation = () => {
-    setShowLocationPrompt(false);
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
-    }
-    setLocLoading(true);
-    toast.loading('Detecting your location…', { id: 'loc' });
-    navigator.geolocation.getCurrentPosition(
-      async pos => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserCoords(coords);
-        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-        
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
-          const data = await res.json();
-          let locName = 'Current Location';
-          if (data && data.address) {
-            const addr = data.address;
-            const place = addr.amenity || addr.building || addr.neighbourhood || addr.suburb || addr.city_district || addr.village || addr.town || addr.city;
-            if (place) locName = place;
-          }
-          localStorage.setItem('jdkart_loc_name', locName);
-          setLocationText(locName);
-          window.dispatchEvent(new Event('locationUpdated'));
-        } catch(e) {
-          localStorage.setItem('jdkart_loc_name', 'Current Location');
-          setLocationText('Current Location');
-          window.dispatchEvent(new Event('locationUpdated'));
-        }
-
-        toast.success('Location detected!', { id: 'loc' });
-        setLocLoading(false);
-      },
-      err => {
-        setLocLoading(false);
-        console.error("Location error:", err);
-        let msg = 'Failed to detect location';
-        if (err.code === 1) msg = 'Location access denied. Please allow it in your mobile browser settings.';
-        if (err.code === 2) msg = 'Location unavailable. Ensure GPS is on.';
-        if (err.code === 3) msg = 'Location request timed out. Try entering your city manually.';
-        toast.error(msg, { id: 'loc', duration: 4000 });
-      },
-      // Mobile optimization: false for high accuracy (uses fast wifi/cell triangulation instead of slow satellite GPS) 
-      // and increased timeout to 20 seconds for slower mobile networks.
-      { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
-    );
-  };
 
   // ----- Filter restaurants by proximity or locationText -----
   const visibleRestaurants = useMemo(() => {
@@ -530,7 +485,7 @@ export default function HomePage() {
               <div className="search-location">
                 <button
                   type="button"
-                  onClick={triggerLocationPrompt}
+                  onClick={() => window.dispatchEvent(new Event('requestLocationPrompt'))}
                   disabled={locLoading}
                   title="Auto-detect location"
                   style={{ background: 'transparent', border: 'none', cursor: locLoading ? 'not-allowed' : 'pointer', fontSize: 18, color: 'var(--primary)', padding: 0, marginRight: 8, display: 'flex', alignItems: 'center' }}
@@ -792,35 +747,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Location Permission Modal */}
-      {false && showLocationPrompt && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', width: '100%', maxWidth: 360, borderRadius: 20,
-            padding: '32px 24px', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-            border: '1px solid var(--border)', animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-          }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>📍</div>
-            <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 12, color: 'var(--text-primary)' }}>
-              Enter the Delivery Location
-            </h3>
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
-              Where should we deliver your order? Allow location access to see restaurants near you!
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button onClick={handleDetectLocation} disabled={locLoading} className="btn btn-primary btn-full btn-lg">
-                {locLoading ? 'Wait...' : ' Use My Live Location'}
-              </button>
-              <button onClick={() => setShowLocationPrompt(false)} className="btn btn-secondary btn-full btn-lg" style={{ background: 'transparent', border: '1px solid var(--border)' }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

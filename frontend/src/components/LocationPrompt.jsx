@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 
 export default function LocationPrompt() {
   const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState(false);
   const location = useLocation();
 
   // Always display the location pop-up when visiting or refreshing the home page
@@ -15,10 +14,12 @@ export default function LocationPrompt() {
         setShow(true);
       }, 400);
       return () => clearTimeout(timer);
+    } else {
+      setShow(false);
     }
   }, [location.pathname]);
 
-  // Also listen for manual trigger requests from Navbar ("📍 Enter city or detect")
+  // Listen for manual trigger requests (e.g. Navbar or search bar 📍 button)
   useEffect(() => {
     const handleManualRequest = () => {
       setShow(true);
@@ -34,37 +35,46 @@ export default function LocationPrompt() {
   const handleDetectGPS = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
+      setShow(false);
       return;
     }
 
-    setLoading(true);
-    const toastId = toast.loading('Detecting your live location…');
+    // 1. Instantly dismiss modal so the user never experiences lag or freeze
+    setShow(false);
+
+    // 2. If cached coordinates exist, activate them instantaneously in 0ms
+    try {
+      const cached = localStorage.getItem('jdkart_coords');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.lat && parsed?.lng) {
+          window.dispatchEvent(new Event('locationUpdated'));
+        }
+      }
+    } catch {}
+
+    const toastId = toast.loading('📍 Detecting your live location…');
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 
-        // 1. Instantly save coordinates
+        // Save fresh coordinates
         localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-        
-        // 2. Set default location text immediately so UI updates without waiting for network
+
         const previousName = localStorage.getItem('jdkart_loc_name');
         const instantName = previousName && !previousName.includes('Current Location') ? previousName : 'Current Location';
         localStorage.setItem('jdkart_loc_name', instantName);
 
-        // 3. Immediately dispatch event so HomePage updates nearby vendors instantly
+        // Notify app immediately
         window.dispatchEvent(new Event('locationUpdated'));
+        toast.success('📍 Live location active! Showing nearby items.', { id: toastId, duration: 2500 });
 
-        // 4. Instantly close modal and dismiss loader (happens in < 1 second!)
-        setLoading(false);
-        setShow(false);
-        toast.success('📍 Live location detected! Showing nearby items.', { id: toastId });
-
-        // 5. Asynchronously fetch detailed place name in background without blocking UI
+        // Background reverse geocode without blocking
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`)
           .then((res) => res.json())
           .then((data) => {
-            if (data && data.address) {
+            if (data?.address) {
               const addr = data.address;
               const place = addr.suburb || addr.neighbourhood || addr.city_district || addr.village || addr.town || addr.city;
               if (place) {
@@ -73,21 +83,18 @@ export default function LocationPrompt() {
               }
             }
           })
-          .catch(() => {
-            // Background reverse geocode failed or timed out — coords are already active
-          });
+          .catch(() => {});
       },
       (err) => {
-        setLoading(false);
         console.warn('Geolocation error:', err);
-        let msg = 'Could not access GPS. Please enable location permissions.';
+        let msg = 'Could not access GPS.';
         if (err.code === 1) msg = 'Location access was denied. Please allow location in your browser settings.';
-        if (err.code === 2) msg = 'Location unavailable. Ensure GPS/Location is enabled on your device.';
-        if (err.code === 3) msg = 'Location request timed out. Please try again.';
-        toast.error(msg, { id: toastId, duration: 4000 });
+        else if (err.code === 2) msg = 'Location unavailable. Ensure GPS is enabled.';
+        else if (err.code === 3) msg = 'Location request timed out. Please try again.';
+        toast.error(msg, { id: toastId, duration: 3500 });
       },
-      // Fast cellular/Wi-Fi triangulation with 5 min cache for instantaneous response
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      // Fast acquisition with cached support
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
     );
   };
 
@@ -105,7 +112,7 @@ export default function LocationPrompt() {
       justifyContent: 'center',
       zIndex: 99999,
       padding: '16px',
-      animation: 'fadeIn 0.25s ease'
+      animation: 'fadeIn 0.2s ease'
     }}>
       <div style={{
         background: 'var(--bg-card, #1A1D27)',
@@ -187,7 +194,6 @@ export default function LocationPrompt() {
           {/* Allow / Turn On Location Button */}
           <button
             onClick={handleDetectGPS}
-            disabled={loading}
             style={{
               background: 'linear-gradient(135deg, var(--primary, #FF5722), #E64A19)',
               color: '#fff',
@@ -196,8 +202,7 @@ export default function LocationPrompt() {
               borderRadius: 12,
               fontSize: 15,
               fontWeight: 700,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.75 : 1,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -207,7 +212,7 @@ export default function LocationPrompt() {
             }}
           >
             <FiNavigation size={17} />
-            {loading ? 'Detecting Location...' : 'Allow Location'}
+            Allow Location
           </button>
 
           {/* Not Now Button */}
