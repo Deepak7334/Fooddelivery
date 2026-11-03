@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FiMapPin, FiNavigation, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import api from '../lib/api';
 
 export default function LocationPrompt() {
   const [show, setShow] = useState(false);
@@ -33,13 +34,7 @@ export default function LocationPrompt() {
   };
 
   const handleDetectGPS = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      setShow(false);
-      return;
-    }
-
-    // 1. Instantly dismiss modal so the user never experiences lag or freeze
+    // 1. Instantly dismiss modal so the user never feels blocked or frozen
     setShow(false);
 
     // 2. If cached coordinates exist, activate them instantaneously in 0ms
@@ -55,22 +50,61 @@ export default function LocationPrompt() {
 
     const toastId = toast.loading('📍 Detecting your live location…');
 
+    const applyLocation = (coords, placeName) => {
+      localStorage.setItem('jdkart_coords', JSON.stringify(coords));
+      if (placeName) {
+        localStorage.setItem('jdkart_loc_name', placeName);
+      } else {
+        const prev = localStorage.getItem('jdkart_loc_name');
+        localStorage.setItem('jdkart_loc_name', prev && !prev.includes('Current Location') ? prev : 'Current Location');
+      }
+      window.dispatchEvent(new Event('locationUpdated'));
+      toast.success(placeName ? `📍 Location active near ${placeName}!` : '📍 Live location active!', { id: toastId, duration: 2500 });
+    };
+
+    // Seamless IP fallback when GPS hardware is slow, indoors, or on laptops/desktops
+    const fallbackToIP = async (isPermissionDenied = false) => {
+      try {
+        // Try backend IP endpoint
+        const res = await api.get('/customer/ip-location').catch(() => null);
+        if (res?.data?.success && res.data.lat && res.data.lng) {
+          const city = res.data.city || 'your area';
+          applyLocation({ lat: res.data.lat, lng: res.data.lng }, city);
+          if (isPermissionDenied) {
+            toast.success(`📍 Showing items near ${city}. Enable GPS for exact distance.`, { id: toastId, duration: 4000 });
+          }
+          return true;
+        }
+
+        // Direct fetch fallback
+        const ipRes = await fetch('https://ipwho.is/').then(r => r.json()).catch(() => null);
+        if (ipRes && ipRes.success && ipRes.latitude && ipRes.longitude) {
+          const city = ipRes.city || ipRes.region || 'your area';
+          applyLocation({ lat: ipRes.latitude, lng: ipRes.longitude }, city);
+          if (isPermissionDenied) {
+            toast.success(`📍 Showing items near ${city}. Enable GPS for exact distance.`, { id: toastId, duration: 4000 });
+          }
+          return true;
+        }
+      } catch (e) {
+        console.warn('IP fallback failed:', e);
+      }
+      return false;
+    };
+
+    if (!navigator.geolocation) {
+      fallbackToIP().then(ok => {
+        if (!ok) toast.error('Geolocation is not supported by your browser', { id: toastId });
+      });
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        applyLocation(coords);
 
-        // Save fresh coordinates
-        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-
-        const previousName = localStorage.getItem('jdkart_loc_name');
-        const instantName = previousName && !previousName.includes('Current Location') ? previousName : 'Current Location';
-        localStorage.setItem('jdkart_loc_name', instantName);
-
-        // Notify app immediately
-        window.dispatchEvent(new Event('locationUpdated'));
-        toast.success('📍 Live location active! Showing nearby items.', { id: toastId, duration: 2500 });
-
-        // Background reverse geocode without blocking
+        // Background reverse geocode without blocking UI
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`)
           .then((res) => res.json())
           .then((data) => {
@@ -85,16 +119,22 @@ export default function LocationPrompt() {
           })
           .catch(() => {});
       },
-      (err) => {
-        console.warn('Geolocation error:', err);
-        let msg = 'Could not access GPS.';
-        if (err.code === 1) msg = 'Location access was denied. Please allow location in your browser settings.';
-        else if (err.code === 2) msg = 'Location unavailable. Ensure GPS is enabled.';
-        else if (err.code === 3) msg = 'Location request timed out. Please try again.';
-        toast.error(msg, { id: toastId, duration: 3500 });
+      async (err) => {
+        console.warn('Geolocation warning, falling back to IP:', err.message || err.code);
+        const isDenied = err.code === 1;
+        const ok = await fallbackToIP(isDenied);
+        if (!ok) {
+          let msg = 'Could not access GPS.';
+          if (err.code === 1) msg = 'Location access was denied. Please allow location in your browser settings.';
+          else if (err.code === 2) msg = 'Location unavailable. Ensure GPS is enabled.';
+          else if (err.code === 3) msg = 'Location request timed out. Please try again.';
+          toast.error(msg, { id: toastId, duration: 3500 });
+        }
       },
-      // Fast acquisition with cached support
-      { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+      // enableHighAccuracy: false ensures fast cell/Wi-Fi positioning (works on laptops & indoors without GPS satellite lock timeout!)
+      // timeout: 10000 gives ample time without premature timeout
+      // maximumAge: 300000 returns cached device position in 0ms
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
     );
   };
 
