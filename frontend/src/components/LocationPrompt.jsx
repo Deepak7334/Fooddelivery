@@ -48,7 +48,51 @@ export default function LocationPrompt() {
       }
     } catch {}
 
-    const toastId = toast.loading('📍 Detecting your live location…');
+    const toastId = toast.loading('📍 Acquiring accurate location…');
+
+    // Helper: Smart reverse geocoding to resolve exact neighborhood and city
+    const resolvePlaceName = (coords) => {
+      // 1. Try OpenStreetMap Nominatim with English and zoom=16
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=16&addressdetails=1`, {
+        headers: { 'Accept-Language': 'en' }
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.address) {
+            const a = data.address;
+            const loc = a.neighbourhood || a.suburb || a.quarter || a.residential || a.road || a.village || a.town;
+            const city = a.city || a.town || a.county || a.state_district;
+            let label = loc || city;
+            if (loc && city && loc !== city) {
+              label = `${loc}, ${city}`;
+            }
+            if (label) {
+              localStorage.setItem('jdkart_loc_name', label);
+              window.dispatchEvent(new Event('locationUpdated'));
+              return;
+            }
+          }
+          throw new Error('Fallback to secondary geocoder');
+        })
+        .catch(() => {
+          // 2. Fallback to BigDataCloud client API (<100ms)
+          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.lat}&longitude=${coords.lng}&localityLanguage=en`)
+            .then((r) => r.json())
+            .then((data) => {
+              const locality = data.locality || data.city;
+              const city = data.city || data.principalSubdivision;
+              let label = locality;
+              if (locality && city && locality !== city) {
+                label = `${locality}, ${city}`;
+              }
+              if (label) {
+                localStorage.setItem('jdkart_loc_name', label);
+                window.dispatchEvent(new Event('locationUpdated'));
+              }
+            })
+            .catch(() => {});
+        });
+    };
 
     const applyLocation = (coords, placeName) => {
       localStorage.setItem('jdkart_coords', JSON.stringify(coords));
@@ -59,30 +103,29 @@ export default function LocationPrompt() {
         localStorage.setItem('jdkart_loc_name', prev && !prev.includes('Current Location') ? prev : 'Current Location');
       }
       window.dispatchEvent(new Event('locationUpdated'));
-      toast.success(placeName ? `📍 Location active near ${placeName}!` : '📍 Live location active!', { id: toastId, duration: 2500 });
+      toast.success(placeName ? `📍 Location active near ${placeName}!` : '📍 Accurate live location detected!', { id: toastId, duration: 2500 });
+      resolvePlaceName(coords);
     };
 
-    // Seamless IP fallback when GPS hardware is slow, indoors, or on laptops/desktops
+    // Stage 3 Fallback: IP-based location (used when GPS is unavailable/blocked)
     const fallbackToIP = async (isPermissionDenied = false) => {
       try {
-        // Try backend IP endpoint
         const res = await api.get('/customer/ip-location').catch(() => null);
         if (res?.data?.success && res.data.lat && res.data.lng) {
           const city = res.data.city || 'your area';
           applyLocation({ lat: res.data.lat, lng: res.data.lng }, city);
           if (isPermissionDenied) {
-            toast.success(`📍 Showing items near ${city}. Enable GPS for exact distance.`, { id: toastId, duration: 4000 });
+            toast.success(`📍 Showing items near ${city}. Enable device GPS for pinpoint accuracy.`, { id: toastId, duration: 4000 });
           }
           return true;
         }
 
-        // Direct fetch fallback
-        const ipRes = await fetch('https://ipwho.is/').then(r => r.json()).catch(() => null);
+        const ipRes = await fetch('https://ipwho.is/').then((r) => r.json()).catch(() => null);
         if (ipRes && ipRes.success && ipRes.latitude && ipRes.longitude) {
           const city = ipRes.city || ipRes.region || 'your area';
           applyLocation({ lat: ipRes.latitude, lng: ipRes.longitude }, city);
           if (isPermissionDenied) {
-            toast.success(`📍 Showing items near ${city}. Enable GPS for exact distance.`, { id: toastId, duration: 4000 });
+            toast.success(`📍 Showing items near ${city}. Enable device GPS for pinpoint accuracy.`, { id: toastId, duration: 4000 });
           }
           return true;
         }
@@ -93,48 +136,46 @@ export default function LocationPrompt() {
     };
 
     if (!navigator.geolocation) {
-      fallbackToIP().then(ok => {
+      fallbackToIP().then((ok) => {
         if (!ok) toast.error('Geolocation is not supported by your browser', { id: toastId });
       });
       return;
     }
 
+    // STAGE 1: Try High Accuracy GPS first (gives pinpoint street-level accuracy on mobile!)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         applyLocation(coords);
-
-        // Background reverse geocode without blocking UI
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.address) {
-              const addr = data.address;
-              const place = addr.suburb || addr.neighbourhood || addr.city_district || addr.village || addr.town || addr.city;
-              if (place) {
-                localStorage.setItem('jdkart_loc_name', place);
-                window.dispatchEvent(new Event('locationUpdated'));
-              }
-            }
-          })
-          .catch(() => {});
       },
-      async (err) => {
-        console.warn('Geolocation warning, falling back to IP:', err.message || err.code);
-        const isDenied = err.code === 1;
-        const ok = await fallbackToIP(isDenied);
-        if (!ok) {
-          let msg = 'Could not access GPS.';
-          if (err.code === 1) msg = 'Location access was denied. Please allow location in your browser settings.';
-          else if (err.code === 2) msg = 'Location unavailable. Ensure GPS is enabled.';
-          else if (err.code === 3) msg = 'Location request timed out. Please try again.';
-          toast.error(msg, { id: toastId, duration: 3500 });
+      (err) => {
+        // If user explicitly denied permission, do not retry GPS; fallback to IP
+        if (err.code === 1) {
+          fallbackToIP(true).then((ok) => {
+            if (!ok) toast.error('Location access was denied. Please allow it in browser settings.', { id: toastId });
+          });
+          return;
         }
+
+        // STAGE 2: If High Accuracy timed out or failed (indoors/laptop), seamlessly try Network/Wi-Fi positioning
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            applyLocation(coords);
+          },
+          async () => {
+            // STAGE 3: If network positioning also fails, fallback to IP
+            const ok = await fallbackToIP(false);
+            if (!ok) {
+              toast.error('Could not detect location. Please select your city or try again.', { id: toastId, duration: 3500 });
+            }
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+        );
       },
-      // enableHighAccuracy: false ensures fast cell/Wi-Fi positioning (works on laptops & indoors without GPS satellite lock timeout!)
-      // timeout: 10000 gives ample time without premature timeout
-      // maximumAge: 300000 returns cached device position in 0ms
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+      // Stage 1 config: enableHighAccuracy: true gives satellite/meter accuracy on mobile phones
+      // 8-second timeout gives hardware time to lock; 60-second cache returns recent GPS fix in 0ms!
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
   };
 
