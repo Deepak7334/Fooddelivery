@@ -3,46 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { FiMapPin, FiNavigation, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
-// Client-side reverse geocoder — resolves clean locality and city from real GPS coordinates
-async function getCleanPlaceName(lat, lng) {
-  // 1. Try BigDataCloud client API (<100ms, accurate, zero auth)
-  try {
-    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-    const data = await res.json();
-    if (data) {
-      const locality = data.locality || data.city;
-      const city = data.city || data.principalSubdivision;
-      const state = data.principalSubdivision;
-
-      let label = locality || city;
-      if (locality && city && locality.toLowerCase() !== city.toLowerCase()) {
-        label = `${locality}, ${city}`;
-      } else if (label && state && label.toLowerCase() !== state.toLowerCase()) {
-        label = `${label}, ${state}`;
-      }
-      if (label) return label;
-    }
-  } catch (e) {}
-
-  // 2. Try Photon (OpenStreetMap reverse geocode)
-  try {
-    const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
-    const data = await res.json();
-    const p = data.features?.[0]?.properties;
-    if (p) {
-      const name = p.name || p.city || p.town || p.district;
-      const state = p.state;
-      let label = name;
-      if (name && state && name.toLowerCase() !== state.toLowerCase()) {
-        label = `${name}, ${state}`;
-      }
-      if (label) return label;
-    }
-  } catch (e) {}
-
-  return 'Current Location';
-}
-
 export default function LocationPrompt() {
   const [show, setShow] = useState(false);
   const location = useLocation();
@@ -73,55 +33,90 @@ export default function LocationPrompt() {
   };
 
   const handleDetectGPS = () => {
-    // 1. Instantly dismiss modal so the user is never blocked or frozen
+    // 1. Instantly dismiss modal so the user never experiences delay
     setShow(false);
 
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
-    }
+    // 2. If cached coordinates exist, activate them instantaneously (0ms)
+    try {
+      const cached = localStorage.getItem('jdkart_coords');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.lat && parsed?.lng) {
+          window.dispatchEvent(new Event('locationUpdated'));
+        }
+      }
+    } catch {}
 
     const toastId = toast.loading('📍 Detecting your location…');
 
-    const onSuccess = async (pos) => {
-      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-
-      // Save real coordinates
+    // Helper: apply coordinates, update state, and fetch human-readable place
+    const applyCoordinates = (coords, defaultPlace = 'Current Location') => {
       localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-      
-      // Immediately notify app so nearby vendors update in real-time
-      window.dispatchEvent(new Event('locationUpdated'));
+      localStorage.setItem('jdkart_loc_name', defaultPlace);
 
-      // Resolve human-readable locality and city from real coordinates
-      const placeName = await getCleanPlaceName(coords.lat, coords.lng);
-      const finalName = placeName && placeName !== 'Current Location' ? placeName : 'Current Location';
-
-      localStorage.setItem('jdkart_loc_name', finalName);
       window.dispatchEvent(new Event('locationUpdated'));
-      toast.success(`📍 Location: ${finalName}`, { id: toastId, duration: 3000 });
+      toast.success(
+        defaultPlace !== 'Current Location'
+          ? `📍 Location active: ${defaultPlace}`
+          : '📍 Live location active! Showing nearby items.',
+        { id: toastId, duration: 2500 }
+      );
+
+      // Background reverse-geocode for neighborhood/area details without blocking
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.address) {
+            const addr = data.address;
+            const place = addr.suburb || addr.neighbourhood || addr.city_district || addr.village || addr.town || addr.city;
+            if (place) {
+              localStorage.setItem('jdkart_loc_name', place);
+              window.dispatchEvent(new Event('locationUpdated'));
+            }
+          }
+        })
+        .catch(() => {});
     };
 
-    const onError = (err) => {
-      console.warn('Location detection error:', err);
-      if (err.code === 1) {
-        toast.error('Location permission was denied. Please allow location in your browser settings (lock icon).', { id: toastId, duration: 5000 });
-      } else {
-        toast.error('Could not detect location. Please check phone GPS or enter your city in the search bar.', { id: toastId, duration: 4500 });
-      }
+    // Fallback: fast IP-based geolocation if browser GPS times out or is restricted
+    const fallbackToIP = () => {
+      fetch('https://ipwho.is/')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.success !== false && data.latitude && data.longitude) {
+            const cityName = data.city || data.region || 'Current Location';
+            applyCoordinates({ lat: data.latitude, lng: data.longitude }, cityName);
+          } else {
+            toast.error('Location detection timed out. You can also search your city directly.', { id: toastId, duration: 4000 });
+          }
+        })
+        .catch(() => {
+          toast.error('Location detection timed out. You can also search your city directly.', { id: toastId, duration: 4000 });
+        });
     };
 
-    // Stage 1: Try GPS with 4s grace period & 2min cache (returns instantly in 50ms if device recently used location)
+    if (!navigator.geolocation) {
+      fallbackToIP();
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
-      onSuccess,
-      () => {
-        // Stage 2: If physical GPS times out indoors/laptop, seamlessly use Wi-Fi & assisted positioning (never times out!)
-        navigator.geolocation.getCurrentPosition(
-          onSuccess,
-          onError,
-          { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-        );
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const previousName = localStorage.getItem('jdkart_loc_name');
+        const instantName = previousName && !previousName.includes('Current Location') ? previousName : 'Current Location';
+        applyCoordinates(coords, instantName);
       },
-      { enableHighAccuracy: true, timeout: 4000, maximumAge: 120000 }
+      (err) => {
+        console.warn('Geolocation warning (falling back to IP):', err);
+        // If GPS times out (code 3), is unavailable (code 2), or denied (code 1),
+        // seamlessly fall back to IP geolocation so the user NEVER suffers from a timeout!
+        fallbackToIP();
+      },
+      // enableHighAccuracy: false ensures fast cellular/Wi-Fi/network triangulation (NO slow satellite GPS waiting!)
+      // timeout: 10000 allows sufficient time for browser permissions without hanging
+      // maximumAge: 300000 uses cached location if available within 5 mins for instant resolution
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
     );
   };
 
