@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { getCurrentCoordinates, reverseGeocodeCoords } from '../../utils/geolocation';
 
 // ==========================================
 // 📍 DYNAMIC DELIVERY AREA SETTINGS
@@ -68,43 +69,38 @@ export default function CheckoutPage() {
   
   const [locLoading, setLocLoading] = useState(false);
 
-  const handleAutoDetectAddress = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
-    }
+  const handleAutoDetectAddress = async () => {
     setLocLoading(true);
     toast.loading('Detecting current location...', { id: 'chk-loc' });
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    try {
+      let coords = null;
+      try {
+        coords = await getCurrentCoordinates();
         localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-        try {
-          const res = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + coords.lat + '&lon=' + coords.lng);
-          const data = await res.json();
-          if (data && data.address) {
-            const addr = data.address;
-            const locality = addr.neighbourhood || addr.suburb || addr.village || addr.residential || addr.road || '';
-            const district = addr.city_district || addr.district || addr.city || addr.town || addr.county || '';
-            const state = addr.state || 'Bihar';
-            const postcode = addr.postcode || '';
-            if (locality) setAddrArea(locality);
-            if (district) setAddrDistrict(district);
-            if (state) setAddrState(state);
-            if (postcode) setAddrPincode(postcode);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-        setLocLoading(false);
-        toast.success('Location detected and filled!', { id: 'chk-loc' });
-      },
-      (err) => {
-        setLocLoading(false);
+      } catch (gpsErr) {
+        // Fallback to existing stored coords if fresh GPS failed
+        const stored = localStorage.getItem('jdkart_coords');
+        if (stored) coords = JSON.parse(stored);
+        if (!coords || !coords.lat || !coords.lng) throw gpsErr;
+      }
+
+      const info = await reverseGeocodeCoords(coords.lat, coords.lng);
+      if (info.area) setAddrArea(info.area);
+      if (info.district) setAddrDistrict(info.district);
+      if (info.state) setAddrState(info.state);
+      if (info.pincode) setAddrPincode(info.pincode);
+
+      setLocLoading(false);
+      toast.success('Location detected and filled!', { id: 'chk-loc' });
+    } catch (err) {
+      setLocLoading(false);
+      console.error('Auto detect address error:', err);
+      if (err?.code === 1) {
+        toast.error('Location permission denied. Please allow it in browser settings.', { id: 'chk-loc' });
+      } else {
         toast.error('Could not detect GPS location. Please enter manually.', { id: 'chk-loc' });
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+      }
+    }
   };
 
 

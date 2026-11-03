@@ -6,6 +6,7 @@ import { FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { calculateDistance } from '../../utils/distance';
+import { getCurrentCoordinates } from '../../utils/geolocation';
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, totalPrice, totalItems, clearCart, cartType, restaurantId, storeId } = useCart();
@@ -78,30 +79,26 @@ export default function CartPage() {
     }
   }, [userCoords, vendorLocation, manualMode]);
 
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      setShowLocationPrompt(false);
-      return;
-    }
+  const handleDetectLocation = async () => {
     setLocLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserCoords(coords);
-        setManualMode(false);
-        localStorage.setItem('jdkart_coords', JSON.stringify(coords));
-        setShowLocationPrompt(false);
-        setLocLoading(false);
-        toast.success("Location set successfully!");
-      },
-      err => {
-        setLocLoading(false);
-        console.error('Location error:', err);
+    try {
+      const coords = await getCurrentCoordinates();
+      setUserCoords(coords);
+      setManualMode(false);
+      localStorage.setItem('jdkart_coords', JSON.stringify(coords));
+      setShowLocationPrompt(false);
+      setLocLoading(false);
+      toast.success("Location set successfully!");
+      window.dispatchEvent(new Event('locationUpdated'));
+    } catch (err) {
+      setLocLoading(false);
+      console.error('Location error:', err);
+      if (err?.code === 1) {
+        toast.error('Location access denied. Please allow location in your browser settings.');
+      } else {
         toast.error('Unable to get GPS location. You can enter address manually.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+      }
+    }
   };
 
   const handleManualEntrySelect = () => {

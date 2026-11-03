@@ -152,14 +152,8 @@ export default function HomePage() {
         localStorage.setItem('jdkart_coords', JSON.stringify(coords));
         
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
-          const data = await res.json();
-          let locName = 'Current Location';
-          if (data && data.address) {
-            const addr = data.address;
-            const place = addr.amenity || addr.building || addr.neighbourhood || addr.suburb || addr.city_district || addr.village || addr.town || addr.city;
-            if (place) locName = place;
-          }
+          const info = await reverseGeocodeCoords(coords.lat, coords.lng);
+          const locName = info.area || info.district || 'Current Location';
           localStorage.setItem('jdkart_loc_name', locName);
           setLocationText(locName);
           window.dispatchEvent(new Event('locationUpdated'));
