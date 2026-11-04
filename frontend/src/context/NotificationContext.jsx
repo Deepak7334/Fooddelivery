@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import api from '../lib/api';
+import { createSocket } from '../lib/socket';
 import { messaging } from '../firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import toast from 'react-hot-toast';
@@ -27,14 +28,25 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // Play notification sound safely without memory leaks
+  // Play notification chime using Web Audio API (zero network latency, no missing MP3 404s)
   const playSound = useCallback(() => {
     try {
-      if (!audioRef.current) {
-        audioRef.current = new Audio('/notification.mp3');
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+        return;
       }
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
     } catch {}
   }, []);
 
@@ -48,10 +60,8 @@ export const NotificationProvider = ({ children }) => {
 
     (async () => {
       try {
-        const { io } = await import('socket.io-client');
         if (!isMounted) return;
-        const apiBase = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5000';
-        activeSocket = io(apiBase, { withCredentials: true });
+        activeSocket = createSocket();
 
         activeSocket.on('connect', () => {
           activeSocket.emit('join_user_room', userId);

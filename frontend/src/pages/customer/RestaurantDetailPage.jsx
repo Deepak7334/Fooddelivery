@@ -76,7 +76,6 @@ export default function RestaurantDetailPage() {
   };
 
   const handleAdd = (food) => {
-    if (!user) { navigate('/login'); return; }
     if (!canDeliver) {
       toast.error("Sorry, we can't reach you. You are more than 5km away.");
       return;

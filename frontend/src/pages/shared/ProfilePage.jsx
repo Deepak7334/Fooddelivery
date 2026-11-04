@@ -9,7 +9,7 @@ import ImageCropperModal from '../../components/ImageCropperModal';
 import './ProfilePage.css';
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const { requestFCMPermission } = useNotification();
   
@@ -56,16 +56,18 @@ export default function ProfilePage() {
     setLoading(true);
     try {
       // The backend route handles updating the profile
-      await api.put('/auth/profile', {
+      const res = await api.put('/auth/profile', {
         name: formData.name,
         phone: formData.phone,
         address: formData.address,
         profileImage: formData.profileImage,
         ...(formData.password ? { password: formData.password } : {})
       });
+      if (res.data?.user) {
+        updateUser(res.data.user);
+      }
       toast.success('Profile updated successfully');
       setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
-      window.location.reload();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {

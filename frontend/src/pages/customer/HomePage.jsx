@@ -1,11 +1,12 @@
 import React from 'react';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import toast from 'react-hot-toast';
 import { calculateDistance, getVendorCoords, getVendorDistance, formatDistance } from '../../utils/distance';
+import { reverseGeocodeCoords } from '../../utils/geolocation';
 
 const HERO_FOOD_EMOJIS = ['🍕', '🍔', '🍛', '🌮', '🍜', '🥗'];
 
@@ -66,6 +67,7 @@ export default function HomePage() {
   });
   const [locLoading, setLocLoading]   = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { addToCart, addProductToCart, cartItems, cartType, storeId: cartStoreId, updateQuantity } = useCart();
   const locationInputRef = useRef(null);
@@ -314,7 +316,7 @@ export default function HomePage() {
     return products;
   }, [products]);
 
-  const searchParams = new URLSearchParams(window.location.search);
+  const searchParams = new URLSearchParams(location.search);
   const vegOnly = searchParams.get('veg') === 'true';
 
   const mixedItems = useMemo(() => {

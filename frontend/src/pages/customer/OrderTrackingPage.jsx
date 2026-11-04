@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import { createSocket } from '../../lib/socket';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { formatAddress } from '../../utils/address';
@@ -37,7 +37,7 @@ export default function OrderTrackingPage() {
     }).catch(() => toast.error('Order not found')).finally(() => setLoading(false));
 
     // Socket connection
-    socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
+    socketRef.current = createSocket();
     socketRef.current.emit('join_order_room', id);
     socketRef.current.on('order:status_update', (data) => {
       setOrder(prev => prev ? { ...prev, status: data.status, statusHistory: data.statusHistory } : prev);

@@ -60,7 +60,7 @@ CRITICAL RULES FOR YOUR RESPONSES:
 JDkart Knowledge Base:
 - Services: We deliver hot food from local restaurants and fresh groceries from local stores.
 - Delivery Time: Our average delivery time is lightning fast at 30-45 minutes.
-- Delivery Fee: Delivery fee is usually ₹5 to ₹10 depending on order value.
+- Delivery Fee: Delivery fee is usually ₹10 to ₹30 depending on order value.
 - Order Tracking: Customers can track active orders in real-time in the 'Orders' section of their profile.
 - Payment Options: We accept UPI, Credit/Debit cards, and Cash on Delivery (COD).
 - Cancellations: Orders can only be cancelled before they are accepted by the restaurant or store.

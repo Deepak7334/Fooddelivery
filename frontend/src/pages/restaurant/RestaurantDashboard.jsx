@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { io } from 'socket.io-client';
+import { createSocket } from '../../lib/socket';
 import { useAuth } from '../../context/AuthContext';
 import { formatAddress } from '../../utils/address';
 
@@ -278,7 +278,7 @@ export default function RestaurantDashboard() {
   // Socket.IO for real-time order updates
   useEffect(() => {
     if (!user?.restaurantId) return;
-    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000');
+    const socket = createSocket();
     socketRef.current = socket;
     socket.emit('join_restaurant_room', user.restaurantId);
     socket.on('order:new', (order) => {

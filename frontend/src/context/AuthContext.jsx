@@ -84,9 +84,28 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((updatedUserData) => {
+    if (updatedUserData) {
+      setUser(updatedUserData);
+      localStorage.setItem('foodhub_user', JSON.stringify(updatedUserData));
+    }
+  }, []);
+
+  const refetchUser = useCallback(async () => {
+    try {
+      const res = await api.get('/auth/me');
+      if (res.data?.user) {
+        setUser(res.data.user);
+        localStorage.setItem('foodhub_user', JSON.stringify(res.data.user));
+        return res.data.user;
+      }
+    } catch {}
+    return null;
+  }, []);
+
   const value = useMemo(() => ({
-    user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout
-  }), [user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout]);
+    user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout, updateUser, refetchUser
+  }), [user, loading, login, register, firebaseLogin, sendEmailOtp, verifyEmailOtp, logout, updateUser, refetchUser]);
 
   return (
     <AuthContext.Provider value={value}>

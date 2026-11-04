@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import { FiMenu } from 'react-icons/fi';
 import NotificationBell from './components/NotificationBell';
 import toast from 'react-hot-toast';
+import api from './lib/api';
 import { useState, lazy, Suspense, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 
@@ -155,6 +156,11 @@ const RestaurantLayout = ({ children }) => {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  useEffect(() => {
+    // Eagerly warm up the backend server on initial load to avoid cold-start delays
+    api.get('/health').catch(() => {});
+  }, []);
+
   return (
     <Suspense fallback={<PageLoader />}>
       <PostLoginPrompt />

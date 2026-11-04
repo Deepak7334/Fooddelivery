@@ -309,6 +309,13 @@ export default function Navbar() {
                         Dashboard
                       </Link>
                     )}
+                    {user.role === 'delivery' && (
+                      <Link to="/delivery" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        Delivery Panel
+                      </Link>
+                    )}
                     <div className="divider" style={{ margin: '6px 0' }} />
                     <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--danger)', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(244,67,54,0.08)'}
@@ -493,10 +500,22 @@ export default function Navbar() {
                 Admin Panel
               </Link>
             )}
+            {user.role === 'store_owner' && (
+              <Link to="/store-owner" onClick={() => setMobileOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+                Store Panel
+              </Link>
+            )}
             {user.role === 'restaurant' && (
               <Link to="/restaurant" onClick={() => setMobileOpen(false)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
                 Dashboard
+              </Link>
+            )}
+            {user.role === 'delivery' && (
+              <Link to="/delivery" onClick={() => setMobileOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+                Delivery Panel
               </Link>
             )}
             <button onClick={handleLogout}

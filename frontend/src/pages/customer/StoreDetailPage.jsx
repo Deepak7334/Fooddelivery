@@ -63,7 +63,6 @@ export default function StoreDetailPage() {
   };
 
   const handleAdd = (product) => {
-    if (!user) { navigate('/login'); return; }
     addProductToCart({
       productId: product._id,
       foodId: product._id, // alias for checkout compatibility

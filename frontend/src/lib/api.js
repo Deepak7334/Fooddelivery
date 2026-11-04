@@ -43,9 +43,13 @@ api.interceptors.response.use(
     }
     
     if (err.response?.status === 401) {
-      localStorage.removeItem('foodhub_token');
-      localStorage.removeItem('foodhub_user');
-      window.location.href = '/login';
+      const url = err.config?.url || '';
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/firebase-login') || url.includes('/auth/verify-email-otp');
+      if (!isAuthEndpoint && typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        localStorage.removeItem('foodhub_token');
+        localStorage.removeItem('foodhub_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }

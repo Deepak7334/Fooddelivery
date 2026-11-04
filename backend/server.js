@@ -140,6 +140,15 @@ app.use('/api/home-feed', require('./routes/homeFeed'));
 app.use('/api/serviceability', require('./routes/serviceability'));
 app.use('/api/addresses', require('./routes/address'));
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled Server Error:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error'
+  });
+});
+
 // Socket.io
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);

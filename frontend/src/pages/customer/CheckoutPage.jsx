@@ -18,7 +18,7 @@ const ALLOWED_STATE = [];
 export default function CheckoutPage() {
   const { cartItems, totalPrice, clearCart, restaurantId: ctxRestaurantId, storeId: ctxStoreId, restaurantName, storeName } = useCart();
   const cartVendorName = restaurantName || storeName || 'Restaurant';
-  const { user, login } = useAuth(); // we don't need login, but need user
+  const { user, login, refetchUser, updateUser } = useAuth(); // we don't need login, but need user
   const navigate = useNavigate();
 
   // Multi-address support
@@ -201,6 +201,36 @@ export default function CheckoutPage() {
     setShowNewAddressForm(true);
   };
 
+  const handleDeleteAddress = async (e, idx) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this address?')) return;
+
+    try {
+      const updatedArray = savedAddresses.filter((_, i) => i !== idx);
+      const res = await api.put('/auth/profile', { addresses: updatedArray });
+      if (res.data?.user && updateUser) {
+        updateUser(res.data.user);
+      } else if (refetchUser) {
+        await refetchUser();
+      }
+
+      if (selectedAddressIndex === idx) {
+        setSelectedAddressIndex(updatedArray.length > 0 ? 0 : -1);
+      } else if (selectedAddressIndex > idx) {
+        setSelectedAddressIndex(prev => prev - 1);
+      }
+
+      if (editingAddressIndex === idx) {
+        setEditingAddressIndex(-1);
+        setShowNewAddressForm(updatedArray.length === 0);
+      }
+
+      toast.success('Address removed successfully');
+    } catch (err) {
+      toast.error('Failed to delete address');
+    }
+  };
+
   const handleSaveAddressStandalone = async () => {
     if (!addrHouse.trim()) { toast.error('House/Flat no is required'); return; }
     
@@ -246,7 +276,9 @@ export default function CheckoutPage() {
         toast.success('New address saved!');
       }
       
-      // window.location.reload() removed 
+      if (refetchUser) await refetchUser();
+      setShowNewAddressForm(false);
+      setSelectedAddressIndex(0);
     } catch (err) {
       toast.error('Failed to save address');
     } finally {
@@ -487,11 +519,6 @@ export default function CheckoutPage() {
             <div className="card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h3 style={{ fontWeight: 700, fontSize: 17, margin: 0 }}> Delivery Address</h3>
-                {showNewAddressForm && savedAddresses.length > 0 && (
-                  <button type="button" onClick={() => setShowNewAddressForm(false)} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: 12 }}>
-                    Cancel
-                  </button>
-                )}
               </div>
 
               {!showNewAddressForm && savedAddresses.length > 0 ? (
@@ -511,7 +538,23 @@ export default function CheckoutPage() {
                             {addr.label ? addr.label.charAt(0).toUpperCase() + addr.label.slice(1).toLowerCase() : 'Other'}
                           </span>
                         </div>
-                        <button type="button" onClick={(e) => handleEditAddress(e, idx)} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Edit</button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <button 
+                            type="button" 
+                            onClick={(e) => handleEditAddress(e, idx)} 
+                            style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={(e) => handleDeleteAddress(e, idx)} 
+                            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }}
+                            title="Delete this address"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                       <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                         <div style={{ fontWeight: 600, color: 'var(--text)' }}>{addr.name || user?.name || 'Customer'}</div>
@@ -555,35 +598,7 @@ export default function CheckoutPage() {
                         </button>
                       ))}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleAutoDetectAddress}
-                      disabled={locLoading}
-                      title="Use Current Location"
-                      aria-label="Use Current Location"
-                      style={{
-                        background: 'rgba(255,87,34,0.1)',
-                        border: '1px solid rgba(255,87,34,0.3)',
-                        color: 'var(--primary)',
-                        width: 34,
-                        height: 34,
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: locLoading ? 'not-allowed' : 'pointer',
-                        padding: 0
-                      }}
-                    >
-                      {locLoading ? (
-                        <span style={{ fontSize: 13, animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
-                      ) : (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-                          <circle cx="12" cy="9" r="2.5" />
-                        </svg>
-                      )}
-                    </button>
+                    
                   </div>
                   <div>
                     <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Full Name</label>
@@ -650,21 +665,21 @@ export default function CheckoutPage() {
               {/* Delivery Phone Number */}
               {(!user?.phone || showNewAddressForm) && (
                 <div style={{ marginTop: 24 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Delivery Mobile Number</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}> Mobile Number</label>
                   <input type="tel" className="form-input" placeholder="e.g. 9876543210" value={alternatePhone} onChange={e => setAlternatePhone(e.target.value)} />
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>The delivery agent will call this number.</div>
                 </div>
               )}
               {showNewAddressForm && (
                 <div style={{ marginTop: 20, textAlign: 'right' }}>
-                  <button type="button" className="btn btn-primary" onClick={handleSaveAddressStandalone} disabled={savingAddress}>
-                    {savingAddress ? 'Saving...' : (editingAddressIndex >= 0 ? 'Update Address' : 'Save Address')}
-                  </button>
                   {savedAddresses.length > 0 && (
-                    <button type="button" className="btn btn-secondary" onClick={() => { setShowNewAddressForm(false); setEditingAddressIndex(-1); }} style={{ marginLeft: 12 }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => { setShowNewAddressForm(false); setEditingAddressIndex(-1); }} style={{ marginRight: 12 }}>
                       Cancel
                     </button>
                   )}
+                  <button type="button" className="btn btn-primary" onClick={handleSaveAddressStandalone} disabled={savingAddress}>
+                    {savingAddress ? 'Saving...' : (editingAddressIndex >= 0 ? 'Update Address' : 'Save Address')}
+                  </button>
                 </div>
               )}
               </>
@@ -679,24 +694,32 @@ export default function CheckoutPage() {
 
             {/* Payment Method */}
             <div className="card" style={{ padding: 24 }}>
-              <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}> Payment Method</h3>
+              <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}>Payment Method</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[
-                  { id: 'upi', label: ' UPI / Online Payment', desc: 'GPay · PhonePe · Paytm · BHIM · QR Code', badge: 'RECOMMENDED' },
-                  { id: 'razorpay', label: 'Cards & Wallets', desc: 'Credit / Debit Card · Net Banking · Wallets' },
-                  { id: 'cod', label: 'Cash on Delivery', desc: 'Pay cash when your order arrives' },
-                ].map(pm => (
-                  <label key={pm.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, background: paymentMethod === pm.id ? 'rgba(255,87,34,0.08)' : 'rgba(255,255,255,0.03)', borderRadius: 10, border: `1px solid ${paymentMethod === pm.id ? 'rgba(255,87,34,0.4)' : 'var(--border)'}`, cursor: 'pointer', transition: 'var(--transition)' }}>
-                    <input type="radio" name="payment" value={pm.id} checked={paymentMethod === pm.id} onChange={() => handlePaymentChange(pm.id)} style={{ marginTop: 2 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {pm.label}
-                        {pm.badge && <span style={{ fontSize: 9, fontWeight: 700, background: 'rgba(255,87,34,0.2)', color: 'var(--primary)', padding: '2px 6px', borderRadius: 999 }}>{pm.badge}</span>}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{pm.desc}</div>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, background: 'rgba(255,87,34,0.08)', borderRadius: 12, border: '1.5px solid rgba(255,87,34,0.4)', cursor: 'pointer', transition: 'var(--transition)' }}>
+                  <input type="radio" name="payment" value="cod" checked={true} readOnly style={{ marginTop: 3, accentColor: 'var(--primary)' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)' }}>
+                      <span>💵</span> Cash on Delivery
                     </div>
-                  </label>
-                ))}
+                    <div style={{
+                      marginTop: 10,
+                      padding: '10px 14px',
+                      background: 'rgba(34, 197, 94, 0.08)',
+                      border: '1px solid rgba(34, 197, 94, 0.25)',
+                      borderRadius: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#232424'
+                    }}>
+                      <span style={{ fontSize: 16 }}></span>
+                      <span>Ap delivery boy ko Cash ya online payment kar skte hai (GPay / PhonePe / Paytm / QR Code)...</span>
+                    </div>
+                  </div>
+                </label>
               </div>
             </div>
           </div>
