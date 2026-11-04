@@ -427,7 +427,7 @@ const CSS = `
 .da-stat-val { font-size: 36px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
 .da-stat-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; opacity: 0.9; }
 
-.da-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
+.da-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px; }
 .da-card { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
 .da-card:hover { transform: translateY(-6px); border-color: var(--glass-border); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
 .da-card-inactive { opacity: 0.6; filter: grayscale(0.5); }
@@ -452,5 +452,5 @@ const CSS = `
 .da-btn.toggle:hover { background: rgba(245,158,11,0.18); transform: translateY(-1px); }
 .da-btn.delete { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #F87171; flex: 0; padding: 10px 16px; }
 .da-btn.delete:hover { background: rgba(239,68,68,0.18); transform: translateY(-1px); }
-@media (max-width: 768px) { .da-header { flex-direction: column; align-items: stretch; gap: 16px; } .da-header > div:last-child { justify-content: space-between; } .da-input { width: 100%; } }
+@media (max-width: 768px) { .da-header { flex-direction: column; align-items: stretch; gap: 16px; } .da-header > div:last-child { justify-content: space-between; } .da-input { width: 100%; } .da-grid { grid-template-columns: 1fr; gap: 14px; } }
 `;

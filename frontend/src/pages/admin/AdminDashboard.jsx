@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 
-import { FiShoppingBag, FiUsers, FiList, FiTrendingUp } from 'react-icons/fi';
+import { FiShoppingBag, FiUsers, FiList, FiTrendingUp, FiCalendar, FiPackage, FiPercent, FiDollarSign } from 'react-icons/fi';
+import { cleanUserName } from '../../utils/address';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -30,14 +31,14 @@ export default function AdminDashboard() {
   if (loading) return <div style={{ padding: 60, textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
 
   const statCards = [
-    { icon: '', label: 'Total Customers', value: stats?.totalUsers || 0, color: '#00BCD4', link: '/admin/users' },
-    { icon: '', label: 'Restaurants', value: stats?.totalRestaurants || 0, color: '#FF5722', link: '/admin/restaurants' },
-    { icon: '', label: 'Stores', value: stats?.totalStores || 0, color: '#4CAF50', link: '/admin/stores' },
-    { icon: '', label: 'Total Orders', value: stats?.totalOrders || 0, color: '#9C27B0', link: '/admin/orders' },
-    { icon: '', label: 'Table Bookings', value: stats?.totalBookings || 0, color: '#FF9800', link: '/admin/bookings' },
-    { icon: '', label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString('en-IN')}`, color: '#4CAF50', link: '/admin/orders' },
-    { icon: '', label: 'Platform Earnings', value: `₹${(stats?.adminEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#009688', link: '/admin/orders' },
-    { icon: '', label: 'Vendor Payouts', value: `₹${(stats?.vendorPayouts || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#E91E63', link: '/admin/payouts' },
+    { icon: <FiUsers size={22} />, label: 'Total Customers', value: stats?.totalUsers || 0, color: '#00BCD4', link: '/admin/users' },
+    { icon: <FiShoppingBag size={22} />, label: 'Restaurants', value: stats?.totalRestaurants || 0, color: '#FF5722', link: '/admin/restaurants' },
+    { icon: <FiPackage size={22} />, label: 'Stores', value: stats?.totalStores || 0, color: '#4CAF50', link: '/admin/stores' },
+    { icon: <FiList size={22} />, label: 'Total Orders', value: stats?.totalOrders || 0, color: '#9C27B0', link: '/admin/orders' },
+    { icon: <FiCalendar size={22} />, label: 'Table Bookings', value: stats?.totalBookings || 0, color: '#FF9800', link: '/admin/bookings' },
+    { icon: <FiTrendingUp size={22} />, label: 'Total Revenue', value: `₹${(stats?.totalRevenue || 0).toLocaleString('en-IN')}`, color: '#4CAF50', link: '/admin/orders' },
+    { icon: <FiPercent size={22} />, label: 'Platform Earnings', value: `₹${(stats?.adminEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#009688', link: '/admin/orders' },
+    { icon: <FiDollarSign size={22} />, label: 'Vendor Payouts', value: `₹${(stats?.vendorPayouts || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#E91E63', link: '/admin/payouts' },
   ];
 
   return (
@@ -143,7 +144,7 @@ export default function AdminDashboard() {
           <div className="card ad-settings-card" style={{ background: 'linear-gradient(135deg, rgba(33,150,243,0.05), transparent)', border: '1px solid rgba(33,150,243,0.2)' }}>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', flex: 1 }}>
               <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(33,150,243,0.1)', color: '#2196F3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-                ??
+                🎉
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -158,7 +159,7 @@ export default function AdminDashboard() {
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="e.g. ?? Diwali Special: Get Flat 20% OFF!"
+                  placeholder="e.g. 🎉 Diwali Special: Get Flat 20% OFF!"
                   value={settings?.promoBannerText || ''}
                   onChange={(e) => setSettings({ ...settings, promoBannerText: e.target.value })}
                   style={{ width: '100%', maxWidth: '100%', fontSize: 14 }}
@@ -297,7 +298,7 @@ export default function AdminDashboard() {
                 {/* Middle Section */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                    <div style={{ marginBottom: 4 }}><strong style={{ color: 'var(--text-primary)' }}>Customer:</strong> {order.customerId?.name || 'N/A'}</div>
+                    <div style={{ marginBottom: 4 }}><strong style={{ color: 'var(--text-primary)' }}>Customer:</strong> {cleanUserName(order.customerId?.name || 'N/A')}</div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <span>{new Date(order.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       <span>·</span>

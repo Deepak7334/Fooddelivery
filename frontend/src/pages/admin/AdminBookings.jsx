@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { cleanUserName } from '../../utils/address';
 import { FiRefreshCw, FiCalendar, FiCheck, FiX, FiSlash } from 'react-icons/fi';
 
 const STATUS_STYLES = {
@@ -179,7 +180,7 @@ export default function AdminBookings() {
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{b.restaurantId?.city}</div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{b.customerName}</div>
+                        <div style={{ fontWeight: 600 }}>{cleanUserName(b.customerName || b.userId?.name)}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                           {b.userId?.email || ''}<br />📞 {b.phone}
                         </div>

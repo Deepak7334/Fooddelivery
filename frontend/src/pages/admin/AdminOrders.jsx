@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { createSocket } from '../../lib/socket';
+import { cleanUserName } from '../../utils/address';
 import { FaWhatsapp } from 'react-icons/fa';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -225,7 +226,7 @@ function OrderModal({ order, agents, onClose, onStatusChange, onAssignAgent, loa
         {/* Info grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           {[
-            { label: 'Customer', value: order.customerId?.name || '—' },
+            { label: 'Customer', value: cleanUserName(order.customerId?.name || '—') },
             { 
               label: 'Phone', 
               value: (
@@ -570,7 +571,7 @@ export default function AdminOrders() {
                         )}
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>{o.customerId?.name}</div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{cleanUserName(o.customerId?.name)}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{o.customerId?.phone}</div>
                       </td>
                       <td style={{ fontSize: 13 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDkart'}</td>
@@ -635,7 +636,7 @@ export default function AdminOrders() {
                   </div>
                   <StatusBadge status={o.status} />
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{o.customerId?.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{cleanUserName(o.customerId?.name)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{o.restaurantName || o.restaurantId?.name || o.storeName || o.storeId?.name || 'JDkart'} · {o.items?.map(i => i.name).join(', ')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, color: 'var(--success)', fontSize: 15 }}>₹{o.finalAmount}</span>

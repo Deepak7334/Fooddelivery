@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               );
-            ),
+            },
             child: const Padding(
               padding: EdgeInsets.all(8),
               child: Icon(Icons.notifications_none_rounded, size: 24, color: _ink),

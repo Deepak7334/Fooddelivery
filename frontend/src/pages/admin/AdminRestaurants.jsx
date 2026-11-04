@@ -238,7 +238,7 @@ export default function AdminRestaurants() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => openTables(r)} className="btn btn-primary btn-sm" title="Manage Tables">ðŸª‘</button>
+                        <button onClick={() => openTables(r)} className="btn btn-primary btn-sm" title="Manage Tables">🪑</button>
                         <button onClick={() => openEdit(r)} className="btn btn-secondary btn-sm"><FiEdit2 /></button>
                         <button onClick={() => handleDelete(r._id)} className="btn btn-danger btn-sm"><FiTrash2 /></button>
                       </div>
@@ -342,7 +342,7 @@ export default function AdminRestaurants() {
       {tablesModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setTablesModal(false)}>
           <div className="modal-box responsive-modal" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="modal-title">ðŸª‘ Manage Tables</h2>
+            <h2 className="modal-title">🪑 Manage Tables</h2>
             <p className="modal-subtitle">For {selectedRestaurant?.name}</p>
             
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, marginBottom: 24, border: '1px solid var(--border)' }}>

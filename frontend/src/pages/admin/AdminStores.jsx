@@ -222,7 +222,7 @@ export default function AdminStores() {
                   { label: 'Offers (comma separated)', key: 'offers', col: 2 },
                   { label: 'Description', key: 'description', col: 2 },
                 ].map(f => (
-                  <div key={f.key} className="form-group" style={{ gridColumn: `span ${f.col || 1}` }}>
+                  <div key={f.key} className="form-group" style={{ gridColumn: f.col === 2 ? '1 / -1' : 'auto' }}>
                     <label className="form-label">{f.label}</label>
                     {f.type === 'select' ? (
                       <select className="form-input" value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))}>
@@ -260,7 +260,7 @@ export default function AdminStores() {
                       { label: 'Owner Name', key: 'ownerName', col: 1 },
                       { label: 'Password', key: 'ownerPassword', type: 'password', col: 1 },
                     ].map(f => (
-                      <div key={f.key} className="form-group" style={{ gridColumn: `span ${f.col || 1}` }}>
+                      <div key={f.key} className="form-group" style={{ gridColumn: f.col === 2 ? '1 / -1' : 'auto' }}>
                         <label className="form-label">{f.label}</label>
                         <input className="form-input" type={f.type || 'text'} value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} />
                       </div>

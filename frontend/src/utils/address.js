@@ -2,6 +2,11 @@
  * Safely format an address (which could be a String, Object, or null/undefined)
  * into a human-readable string. Prevents React crashes when MongoDB objects are rendered.
  */
+export const cleanUserName = (name) => {
+  if (!name) return 'Customer';
+  return String(name).replace(/^[0-9.eE+]+\s+/, '').trim() || 'Customer';
+};
+
 export const formatAddress = (addr) => {
   if (!addr) return '—';
   if (typeof addr === 'string') return addr.trim() || '—';

@@ -327,7 +327,7 @@ router.get('/me', require('../middleware/auth').protect, async (req, res) => {
     success: true,
     user: {
       id: req.user._id,
-      name: req.user.name,
+      name: (typeof req.user.name === 'string' ? req.user.name.replace(/^[0-9.eE+]+\s+/, '').trim() : req.user.name),
       email: req.user.email,
       role: req.user.role,
       phone: req.user.phone,
@@ -354,7 +354,7 @@ router.put('/profile', require('../middleware/auth').protect, async (req, res) =
 
     // Compare fields and log changes
     if (name && name !== currentUser.name) {
-      updateFields.name = name;
+      updateFields.name = typeof name === 'string' ? name.replace(/^[0-9.eE+]+\s+/, '').trim() : name;
       changes.push({ field: 'Name', oldValue: currentUser.name || '', newValue: name });
     }
     if (phone !== undefined && phone !== currentUser.phone) {

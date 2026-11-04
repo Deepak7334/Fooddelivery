@@ -40,7 +40,7 @@ export default function AdminCategories() {
         <button onClick={openAdd} className="btn btn-primary"><FiPlus /> Add Category</button>
       </div>
       {loading ? <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></div> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))', gap: 14 }}>
           {categories.map(c => (
             <div key={c._id} className="card" style={{ padding: 20, textAlign: 'center', position: 'relative' }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>{c.icon}</div>

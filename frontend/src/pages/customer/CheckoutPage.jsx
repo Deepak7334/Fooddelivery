@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { getCurrentCoordinates, reverseGeocodeCoords } from '../../utils/geolocation';
+import { cleanUserName } from '../../utils/address';
 
 // ==========================================
 // 📍 DYNAMIC DELIVERY AREA SETTINGS
@@ -557,7 +558,7 @@ export default function CheckoutPage() {
                         </div>
                       </div>
                       <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text)' }}>{addr.name || user?.name || 'Customer'}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--text)' }}>{cleanUserName(addr.name || user?.name)}</div>
                         <div style={{ marginTop: 4 }}>{addr.address || [addr.addressLine1, addr.area, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ')}</div>
                         <div style={{ marginTop: 4 }}>{addr.alternatePhone ? `Phone: ${addr.alternatePhone}` : (user?.phone ? `Phone: ${user.phone}` : '')}</div>
                       </div>

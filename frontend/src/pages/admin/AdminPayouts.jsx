@@ -60,7 +60,7 @@ export default function AdminPayouts() {
 
   return (
     <div>
-      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800 }}>Vendor <span style={{ color: 'var(--primary)' }}>Payouts</span></h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>Track and settle pending payments to restaurants and stores.</p>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { FiToggleLeft, FiToggleRight, FiEye, FiTrash2, FiX } from 'react-icons/fi';
+import { cleanUserName } from '../../utils/address';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -58,7 +59,7 @@ export default function AdminUsers() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
         <h1 style={{ fontSize: 26, fontWeight: 800 }}> User <span style={{ color: 'var(--primary)' }}>Management</span></h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {['all', 'customer', 'sub_admin', 'restaurant', 'store_owner'].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}>
               {f === 'all' ? 'All' : f.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -76,7 +77,7 @@ export default function AdminUsers() {
               {filtered.length === 0 ? <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No users</td></tr>
                 : filtered.map(u => (
                   <tr key={u._id}>
-                    <td style={{ fontWeight: 600 }}>{u.name}</td>
+                    <td style={{ fontWeight: 600 }}>{cleanUserName(u.name)}</td>
                     <td style={{ fontSize: 13 }}>{u.email}</td>
                     <td><span className={`badge ${u.role === 'restaurant' ? 'badge-accepted' : u.role === 'store_owner' ? 'badge-preparing' : 'badge-paid'}`}>{u.role.replace('_', ' ')}</span></td>
                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{u.phone || '—'}</td>
@@ -87,7 +88,7 @@ export default function AdminUsers() {
                       </button>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <button onClick={() => setViewUser(u)} className="btn btn-secondary btn-sm" title="View Details"><FiEye size={14} /></button>
                         <button onClick={() => handleDelete(u._id)} className="btn btn-sm" style={{ background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', border: '1px solid rgba(244,67,54,0.2)', padding: '6px 10px' }} title="Delete"><FiTrash2 size={14} /></button>
                       </div>
@@ -148,7 +149,7 @@ export default function AdminUsers() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8, fontSize: 14 }}>
                 <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Name:</div>
-                <div style={{ fontWeight: 700 }}>{viewUser.name}</div>
+                <div style={{ fontWeight: 700 }}>{cleanUserName(viewUser.name)}</div>
 
                 <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Email:</div>
                 <div>{viewUser.email}</div>
