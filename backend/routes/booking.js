@@ -15,6 +15,31 @@ const DEFAULT_SLOTS = [
   '20:00-22:00'
 ];
 
+const DEFAULT_TABLES = [
+  { number: 1, maxGuests: 4 },
+  { number: 2, maxGuests: 6 }
+];
+
+// Return active tables for a restaurant, lazily seeding defaults when none exist
+// so booking works even before the owner configures tables manually.
+async function ensureTables(restaurantId) {
+  if (!restaurantId) return [];
+  const tables = await Table.find({ restaurantId, isActive: true }).sort({ number: 1 });
+  if (tables.length > 0) return tables;
+
+  const restaurant = await Restaurant.findById(restaurantId);
+  if (!restaurant) return [];
+
+  try {
+    return await Table.insertMany(
+      DEFAULT_TABLES.map(t => ({ restaurantId: restaurant._id, number: t.number, maxGuests: t.maxGuests }))
+    );
+  } catch (e) {
+    // A concurrent request may have seeded already; return whatever exists.
+    return Table.find({ restaurantId, isActive: true }).sort({ number: 1 });
+  }
+}
+
 // Customer routes
 router.get('/availability/:restaurantId/:date', async (req, res) => {
   try {
@@ -25,8 +50,8 @@ router.get('/availability/:restaurantId/:date', async (req, res) => {
     const endOfDay = new Date(date);
     endOfDay.setUTCHours(23, 59, 59, 999);
     
-    // Find tables for restaurant
-    const tables = await Table.find({ restaurantId, isActive: true });
+    // Find tables for restaurant (seed defaults if none configured yet)
+    const tables = await ensureTables(restaurantId);
     
     // Find existing bookings
     const existingBookings = await Booking.find({
@@ -65,7 +90,8 @@ router.post('/customer/bookings', protect, async (req, res) => {
     }
 
     // Check availability (simple)
-    const table = await Table.findOne({ restaurantId, number: tableNumber });
+    const tables = await ensureTables(restaurantId);
+    const table = tables.find(t => t.number === Number(tableNumber));
     if (!table) return res.status(400).json({ message: 'Table not found' });
 
     // Check conflict (mock)
