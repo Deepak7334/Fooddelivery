@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'product_details_screen.dart';
-import 'restaurant_details_screen.dart';
 import 'cart_screen.dart';
 import 'checkout_screen.dart';
 import 'food_items_screen.dart';
@@ -9,6 +8,8 @@ import '../../../services/cart_service.dart';
 import '../../../models/product_model.dart';
 import '../../../models/restaurant_model.dart';
 import '../../../models/category_model.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/safe_image.dart';
 
 class GroceryItemsScreen extends StatefulWidget {
@@ -39,6 +40,9 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
   String? _errorMessage;
   bool _cartBarDismissed = false;
 
+  String? _selectedStoreId;
+  String? _selectedStoreName;
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +63,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
 
     try {
       final results = await Future.wait([
-        StoreService.instance.getProducts(),
+        StoreService.instance.getProducts(storeId: _selectedStoreId),
         StoreService.instance.getStores(),
         StoreService.instance.getStoreTypes(),
       ]);
@@ -125,9 +129,56 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Could not load grocery catalog. Please check your connection.';
+          _errorMessage = e is ApiException
+              ? e.message
+              : 'Could not load the grocery catalog. Please check your connection.';
         });
       }
+    }
+  }
+
+  Future<void> _selectStore(RestaurantModel store) async {
+    final clearing = _selectedStoreId == store.id;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _selectedStoreId = clearing ? null : store.id;
+      _selectedStoreName = clearing ? null : store.name;
+      _selectedCategoryIndex = 0;
+      _searchQuery = '';
+      _searchController.clear();
+    });
+
+    try {
+      final products = await StoreService.instance.getProducts(
+        storeId: _selectedStoreId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _backendProducts = products;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e is ApiException
+            ? e.message
+            : 'Could not load products for this store. Please try again.';
+      });
+    }
+  }
+
+  void _clearStoreFilter() {
+    final match = _backendStores.where((s) => s.id == _selectedStoreId);
+    if (match.isNotEmpty) {
+      _selectStore(match.first);
+    } else {
+      setState(() {
+        _selectedStoreId = null;
+        _selectedStoreName = null;
+      });
+      _fetchStoreData();
     }
   }
 
@@ -172,21 +223,42 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       list = list.where((f) => (f.discountedPrice ?? f.price) <= 99).toList();
     } else if (_filterType == 'discounted') {
       list = list.where((f) => f.discountedPrice != null && f.discountedPrice! < f.price).toList();
+    } else if (_filterType == 'price_high') {
+      list = [...list]..sort((a, b) =>
+          (b.discountedPrice ?? b.price).compareTo(a.discountedPrice ?? a.price));
     }
 
     return list;
   }
 
-  void _addGroceryToCart(FoodItemModel dish) {
-    final storeId = dish.restaurantId.isNotEmpty
-        ? dish.restaurantId
-        : (_backendStores.isNotEmpty ? _backendStores.first.id : '');
-    final storeName = dish.restaurantName.isNotEmpty
-        ? dish.restaurantName
-        : (_backendStores.isNotEmpty ? _backendStores.first.name : 'JDKart Store');
+  void _showUnavailable() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('This product is not linked to a store right now.'),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+
+  Future<void> _addGroceryToCart(FoodItemModel dish) async {
+    final storeId = dish.restaurantId;
+    if (storeId.isEmpty) {
+      _showUnavailable();
+      return;
+    }
+    final storeName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Store';
 
     _cartBarDismissed = false;
-    CartService.instance.addItem(dish, restaurantId: storeId, restaurantName: storeName);
+    if (!await addToCart(
+      context,
+      dish,
+      vendorId: storeId,
+      vendorName: storeName,
+      type: 'product',
+    )) {
+      return;
+    }
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -206,16 +278,25 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
     );
   }
 
-  void _orderGroceryNow(FoodItemModel dish) {
-    final storeId = dish.restaurantId.isNotEmpty
-        ? dish.restaurantId
-        : (_backendStores.isNotEmpty ? _backendStores.first.id : '');
-    final storeName = dish.restaurantName.isNotEmpty
-        ? dish.restaurantName
-        : (_backendStores.isNotEmpty ? _backendStores.first.name : 'JDKart Store');
+  Future<void> _orderGroceryNow(FoodItemModel dish) async {
+    final storeId = dish.restaurantId;
+    if (storeId.isEmpty) {
+      _showUnavailable();
+      return;
+    }
+    final storeName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Store';
 
     _cartBarDismissed = false;
-    CartService.instance.addItem(dish, restaurantId: storeId, restaurantName: storeName);
+    if (!await addToCart(
+      context,
+      dish,
+      vendorId: storeId,
+      vendorName: storeName,
+      type: 'product',
+    )) {
+      return;
+    }
+    if (!mounted) return;
     Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
   }
 
@@ -382,6 +463,75 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
 
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
+                  if (_selectedStoreId != null)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: jdkartPeach,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: jdkartOrange.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.storefront_rounded, size: 16, color: jdkartOrange),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Showing: ${_selectedStoreName ?? 'Selected store'}',
+                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _clearStoreFilter,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: jdkartOrange,
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
+                                child: const Text('Show all', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  if (_errorMessage != null && items.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.wifi_off_rounded, size: 16, color: Color(0xFFB91C1C)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: const TextStyle(fontSize: 12.5, color: Color(0xFFB91C1C)),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _fetchStoreData,
+                                child: const Text('Retry', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
                   // 4. REAL STORE DEALS (Only if backend has discounted products)
                   if (_searchQuery.isEmpty && dealsList.isNotEmpty) ...[
                     SliverToBoxAdapter(
@@ -465,9 +615,13 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                 child: Icon(Icons.storefront_outlined, size: 54, color: jdkartOrange),
                               ),
                               const SizedBox(height: 16),
-                              const Text(
-                                'No Grocery Items Listed Yet',
-                                style: TextStyle(
+                              Text(
+                                _errorMessage != null
+                                    ? 'Couldn\'t load grocery items'
+                                    : (_selectedStoreId != null
+                                        ? 'No items in this store yet'
+                                        : 'No Grocery Items Listed Yet'),
+                                style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 18,
                                   color: Color(0xFF1E293B),
@@ -475,9 +629,12 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _searchQuery.isNotEmpty
-                                    ? 'No products matched "$_searchQuery". Try clearing your search.'
-                                    : 'Stores and supermarkets are currently onboarding in your area. You can order fresh meals from our partner restaurants in the meantime!',
+                                _errorMessage ??
+                                    (_searchQuery.isNotEmpty
+                                        ? 'No products matched "$_searchQuery". Try clearing your search.'
+                                        : (_selectedStoreId != null
+                                            ? 'This store has not listed any products yet. Browse another supermarket or view all products.'
+                                            : 'Stores and supermarkets are currently onboarding in your area. You can order fresh meals from our partner restaurants in the meantime.')),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(color: Color(0xFF64748B), fontSize: 13.5, height: 1.4),
                               ),
@@ -487,6 +644,27 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                 spacing: 12,
                                 runSpacing: 8,
                                 children: [
+                                  if (_errorMessage != null)
+                                    ElevatedButton.icon(
+                                      onPressed: _fetchStoreData,
+                                      icon: const Icon(Icons.refresh, size: 18),
+                                      label: const Text('Try Again'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: jdkartOrange,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                  if (_selectedStoreId != null)
+                                    OutlinedButton(
+                                      onPressed: _clearStoreFilter,
+                                      style: OutlinedButton.styleFrom(
+                                        side: BorderSide(color: jdkartOrange),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      child: Text('Show All Products', style: TextStyle(color: jdkartOrange)),
+                                    ),
                                   if (_searchQuery.isNotEmpty || _selectedCategoryIndex > 0)
                                     OutlinedButton(
                                       onPressed: () {
@@ -769,7 +947,18 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          _buildFilterChip(Icons.bolt, '15-Min Delivery'),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _filterType = _filterType == 'price_high' ? 'all' : 'price_high';
+              });
+            },
+            child: _buildFilterChip(
+              Icons.arrow_upward,
+              'Price: High to Low',
+              isActive: _filterType == 'price_high',
+            ),
+          ),
         ],
       ),
     );
@@ -1126,20 +1315,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
           final cuisines = store.cuisine.isNotEmpty ? store.cuisine.join(' • ') : 'Supermarket • Essentials';
 
           return GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => RestaurantDetailsScreen(
-                  restaurantId: store.id,
-                  restaurantName: store.name,
-                  restaurantImage: store.image,
-                  restaurantCuisine: cuisines,
-                  restaurantRating: store.rating.toStringAsFixed(1),
-                  restaurantDeliveryTime: store.deliveryTime,
-                  restaurantDeliveryFee: '₹${store.deliveryFee}',
-                ),
-              ),
-            ),
+            onTap: () => _selectStore(store),
             child: Container(
               margin: const EdgeInsets.only(bottom: 16.0),
               decoration: BoxDecoration(
@@ -1204,7 +1380,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            store.address,
+                            store.address.isNotEmpty ? '${store.address} • $cuisines' : cuisines,
                             style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

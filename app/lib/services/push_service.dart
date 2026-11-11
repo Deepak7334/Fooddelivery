@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -34,9 +33,11 @@ class PushService {
   bool get isFirebaseReady => _firebaseReady;
   String? get fcmToken => _fcmToken;
 
-  /// Android-only for now: this project has no GoogleService-Info.plist for iOS.
+  /// Android-only for now: this project has no GoogleService-Info.plist for
+  /// iOS, and Flutter web has no FCM setup, so both are skipped.
   Future<void> _ensureFirebase() async {
-    if (_firebaseReady || kIsWeb || !Platform.isAndroid) return;
+    if (_firebaseReady || kIsWeb) return;
+    if (defaultTargetPlatform != TargetPlatform.android) return;
     try {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp();
@@ -65,6 +66,16 @@ class PushService {
 
       _startListening(messaging);
       await messaging.register();
+      // Newer plugin versions deliver the token through `onRegistered`, but
+      // existing installs may already hold one, so sync it explicitly here.
+      // ignore: deprecated_member_use
+      final existingToken = await messaging.getToken();
+      if (existingToken != null &&
+          existingToken.isNotEmpty &&
+          existingToken != _fcmToken) {
+        _fcmToken = existingToken;
+        await _uploadToken();
+      }
     } catch (e) {
       debugPrint('Push registration failed: $e');
     }

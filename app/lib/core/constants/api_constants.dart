@@ -24,6 +24,11 @@ class ApiConstants {
 
   // Serviceability
   static const String checkServiceability = '$baseUrl/serviceability/check';
+  static const String reverseGeocode = '$baseUrl/serviceability/reverse-geocode';
+
+  // CORS-enabled place search (used on mobile and web)
+  static const String placeSearch = 'https://photon.komoot.io/api/';
+  static const String placeReverse = 'https://photon.komoot.io/reverse';
 
   // Store & Grocery
   static const String storeTypes = '$baseUrl/store/types';

@@ -5,6 +5,7 @@ import '../../../services/auth_service.dart';
 import '../../../services/location_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
+import '../../auth/screens/login_screen.dart';
 
 class AddressesScreen extends StatefulWidget {
   const AddressesScreen({Key? key}) : super(key: key);
@@ -49,11 +50,21 @@ class _AddressesScreenState extends State<AddressesScreen> {
     }
   }
 
+  Future<void> _promptLogin() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please log in to save addresses to your account.')),
+    );
+    final loggedIn = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen(popOnSuccess: true)),
+    );
+    if (loggedIn == true && mounted) _loadAddresses();
+  }
+
   void _showAddAddressDialog() {
     if (!AuthService.instance.isAuthenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to save addresses to your account.')),
-      );
+      _promptLogin();
+      return;
     }
 
     final formKey = GlobalKey<FormState>();
@@ -293,13 +304,6 @@ class _AddressesScreenState extends State<AddressesScreen> {
                           'Add your delivery address so we can deliver meals to you quickly.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _showAddAddressDialog,
-                          icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text('Add Address', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(backgroundColor: jdkartOrange),
                         ),
                       ],
                     ),

@@ -200,10 +200,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              ),
+              onPressed: () async {
+                final loggedIn = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LoginScreen(popOnSuccess: true),
+                  ),
+                );
+                if (loggedIn == true && mounted) await _load();
+              },
               icon: const Icon(Icons.login_rounded),
               label: const Text('Login'),
               style: ElevatedButton.styleFrom(

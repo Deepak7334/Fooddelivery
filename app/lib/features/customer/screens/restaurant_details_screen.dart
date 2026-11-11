@@ -7,6 +7,7 @@ import '../../../services/restaurant_service.dart';
 import '../../../services/cart_service.dart';
 import '../../../models/product_model.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
 
@@ -43,6 +44,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   String _effectiveRestName = '';
   String _effectiveRestImage = '';
   String _effectiveRestCuisine = '';
+  String _effectiveRestAddress = '';
   String _effectiveRestRating = '4.5';
   String _effectiveDeliveryTime = '20-30 min';
   String _effectiveDeliveryFee = '₹15';
@@ -68,42 +70,41 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     });
     try {
       if (_effectiveRestId.isEmpty) {
-        final rests = await RestaurantService.instance.getRestaurants();
-        if (rests.isNotEmpty) {
-          final r = rests.first;
-          _effectiveRestId = r.id;
-          _effectiveRestName = r.name;
-          _effectiveRestImage = r.image;
-          _effectiveRestCuisine = r.cuisine.isNotEmpty ? r.cuisine.join(' • ') : 'North Indian • Biryani';
-          _effectiveRestRating = r.rating.toStringAsFixed(1);
-          _effectiveDeliveryTime = r.deliveryTime;
-          _effectiveDeliveryFee = '₹${r.deliveryFee}';
+        if (mounted) {
+          setState(() {
+            _error = 'Restaurant information is unavailable.';
+            _isLoadingMenu = false;
+          });
         }
+        return;
       }
 
       if (_effectiveRestId.isNotEmpty) {
         final details = await RestaurantService.instance.getRestaurantDetails(_effectiveRestId);
-        if (mounted) {
-          setState(() {
-            _menuItems = details.menu;
-            final r = details.restaurant;
-            if (r != null) {
-              if (_effectiveRestName.isEmpty) _effectiveRestName = r.name;
-              if (_effectiveRestImage.isEmpty) _effectiveRestImage = r.image;
-            }
-            _isLoadingMenu = false;
-          });
-          return;
-        }
-      }
-
-      // If restaurant details returned empty or no id, load all foods for fallback
-      final allFoods = await RestaurantService.instance.getFoods();
-      if (mounted) {
+        if (!mounted) return;
         setState(() {
-          _menuItems = allFoods;
+          _menuItems = details.menu;
+          final r = details.restaurant;
+          if (r != null) {
+            if (r.name.isNotEmpty) _effectiveRestName = r.name;
+            if (r.image.isNotEmpty) _effectiveRestImage = r.image;
+            if (r.cuisine.isNotEmpty) {
+              _effectiveRestCuisine = r.cuisine.join(' • ');
+            }
+            _effectiveRestRating = r.rating.toStringAsFixed(1);
+            if (r.deliveryTime.isNotEmpty) {
+              _effectiveDeliveryTime = r.deliveryTime;
+            }
+            _effectiveDeliveryFee = '₹${r.deliveryFee}';
+            _effectiveRestAddress = r.address;
+          }
           _isLoadingMenu = false;
         });
+        return;
+      }
+
+      if (mounted) {
+        setState(() => _isLoadingMenu = false);
       }
     } catch (e) {
       if (mounted) {
@@ -115,13 +116,17 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     }
   }
 
-  void _addItem(FoodItemModel dish) {
+  Future<void> _addItem(FoodItemModel dish) async {
+    final vendorId = _effectiveRestId.isNotEmpty ? _effectiveRestId : dish.restaurantId;
+    final vendorName = _effectiveRestName.isNotEmpty ? _effectiveRestName : dish.restaurantName;
+    if (vendorId.isEmpty) {
+      _showUnavailable();
+      return;
+    }
+
     _cartBarDismissed = false;
-    CartService.instance.addItem(
-      dish,
-      restaurantId: _effectiveRestId.isNotEmpty ? _effectiveRestId : dish.restaurantId,
-      restaurantName: _effectiveRestName.isNotEmpty ? _effectiveRestName : dish.restaurantName,
-    );
+    if (!await addToCart(context, dish, vendorId: vendorId, vendorName: vendorName)) return;
+    if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -129,6 +134,15 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
         backgroundColor: jdkartOrange,
+      ),
+    );
+  }
+
+  void _showUnavailable() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('This item is not available from a restaurant right now.'),
+        backgroundColor: Colors.redAccent,
       ),
     );
   }
@@ -144,13 +158,17 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     }
   }
 
-  void _orderItemDirectly(FoodItemModel dish) {
+  Future<void> _orderItemDirectly(FoodItemModel dish) async {
+    final vendorId = _effectiveRestId.isNotEmpty ? _effectiveRestId : dish.restaurantId;
+    final vendorName = _effectiveRestName.isNotEmpty ? _effectiveRestName : dish.restaurantName;
+    if (vendorId.isEmpty) {
+      _showUnavailable();
+      return;
+    }
+
     _cartBarDismissed = false;
-    CartService.instance.addItem(
-      dish,
-      restaurantId: _effectiveRestId.isNotEmpty ? _effectiveRestId : dish.restaurantId,
-      restaurantName: _effectiveRestName.isNotEmpty ? _effectiveRestName : dish.restaurantName,
-    );
+    if (!await addToCart(context, dish, vendorId: vendorId, vendorName: vendorName)) return;
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CheckoutScreen()),
@@ -213,13 +231,15 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _effectiveRestCuisine.isNotEmpty ? _effectiveRestCuisine : 'Akbarpur, Rohtas, Bihar',
-                              style: const TextStyle(color: Colors.white70, fontSize: 13),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            if (_effectiveRestCuisine.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                _effectiveRestCuisine,
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 12.0,
@@ -249,7 +269,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                 const Text('•', style: TextStyle(color: Colors.white54)),
                                 Text('$_effectiveDeliveryFee delivery', style: const TextStyle(color: Colors.white70, fontSize: 13)),
                                 GestureDetector(
-                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TableBookingScreen(restaurantId: _effectiveRestId, restaurantName: _effectiveRestName, restaurantAddress: 'Rohtas, Bihar'))),
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TableBookingScreen(
+                                    restaurantId: _effectiveRestId,
+                                    restaurantName: _effectiveRestName,
+                                    restaurantAddress: _effectiveRestAddress,
+                                  ))),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                                     decoration: BoxDecoration(

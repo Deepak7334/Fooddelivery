@@ -13,6 +13,7 @@ class FoodItemModel {
   final String restaurantId;
   final String restaurantName;
   final double rating;
+  final bool isProduct;
 
   FoodItemModel({
     required this.id,
@@ -29,6 +30,7 @@ class FoodItemModel {
     this.restaurantId = '',
     this.restaurantName = '',
     this.rating = 4.0,
+    this.isProduct = false,
   });
 
   factory FoodItemModel.fromJson(Map<String, dynamic> json) {
@@ -56,6 +58,7 @@ class FoodItemModel {
       restaurantId: restId,
       restaurantName: restName,
       rating: (json['rating'] is num) ? (json['rating'] as num).toDouble() : 4.0,
+      isProduct: json['isProduct'] == true,
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'otp_screen.dart';
@@ -5,7 +6,11 @@ import '../../customer/screens/main_layout.dart';
 import '../../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  /// When true, a successful login pops back to the screen that opened it
+  /// (checkout, booking, reservations) instead of rebuilding the app shell.
+  final bool popOnSuccess;
+
+  const LoginScreen({Key? key, this.popOnSuccess = false}) : super(key: key);
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -24,7 +29,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: _googleServerClientId,
+    clientId: kIsWeb ? _googleServerClientId : null,
+    serverClientId: kIsWeb ? null : _googleServerClientId,
   );
 
   static const Color _jdkartOrange = Color(0xFFF97316);
@@ -61,7 +67,11 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => OtpScreen(email: email, name: name),
+            builder: (_) => OtpScreen(
+              email: email,
+              name: name,
+              popOnSuccess: widget.popOnSuccess,
+            ),
           ),
         );
       } else {
@@ -114,11 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: const Color(0xFF16A34A),
           ),
         );
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const MainLayout()),
-          (route) => false,
-        );
+        _finishLogin();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -150,6 +156,18 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
+  }
+
+  void _finishLogin() {
+    if (widget.popOnSuccess && Navigator.canPop(context)) {
+      Navigator.pop(context, true);
+      return;
+    }
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const MainLayout()),
+      (route) => false,
+    );
   }
 
   @override

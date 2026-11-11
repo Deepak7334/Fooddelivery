@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../core/constants/api_constants.dart';
+import '../core/network/api_client.dart';
 
 class LocationService {
   LocationService._();
@@ -93,22 +95,7 @@ class LocationService {
         return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
       }
     } catch (_) {}
-
-    // Default fallback recent searches matching app reference
-    return [
-      {
-        'title': 'Shamana Garden',
-        'address': 'Shamana Garden, Wilson Garden, Bengaluru, Karnataka, India',
-        'lat': 12.9431,
-        'lng': 77.5969,
-      },
-      {
-        'title': 'Akbarpur Market',
-        'address': 'Main Market Road, Akbarpur, Rohtas, Bihar 821311',
-        'lat': 24.7570,
-        'lng': 83.9458,
-      },
-    ];
+    return [];
   }
 
   /// Add address to recently searched list (max 6, no duplicates)
@@ -149,6 +136,104 @@ class LocationService {
     }
   }
 
+  /// Reverse geocode through our backend proxy (works on web), with a
+  /// CORS-friendly public fallback if the API is unreachable.
+  Future<String?> reverseGeocode(double lat, double lng) async {
+    try {
+      final data = await ApiClient.instance.get(
+        '${ApiConstants.reverseGeocode}?lat=$lat&lng=$lng',
+      );
+      if (data is Map && data['success'] == true) {
+        final parts = <String>[];
+        for (final key in ['area', 'district', 'state', 'pincode']) {
+          final value = data[key]?.toString().trim() ?? '';
+          if (value.isNotEmpty && !parts.contains(value)) parts.add(value);
+        }
+        if (parts.isNotEmpty) return parts.join(', ');
+        final display = data['displayName']?.toString().trim() ?? '';
+        if (display.isNotEmpty) return display;
+      }
+    } catch (_) {}
+
+    try {
+      final data = await ApiClient.instance.get(
+        '${ApiConstants.placeReverse}?lat=$lat&lon=$lng&limit=1&lang=en',
+      );
+      if (data is Map) {
+        return _featureAddress(data);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Forward search for the "Search an area or address" box.
+  /// Returns maps with `title`, `address`, `lat` and `lng`.
+  Future<List<Map<String, dynamic>>> searchPlaces(String query) async {
+    final uri = Uri.parse(ApiConstants.placeSearch).replace(queryParameters: {
+      'q': query,
+      'limit': '5',
+      'lang': 'en',
+    });
+    final data = await ApiClient.instance.get(uri.toString());
+    if (data is! Map) return [];
+
+    final features = data['features'];
+    final list = features is List
+        ? features
+        : (data['type'] == 'Feature' ? [data] : const []);
+
+    final results = <Map<String, dynamic>>[];
+    for (final feature in list.whereType<Map>()) {
+      final geometry = feature['geometry'];
+      if (geometry is! Map) continue;
+      final coords = geometry['coordinates'];
+      if (coords is! List || coords.length < 2) continue;
+      final lng = (coords[0] as num?)?.toDouble();
+      final lat = (coords[1] as num?)?.toDouble();
+      if (lat == null || lng == null) continue;
+
+      final props = feature['properties'] is Map
+          ? Map<String, dynamic>.from(feature['properties'] as Map)
+          : <String, dynamic>{};
+      results.add({
+        'title': _featureTitle(props),
+        'address': _featureAddress(feature),
+        'lat': lat,
+        'lng': lng,
+      });
+    }
+    return results;
+  }
+
+  String _featureTitle(Map props) {
+    for (final key in ['name', 'city', 'district', 'county', 'state']) {
+      final value = props[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return 'Selected Location';
+  }
+
+  String _featureAddress(Map feature) {
+    final props = feature['properties'] is Map ? feature['properties'] as Map : const {};
+    final parts = <String>[];
+    for (final key in [
+      'name',
+      'street',
+      'housenumber',
+      'locality',
+      'district',
+      'county',
+      'city',
+      'state',
+      'postcode',
+      'country',
+    ]) {
+      final value = props[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty && !parts.contains(value)) parts.add(value);
+    }
+    return parts.join(', ');
+  }
+
   /// Request GPS and reverse-geocode to readable address
   Future<Map<String, dynamic>?> getCurrentLocation() async {
     try {
@@ -177,24 +262,12 @@ class LocationService {
       );
 
       String readableAddress = 'Current GPS Location';
-      try {
-        final placemarks = await Geocoding().placemarkFromCoordinates(position.latitude, position.longitude);
-        if (placemarks.isNotEmpty) {
-          final place = placemarks.first;
-          final parts = [
-            if (place.subLocality != null && place.subLocality!.isNotEmpty) place.subLocality,
-            if (place.locality != null && place.locality!.isNotEmpty) place.locality,
-            if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) place.subAdministrativeArea,
-            if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) place.administrativeArea,
-            if (place.postalCode != null && place.postalCode!.isNotEmpty) place.postalCode,
-          ].where((e) => e != null).cast<String>().toList();
-
-          if (parts.isNotEmpty) {
-            readableAddress = parts.join(', ');
-          }
-        }
-      } catch (_) {
-        readableAddress = 'Location (${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)})';
+      final geocoded = await reverseGeocode(position.latitude, position.longitude);
+      if (geocoded != null && geocoded.isNotEmpty) {
+        readableAddress = geocoded;
+      } else {
+        readableAddress =
+            'Location (${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)})';
       }
 
       final result = {

@@ -184,7 +184,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _userLat = LocationService.instance.selectedLat;
       _userLng = LocationService.instance.selectedLng;
 
-      final restaurants = await RestaurantService.instance.getRestaurants();
+      final restaurants = await RestaurantService.instance
+          .getRestaurants(lat: _userLat, lng: _userLng);
       if (mounted) {
         setState(() {
           _backendRestaurants = restaurants;
@@ -275,8 +276,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentAddress = address;
         _userLat = lat;
         _userLng = lng;
-        _sortAndFilterNearMe();
       });
+
+      // Refetch nearby restaurants for the newly selected location.
+      await _loadBackendData();
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -745,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen> {
         (context, index) {
           final res = _backendRestaurants[index];
           final bool isFavorite = FavoritesService.instance.isFavorite(res.id);
-          final String cuisines = res.cuisine.isNotEmpty ? res.cuisine.join(' • ') : 'North Indian • Mughlai • Biryani';
+          final String cuisines = res.cuisine.join(' • ');
           final restLat = res.lat ?? LocationService.defaultLat;
           final restLng = res.lng ?? LocationService.defaultLng;
           final distKm = LocationService.instance.calculateDistanceKm(_userLat, _userLng, restLat, restLng);
@@ -804,22 +808,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               colors: [Colors.black.withValues(alpha: 0.35), Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                               stops: const [0.0, 0.4, 1.0],
                             ),
-                          ),
-                        ),
-                      ),
-                      // Top-left: Featured Badge
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'FEATURED',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                           ),
                         ),
                       ),

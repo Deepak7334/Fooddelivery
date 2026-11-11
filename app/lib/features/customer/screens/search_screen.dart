@@ -3,6 +3,7 @@ import 'restaurant_details_screen.dart';
 import 'product_details_screen.dart';
 import 'main_layout.dart';
 import '../../../services/restaurant_service.dart';
+import '../../../services/location_service.dart';
 import '../../../models/product_model.dart';
 import '../../../models/restaurant_model.dart';
 import '../../../models/category_model.dart';
@@ -41,9 +42,12 @@ class _SearchScreenState extends State<SearchScreen> {
       _error = null;
     });
     try {
+      await LocationService.instance.init();
+      final lat = LocationService.instance.selectedLat;
+      final lng = LocationService.instance.selectedLng;
       final results = await Future.wait([
-        RestaurantService.instance.getFoods(),
-        RestaurantService.instance.getRestaurants(),
+        RestaurantService.instance.getFoods(lat: lat, lng: lng),
+        RestaurantService.instance.getRestaurants(lat: lat, lng: lng),
         RestaurantService.instance.getCategories(),
       ]);
       if (mounted) {
@@ -146,6 +150,13 @@ class _SearchScreenState extends State<SearchScreen> {
             onChanged: (val) => setState(() {}),
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh_rounded, color: Colors.black54),
+            onPressed: _loadSearchData,
+          ),
+        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: jdkartOrange))
@@ -318,7 +329,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   fit: BoxFit.cover,
                 ),
                 title: Text(dish.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: Text('₹${dish.price}', style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.w900)),
+                subtitle: Text(
+                  '₹${dish.discountedPrice ?? dish.price}',
+                  style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.w900),
+                ),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
                 onTap: () {
                   Navigator.push(

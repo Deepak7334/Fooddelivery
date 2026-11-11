@@ -35,9 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = AuthService.instance.currentUser;
+    final loggedIn = AuthService.instance.isAuthenticated && user != null;
     final userName = user != null && user.name.isNotEmpty ? user.name : 'JDKart Customer';
-    final userEmail = user != null && user.email.isNotEmpty ? user.email : 'customer@jdkart.in';
-    final userPhone = user != null && user.phone.isNotEmpty ? user.phone : 'Rohtas, Bihar';
     final initialLetter = userName.isNotEmpty ? userName[0].toUpperCase() : 'J';
 
     return Scaffold(
@@ -56,92 +55,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: jdkartOrange,
-                        child: Text(initialLetter, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 4),
-                            Text(userPhone, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
-                            Text(userEmail, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Edit profile',
-                        onPressed: () => _openProfileEditor(user),
-                        icon: Icon(Icons.edit_outlined, color: jdkartOrange, size: 22),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // JDKart Pro Gold Membership Banner
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
+              child: loggedIn
+                  ? Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 20),
+                        CircleAvatar(
+                          radius: 36,
+                          backgroundColor: jdkartOrange,
+                          child: Text(initialLetter, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                         ),
-                        const SizedBox(width: 10),
-                        const Expanded(
+                        const SizedBox(width: 16),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'JDKART PRO MEMBER',
-                                style: TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
-                              ),
-                              Text(
-                                'Free delivery on all orders above ₹99',
-                                style: TextStyle(color: Colors.white70, fontSize: 11),
-                              ),
+                              Text(userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              if (user.phone.isNotEmpty)
+                                Text(user.phone, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+                              if (user.email.isNotEmpty)
+                                Text(user.email, style: const TextStyle(color: Colors.grey, fontSize: 13)),
                             ],
                           ),
                         ),
-                        const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 12),
+                        IconButton(
+                          tooltip: 'Edit profile',
+                          onPressed: () => _openProfileEditor(user),
+                          icon: Icon(Icons.edit_outlined, color: jdkartOrange, size: 22),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 36,
+                              backgroundColor: const Color(0xFFF1F5F9),
+                              child: Icon(Icons.person_outline_rounded, color: jdkartOrange, size: 36),
+                            ),
+                            const SizedBox(width: 16),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Welcome to JDKart', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Log in to view your orders, saved addresses and bookings.',
+                                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: ElevatedButton(
+                            onPressed: _promptLogin,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: jdkartOrange,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('Log in / Sign up', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
-              ),
             ),
             const SizedBox(height: 14),
 
             _buildSection(context, [
-              _MenuItem(icon: Icons.shopping_bag_outlined, title: 'My Orders', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()))),
-              _MenuItem(icon: Icons.favorite_border_rounded, title: 'Wishlist & Favorites', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WishlistScreen()))),
-              _MenuItem(icon: Icons.location_on_outlined, title: 'Saved Addresses', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressesScreen()))),
-              _MenuItem(icon: Icons.table_restaurant_rounded, title: 'My Table Reservations', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyBookingsScreen()))),
+              _MenuItem(icon: Icons.shopping_bag_outlined, title: 'My Orders', onTap: () => _openAccountScreen((_) => const OrdersScreen())),
+              _MenuItem(icon: Icons.favorite_border_rounded, title: 'Wishlist & Favorites', onTap: () => _openAccountScreen((_) => const WishlistScreen())),
+              _MenuItem(icon: Icons.location_on_outlined, title: 'Saved Addresses', onTap: () => _openAccountScreen((_) => const AddressesScreen())),
+              _MenuItem(icon: Icons.table_restaurant_rounded, title: 'My Table Reservations', onTap: () => _openAccountScreen((_) => const MyBookingsScreen())),
             ]),
             const SizedBox(height: 14),
 
             _buildSection(context, [
-              _MenuItem(icon: Icons.notifications_none_rounded, title: 'Notifications', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))),
+              _MenuItem(icon: Icons.notifications_none_rounded, title: 'Notifications', onTap: () => _openAccountScreen((_) => const NotificationsScreen())),
               _MenuItem(
                 icon: Icons.account_balance_wallet_outlined,
                 title: 'JDKart Wallet & UPI',
@@ -243,20 +240,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ]),
             const SizedBox(height: 24),
 
-            TextButton.icon(
-              onPressed: () async {
-                await AuthService.instance.logout();
-                if (context.mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
-              },
-              icon: const Icon(Icons.logout_rounded, color: Colors.red),
-              label: const Text('Log Out', style: TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.bold)),
-            ),
+            if (loggedIn)
+              TextButton.icon(
+                onPressed: () async {
+                  await AuthService.instance.logout();
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.logout_rounded, color: Colors.red),
+                label: const Text('Log Out', style: TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
             const SizedBox(height: 120),
           ],
         ),
@@ -264,12 +262,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<bool> _promptLogin() async {
+    if (AuthService.instance.isAuthenticated) return true;
+    final loggedIn = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen(popOnSuccess: true)),
+    );
+    if (loggedIn == true && mounted) {
+      await _syncFromServer();
+      if (mounted) setState(() {});
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _openAccountScreen(WidgetBuilder builder) async {
+    if (!await _promptLogin()) return;
+    if (!mounted) return;
+    Navigator.push(context, MaterialPageRoute(builder: builder));
+  }
+
   void _openProfileEditor(UserModel? user) {
     if (user == null || !AuthService.instance.isAuthenticated) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      _promptLogin().then((ok) {
+        if (ok && mounted) _openProfileEditor(AuthService.instance.currentUser);
+      });
       return;
     }
 

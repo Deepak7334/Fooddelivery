@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'cart_screen.dart';
 import '../../../services/restaurant_service.dart';
-import '../../../services/cart_service.dart';
 import '../../../models/product_model.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
 
@@ -35,7 +35,10 @@ class _OffersScreenState extends State<OffersScreen> {
       final foods = await RestaurantService.instance.getFoods();
       if (mounted) {
         setState(() {
-          _offers = foods;
+          _offers = foods
+              .where((f) =>
+                  f.discountedPrice != null && f.discountedPrice! < f.price)
+              .toList();
           _isLoading = false;
         });
       }
@@ -88,7 +91,7 @@ class _OffersScreenState extends State<OffersScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Enjoy delicious food from Rohtas top restaurants with free delivery on orders above ₹99!',
+                        'Fresh discounts from JDKart partner restaurants near you.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
                       ),
@@ -116,9 +119,25 @@ class _OffersScreenState extends State<OffersScreen> {
   }
 
   Widget _buildOfferCard(FoodItemModel food) {
-    final originalPrice = food.price + 25;
-    final restId = food.restaurantId.isNotEmpty ? food.restaurantId : 'food_partner_default';
+    final price = food.discountedPrice ?? food.price;
+    final hasDiscount =
+        food.discountedPrice != null && food.discountedPrice! < food.price;
+    final restId = food.restaurantId;
     final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner';
+    final vendorReady = restId.isNotEmpty;
+
+    Future<bool> add() async {
+      if (!vendorReady) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This offer is not linked to a restaurant right now.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return false;
+      }
+      return addToCart(context, food, vendorId: restId, vendorName: restName);
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -176,9 +195,11 @@ class _OffersScreenState extends State<OffersScreen> {
                     ),
                     Row(
                       children: [
-                        Text('₹${food.price}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: jdkartOrange)),
-                        const SizedBox(width: 6),
-                        Text('₹$originalPrice', style: const TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.lineThrough)),
+                        Text('₹$price', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: jdkartOrange)),
+                        if (hasDiscount) ...[
+                          const SizedBox(width: 6),
+                          Text('₹${food.price}', style: const TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.lineThrough)),
+                        ],
                       ],
                     ),
                   ],
@@ -193,12 +214,9 @@ class _OffersScreenState extends State<OffersScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          CartService.instance.addItem(
-                            food,
-                            restaurantId: restId,
-                            restaurantName: restName,
-                          );
+                        onPressed: () async {
+                          if (!await add()) return;
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Added "${food.name}" to cart!'),
@@ -219,12 +237,9 @@ class _OffersScreenState extends State<OffersScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          CartService.instance.addItem(
-                            food,
-                            restaurantId: restId,
-                            restaurantName: restName,
-                          );
+                        onPressed: () async {
+                          if (!await add()) return;
+                          if (!mounted) return;
                           Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
                         },
                         style: ElevatedButton.styleFrom(

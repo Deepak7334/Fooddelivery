@@ -4,6 +4,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/booking_service.dart';
+import '../../auth/screens/login_screen.dart';
 import 'my_bookings_screen.dart';
 
 class TableBookingScreen extends StatefulWidget {
@@ -69,10 +70,11 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
   }
 
   String get _displayLocation {
-    if (widget.restaurantAddress != null && widget.restaurantAddress!.isNotEmpty) {
+    if (widget.restaurantAddress != null &&
+        widget.restaurantAddress!.isNotEmpty) {
       return widget.restaurantAddress!;
     }
-    return 'Rohtas, Bihar';
+    return '';
   }
 
   String get _dateStr =>
@@ -156,7 +158,29 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     );
   }
 
+  Future<bool> _ensureLoggedIn() async {
+    if (AuthService.instance.isAuthenticated) return true;
+    final loggedIn = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen(popOnSuccess: true)),
+    );
+    if (loggedIn == true && mounted) {
+      final user = AuthService.instance.currentUser;
+      if (user != null) {
+        if (_nameController.text.trim().isEmpty) _nameController.text = user.name;
+        if (_phoneController.text.trim().isEmpty) {
+          _phoneController.text = user.phone;
+        }
+      }
+      setState(() {});
+      return true;
+    }
+    return false;
+  }
+
   Future<void> _submitBooking() async {
+    if (!await _ensureLoggedIn()) return;
+
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
     final table = _selectedTable;
@@ -327,22 +351,25 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on_outlined,
-                                size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                _displayLocation,
-                                style: TextStyle(color: Colors.grey[600], fontSize: 12.5),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                        if (_displayLocation.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on_outlined,
+                                  size: 14, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  _displayLocation,
+                                  style: TextStyle(
+                                      color: Colors.grey[600], fontSize: 12.5),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -350,6 +377,39 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            if (!AuthService.instance.isAuthenticated) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFED7AA)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline_rounded,
+                        color: jdkartOrange, size: 20),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Log in to confirm your table reservation.',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _ensureLoggedIn,
+                      style: TextButton.styleFrom(foregroundColor: jdkartOrange),
+                      child: const Text('Log in',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             const Text('Reservation Date',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),

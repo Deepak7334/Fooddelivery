@@ -19,6 +19,85 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   bool _isLoading = false;
   String? _error;
 
+  Map<String, dynamic> _statusStyle(String status) {
+    switch (status) {
+      case 'delivered':
+        return {
+          'label': 'Delivered',
+          'color': const Color(0xFF15803D),
+          'bg': const Color(0xFFDCFCE7),
+        };
+      case 'cancelled':
+      case 'rejected':
+        return {
+          'label': status == 'rejected' ? 'Rejected' : 'Cancelled',
+          'color': const Color(0xFFB91C1C),
+          'bg': const Color(0xFFFEE2E2),
+        };
+      case 'out_for_delivery':
+      case 'on_the_way':
+      case 'accepted_by_driver':
+      case 'picked_up':
+        return {
+          'label': 'Out for delivery',
+          'color': const Color(0xFF1D4ED8),
+          'bg': const Color(0xFFDBEAFE),
+        };
+      case 'assignment_pending':
+        return {
+          'label': 'Assigning rider',
+          'color': const Color(0xFF6D28D9),
+          'bg': const Color(0xFFEDE9FE),
+        };
+      case 'confirmed':
+        return {
+          'label': 'Confirmed',
+          'color': const Color(0xFFB45309),
+          'bg': const Color(0xFFFFFBEB),
+        };
+      case 'preparing':
+        return {
+          'label': 'Preparing',
+          'color': const Color(0xFFB45309),
+          'bg': const Color(0xFFFFFBEB),
+        };
+      default:
+        return {
+          'label': 'Pending',
+          'color': const Color(0xFFB45309),
+          'bg': const Color(0xFFFFFBEB),
+        };
+    }
+  }
+
+  bool _isTrackable(String status) =>
+      status != 'delivered' && status != 'cancelled' && status != 'rejected';
+
+  bool _isPrepaid(OrderModel order) {
+    final method = order.paymentMethod.toLowerCase();
+    if (method == 'cod' || method == 'cash') return false;
+    return order.paymentStatus.toLowerCase() == 'paid';
+  }
+
+  Widget _statusChip(String status) {
+    final style = _statusStyle(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: style['bg'] as Color,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        style['label'] as String,
+        style: TextStyle(
+          color: style['color'] as Color,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,21 +191,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    'Order #${order.id.length > 8 ? order.id.substring(order.id.length - 8).toUpperCase() : order.id}',
+                                    order.orderNumber,
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDCFCE7),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    order.status,
-                                    style: const TextStyle(color: Color(0xFF15803D), fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
-                                ),
+                                _statusChip(order.status),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -135,16 +204,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               style: TextStyle(color: Colors.grey[600], fontSize: 13),
                             ),
                             const SizedBox(height: 14),
-                            ElevatedButton.icon(
-                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TrackingScreen(order: order, orderId: order.id))),
-                              icon: const Icon(Icons.two_wheeler_rounded, color: Colors.white, size: 18),
-                              label: const Text('Track Order Live', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: jdkartOrange,
-                                minimumSize: const Size(double.infinity, 44),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                            )
+                            if (_isTrackable(order.status))
+                              ElevatedButton.icon(
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TrackingScreen(order: order, orderId: order.id))),
+                                icon: const Icon(Icons.two_wheeler_rounded, color: Colors.white, size: 18),
+                                label: const Text('Track Order Live', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: jdkartOrange,
+                                  minimumSize: const Size(double.infinity, 44),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              )
                           ],
                         ),
                       ),
@@ -181,7 +251,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    order.deliveryAddress.isNotEmpty ? order.deliveryAddress : 'Akbarpur, Rohtas, Bihar',
+                                    order.deliveryAddress.isNotEmpty
+                                        ? order.deliveryAddress
+                                        : 'Delivery address not available',
                                     style: TextStyle(color: Colors.grey[700], fontSize: 13),
                                   ),
                                 ),
@@ -218,7 +290,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Total Amount Paid', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                                Text(
+                                  _isPrepaid(order) ? 'Total Amount Paid' : 'Amount to Pay',
+                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                                ),
                                 Text(
                                   '₹${order.totalAmount}',
                                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: jdkartOrange),

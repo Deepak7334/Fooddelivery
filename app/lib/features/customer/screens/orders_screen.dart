@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'order_details_screen.dart';
 import 'tracking_screen.dart';
 import '../../../services/order_service.dart';
+import '../../../services/auth_service.dart';
 import '../../../models/order_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
+import '../../auth/screens/login_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({Key? key}) : super(key: key);
@@ -25,6 +27,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Future<void> _fetchOrders() async {
+    if (!AuthService.instance.isAuthenticated) {
+      if (mounted) {
+        setState(() {
+          _liveOrders = [];
+          _isLoading = false;
+        });
+      }
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
@@ -47,6 +58,44 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  Widget _notLoggedIn() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 52, color: Colors.grey[400]),
+            const SizedBox(height: 14),
+            const Text(
+              'Log in to see your orders.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final loggedIn = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LoginScreen(popOnSuccess: true),
+                  ),
+                );
+                if (loggedIn == true && mounted) await _fetchOrders();
+              },
+              icon: const Icon(Icons.login_rounded),
+              label: const Text('Login'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF97316),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color jdkartOrange = const Color(0xFFF97316);
@@ -62,7 +111,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: _isLoading
+      body: !AuthService.instance.isAuthenticated
+          ? _notLoggedIn()
+          : _isLoading
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFFF97316)),
             )
@@ -116,7 +167,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       itemCount: _liveOrders.length,
                       itemBuilder: (context, index) {
                         final order = _liveOrders[index];
-                        final isDelivered = order.status.toLowerCase() == 'delivered';
+                        final statusLower = order.status.toLowerCase();
+                        final isDelivered = statusLower == 'delivered';
+                        final isNegative =
+                            statusLower == 'cancelled' || statusLower == 'rejected';
+                        final isTerminal = isDelivered || isNegative;
                         final itemsText = order.items.isNotEmpty
                             ? order.items.map((i) => '${i.quantity}x ${i.name}').join(', ')
                             : 'Food Order';
@@ -176,13 +231,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: isDelivered ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                                        color: isDelivered
+                                            ? const Color(0xFFDCFCE7)
+                                            : isNegative
+                                                ? const Color(0xFFFEE2E2)
+                                                : const Color(0xFFFEF3C7),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
-                                        order.status,
+                                        order.status.replaceAll('_', ' '),
                                         style: TextStyle(
-                                          color: isDelivered ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                                          color: isDelivered
+                                              ? const Color(0xFF15803D)
+                                              : isNegative
+                                                  ? const Color(0xFFB91C1C)
+                                                  : const Color(0xFFB45309),
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -200,7 +263,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                if (!isDelivered) ...[
+                                if (!isTerminal) ...[
                                   const SizedBox(height: 12),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,

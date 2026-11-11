@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
+import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/splash_screen.dart';
 import 'features/customer/screens/notifications_screen.dart';
 import 'services/auth_service.dart';
@@ -11,8 +12,20 @@ void main() async {
   await AuthService.instance.loadSession();
   await CartService.instance.loadCart();
   ApiClient.tokenProvider = () => AuthService.instance.token;
+  ApiClient.onUnauthorized = _handleSessionExpired;
   PushService.instance.onNotificationOpened = _openNotificationList;
   runApp(const FoodhubApp());
+}
+
+Future<void> _handleSessionExpired() async {
+  if (!AuthService.instance.isAuthenticated) return;
+  await AuthService.instance.clearSession();
+  final navigator = PushService.instance.navigatorKey.currentState;
+  if (navigator == null) return;
+  navigator.pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
+    (route) => false,
+  );
 }
 
 void _openNotificationList() {

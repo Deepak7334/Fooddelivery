@@ -169,8 +169,8 @@ class AuthService {
         await prefs.setString('foodhub_user', jsonEncode(user.toJson()));
         return user;
       }
-    } on ApiException catch (e) {
-      debugPrint('Profile refresh failed: ${e.message}');
+    } catch (e) {
+      debugPrint('Profile refresh failed: $e');
     }
     return _currentUser;
   }
@@ -213,6 +213,12 @@ class AuthService {
   /// Log out and clear session
   Future<void> logout() async {
     await PushService.instance.unregister();
+    await clearSession();
+  }
+
+  /// Drop the local session without calling the backend. Used when the server
+  /// has already rejected the token (401), so the token is no longer valid.
+  Future<void> clearSession() async {
     _token = null;
     _currentUser = null;
     try {

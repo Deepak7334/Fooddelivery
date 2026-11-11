@@ -76,16 +76,23 @@ class OrderModel {
       agentName = json['deliveryAgentName'];
     }
 
+    final rawId = (json['_id'] ?? json['id'] ?? '').toString();
+    final fallbackNumber = rawId.isEmpty
+        ? '—'
+        : '#${rawId.substring(0, rawId.length < 8 ? rawId.length : 8).toUpperCase()}';
+
     return OrderModel(
-      id: json['_id'] ?? json['id'] ?? '',
-      orderNumber: json['orderNumber'] ?? (json['_id'] != null ? json['_id'].toString().substring(0, 8).toUpperCase() : '#JDK101'),
+      id: rawId,
+      orderNumber: (json['orderNumber']?.toString().isNotEmpty ?? false)
+          ? json['orderNumber'].toString()
+          : fallbackNumber,
       status: json['status'] ?? 'pending',
       totalAmount: json['totalAmount'] ?? json['finalAmount'] ?? json['totalPrice'] ?? 0,
       deliveryFee: json['deliveryFee'] ?? 0,
       paymentMethod: json['paymentMethod'] ?? 'COD',
       paymentStatus: json['paymentStatus'] ?? 'pending',
       restaurantName: restName.isNotEmpty ? restName : 'JDKart Partner',
-      deliveryAddress: addrStr.isNotEmpty ? addrStr : 'Rohtas, Bihar',
+      deliveryAddress: addrStr,
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) ?? DateTime.now() : DateTime.now(),
       items: itemsList,
       deliveryOTP: json['deliveryOTP']?.toString() ?? '',

@@ -17,6 +17,7 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
+  final List<int> _tabTicks = [0, 0, 0, 0, 0];
   final ValueNotifier<bool> _isNavbarVisible = ValueNotifier<bool>(true);
 
   @override
@@ -47,6 +48,9 @@ class _MainLayoutState extends State<MainLayout> {
   void _onTabTapped(int index) {
     if (_currentIndex != index) {
       setState(() => _currentIndex = index);
+    } else {
+      // Re-tapping the active tab refreshes that tab's data.
+      setState(() => _tabTicks[index]++);
     }
   }
 
@@ -154,16 +158,32 @@ class _MainLayoutState extends State<MainLayout> {
               IndexedStack(
                 index: _currentIndex,
                 children: [
-                  HomeScreen(onProfileTap: () => _onTabTapped(4)),
-                  const CategoriesScreen(),
-                  SearchScreen(
-                    onBack: () => _onTabTapped(0),
-                    autofocus: false,
+                  KeyedSubtree(
+                    key: ValueKey('home-${_tabTicks[0]}'),
+                    child: HomeScreen(onProfileTap: () => _onTabTapped(4)),
                   ),
-                  CartScreen(
-                    onBrowseTap: () => _onTabTapped(0),
+                  KeyedSubtree(
+                    key: ValueKey('categories-${_tabTicks[1]}'),
+                    child: const CategoriesScreen(),
                   ),
-                  const ProfileScreen(),
+                  KeyedSubtree(
+                    key: ValueKey('search-${_tabTicks[2]}'),
+                    child: SearchScreen(
+                      onBack: () => _onTabTapped(0),
+                      autofocus: false,
+                    ),
+                  ),
+                  KeyedSubtree(
+                    key: ValueKey('cart-${_tabTicks[3]}'),
+                    child: CartScreen(
+                      onBrowseTap: () => _onTabTapped(0),
+                      bottomNavInset: 84,
+                    ),
+                  ),
+                  KeyedSubtree(
+                    key: ValueKey('profile-${_tabTicks[4]}'),
+                    child: const ProfileScreen(),
+                  ),
                 ],
               ),
               _buildBottomNavBar(),

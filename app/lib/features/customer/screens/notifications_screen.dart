@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import '../../../models/notification_model.dart';
 import '../../../services/notification_service.dart';
+import '../../../services/push_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 
@@ -21,6 +22,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final Color jdkartOrange = const Color(0xFFF97316);
   Timer? _refreshTimer;
   StreamSubscription<RemoteMessage>? _pushSub;
+  bool _markedOnOpen = false;
 
   @override
   void initState() {
@@ -28,7 +30,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _fetchNotifications();
     // Live updates while the list is open: instant on FCM push, plus a
     // periodic refetch so it stays fresh even when push is unavailable.
-    _pushSub = FirebaseMessaging.onMessage.listen((_) => _fetchNotifications(silent: true));
+    if (PushService.instance.isFirebaseReady) {
+      _pushSub =
+          FirebaseMessaging.onMessage.listen((_) => _fetchNotifications(silent: true));
+    }
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 20),
       (_) => _fetchNotifications(silent: true),
@@ -57,6 +62,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _isLoading = false;
           _error = null;
         });
+      }
+      if (!silent && !_markedOnOpen && data.any((n) => !n.isRead)) {
+        _markedOnOpen = true;
+        try {
+          await NotificationService.instance.markAllAsRead();
+          if (mounted) await _fetchNotifications(silent: true);
+        } on ApiException {
+          // Keep the unread state if the server rejects the update.
+        }
       }
     } catch (e) {
       if (!mounted || silent) return;

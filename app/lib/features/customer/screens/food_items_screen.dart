@@ -7,6 +7,7 @@ import '../../../services/cart_service.dart';
 import '../../../models/product_model.dart';
 import '../../../models/category_model.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
 
@@ -144,12 +145,17 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
     return list;
   }
 
-  void _addFoodToCart(FoodItemModel dish) {
-    final restId = dish.restaurantId.isNotEmpty ? dish.restaurantId : 'food_restaurant_default';
+  Future<void> _addFoodToCart(FoodItemModel dish) async {
+    final restId = dish.restaurantId;
     final restName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Restaurant';
+    if (restId.isEmpty) {
+      _showUnavailable();
+      return;
+    }
 
     _cartBarDismissed = false;
-    CartService.instance.addItem(dish, restaurantId: restId, restaurantName: restName);
+    if (!await addToCart(context, dish, vendorId: restId, vendorName: restName)) return;
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -169,13 +175,27 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
     );
   }
 
-  void _orderFoodNow(FoodItemModel dish) {
-    final restId = dish.restaurantId.isNotEmpty ? dish.restaurantId : 'food_restaurant_default';
+  Future<void> _orderFoodNow(FoodItemModel dish) async {
+    final restId = dish.restaurantId;
     final restName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Restaurant';
+    if (restId.isEmpty) {
+      _showUnavailable();
+      return;
+    }
 
     _cartBarDismissed = false;
-    CartService.instance.addItem(dish, restaurantId: restId, restaurantName: restName);
+    if (!await addToCart(context, dish, vendorId: restId, vendorName: restName)) return;
+    if (!mounted) return;
     Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
+  }
+
+  void _showUnavailable() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('This item is not available from a restaurant right now.'),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
   }
 
   @override
@@ -718,7 +738,16 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          _buildFilterChip(Icons.bolt, 'Fast Delivery'),
+          GestureDetector(
+            onTap: () {
+              setState(() => _sortBy = 'price_high');
+            },
+            child: _buildFilterChip(
+              Icons.arrow_upward,
+              'Price: High to Low',
+              isActive: _sortBy == 'price_high',
+            ),
+          ),
         ],
       ),
     );

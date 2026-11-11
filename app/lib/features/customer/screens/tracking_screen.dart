@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../models/order_model.dart';
@@ -44,7 +45,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   bool _isTerminal(String status) {
     final s = status.toLowerCase();
-    return s == 'delivered' || s == 'cancelled';
+    return s == 'delivered' || s == 'cancelled' || s == 'rejected';
   }
 
   void _pollIfActive() {
@@ -81,6 +82,30 @@ class _TrackingScreenState extends State<TrackingScreen> {
           SnackBar(content: Text(e.message), backgroundColor: Colors.redAccent),
         );
       }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        if (!silent && _order == null) {
+          _error = 'Could not load tracking details. Please try again.';
+        }
+      });
+    }
+  }
+
+  Future<void> _callAgent(String phone) async {
+    try {
+      final launched = await launchUrl(Uri(scheme: 'tel', path: phone));
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open the dialer. Call $phone.')),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open the dialer. Call $phone.')),
+      );
     }
   }
 
@@ -89,7 +114,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
     if (s == 'delivered') return 4;
     if (s.contains('out') || s.contains('way') || s.contains('driver') || s.contains('pickup') || s.contains('customer')) return 3;
     if (s.contains('prepar') || s == 'accepted') return 2;
-    if (s == 'cancelled') return -1;
+    if (s == 'cancelled' || s == 'rejected') return -1;
     return 1; // pending / placed
   }
 
@@ -100,7 +125,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
     final stepIndex = _getStepIndex(status);
     final restaurantName = order != null && order.restaurantName.isNotEmpty ? order.restaurantName : 'Restaurant';
     final deliveryAddress = order != null && order.deliveryAddress.isNotEmpty ? order.deliveryAddress : 'Your Location';
-    final orderNum = order != null ? (order.id.length > 8 ? order.id.substring(order.id.length - 8).toUpperCase() : order.id) : 'LIVE';
+    final orderNum = order?.orderNumber ?? 'LIVE';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -295,10 +320,16 @@ class _TrackingScreenState extends State<TrackingScreen> {
                           ),
                         ),
                         if (order.deliveryAgentPhone.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(color: Color(0xFFDCFCE7), shape: BoxShape.circle),
-                            child: const Icon(Icons.phone, color: Color(0xFF15803D), size: 18),
+                          Material(
+                            color: const Color(0xFFDCFCE7),
+                            shape: const CircleBorder(),
+                            child: IconButton(
+                              tooltip: 'Call delivery partner',
+                              onPressed: () =>
+                                  _callAgent(order.deliveryAgentPhone),
+                              icon: const Icon(Icons.phone,
+                                  color: Color(0xFF15803D), size: 18),
+                            ),
                           ),
                       ],
                     ),

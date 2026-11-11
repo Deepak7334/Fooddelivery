@@ -8,10 +8,15 @@ class OtpScreen extends StatefulWidget {
   final String email;
   final String name;
 
+  /// When true, a successful verification pops back to the caller instead of
+  /// rebuilding the app shell (used when login starts mid-checkout).
+  final bool popOnSuccess;
+
   const OtpScreen({
     Key? key,
     required this.email,
     this.name = '',
+    this.popOnSuccess = false,
   }) : super(key: key);
 
   @override
@@ -57,47 +62,54 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Automatically reads 6-digit OTP if copied to clipboard
+  /// Pre-fills from the clipboard only when the user has not typed anything.
+  /// Never submits the code automatically — the user still taps Verify.
   Future<void> _checkAndAutoFillFromClipboard() async {
+    if (_otpCode.isNotEmpty) return;
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       if (data?.text != null) {
         final text = data!.text!.trim();
-        final match = RegExp(r'\b\d{6}\b').firstMatch(text);
-        if (match != null) {
-          final otp = match.group(0)!;
-          if (_otpCode != otp && mounted) {
-            _distributeOtp(otp);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('OTP automatically filled from clipboard!'),
-                backgroundColor: Color(0xFF16A34A),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
+        final match = RegExp(r'^\D*(\d{6})\D*$').firstMatch(text);
+        if (match != null && mounted) {
+          final otp = match.group(1)!;
+          _fillOtp(otp, start: 0, autoVerify: false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('OTP filled from clipboard. Tap Verify to continue.'),
+              backgroundColor: Color(0xFF16A34A),
+              duration: Duration(seconds: 2),
+            ),
+          );
         }
       }
     } catch (_) {}
   }
 
-  void _distributeOtp(String text) {
+  /// Writes [text] into the boxes starting at [start]. When typing a second
+  /// digit into a filled box, the characters shift forward instead of
+  /// restarting at box 0 (which used to scramble the code).
+  void _fillOtp(String text, {required int start, bool autoVerify = true}) {
     final clean = text.replaceAll(RegExp(r'\D'), '');
     if (clean.isEmpty) return;
 
-    for (int i = 0; i < 6; i++) {
-      if (i < clean.length) {
-        _controllers[i].text = clean[i];
-      } else {
-        _controllers[i].clear();
-      }
+    var i = 0;
+    while (i < clean.length && start + i < 6) {
+      _controllers[start + i].text = clean[i];
+      i++;
+    }
+    // Clear anything after the range we just filled so stale digits cannot
+    // be appended to a pasted code.
+    for (var j = start + i; j < 6; j++) {
+      _controllers[j].clear();
     }
 
-    if (clean.length >= 6) {
-      _focusNodes[5].unfocus();
-      _handleVerifyOtp();
+    final next = start + i;
+    if (next < 6) {
+      _focusNodes[next].requestFocus();
     } else {
-      _focusNodes[clean.length].requestFocus();
+      _focusNodes[5].unfocus();
+      if (autoVerify) _handleVerifyOtp();
     }
   }
 
@@ -161,11 +173,15 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
           ),
         );
 
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const MainLayout()),
-          (route) => false,
-        );
+        if (widget.popOnSuccess && Navigator.canPop(context)) {
+          Navigator.pop(context, true);
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+            (route) => false,
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -458,10 +474,12 @@ class _OtpScreenState extends State<OtpScreen> with WidgetsBindingObserver {
             borderSide: const BorderSide(color: _jdkartOrange, width: 2),
           ),
         ),
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         onChanged: (value) {
           if (value.length > 1) {
-            // User pasted or keyboard autofilled a multi-digit code
-            _distributeOtp(value);
+            // Pasted code, or a second digit typed into a filled box: keep the
+            // first digit here and push the rest into the following boxes.
+            _fillOtp(value, start: index);
             return;
           }
 

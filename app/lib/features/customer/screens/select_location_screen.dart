@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../models/address_model.dart';
 import '../../../services/address_service.dart';
@@ -92,7 +91,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
   /// Calculate distance from user's current coordinates to target
   String _getDistanceString(double? targetLat, double? targetLng) {
     if (targetLat == null || targetLng == null) {
-      return '8.8 km';
+      return '—';
     }
     final currentLat = LocationService.instance.selectedLat;
     final currentLng = LocationService.instance.selectedLng;
@@ -287,78 +286,53 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
     });
 
     try {
-      final locations = await Geocoding().locationFromAddress(q);
-      final placemarks = await Geocoding().placemarkFromAddress(q);
+      final results = await LocationService.instance.searchPlaces(q);
       if (!mounted) return;
-
-      final results = <Map<String, dynamic>>[];
-      for (var i = 0; i < locations.length; i++) {
-        results.add({
-          'lat': locations[i].latitude,
-          'lng': locations[i].longitude,
-          'placemark': i < placemarks.length ? placemarks[i] : null,
-        });
-      }
 
       setState(() {
         _searchResults = results;
         _isSearching = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _searchResults = [];
         _isSearching = false;
       });
+      _showGpsMessage(
+        e is ApiException ? e.message : 'Could not search that place. Please try again.',
+        isError: true,
+      );
     }
   }
 
   void _selectSearchResult(Map<String, dynamic> item) {
     final lat = (item['lat'] as num?)?.toDouble() ?? LocationService.defaultLat;
     final lng = (item['lng'] as num?)?.toDouble() ?? LocationService.defaultLng;
-    final p = item['placemark'] as Placemark?;
 
-    final address = _placemarkAddress(p, q: _searchQuery);
-    final title = _placemarkTitle(p, fallback: 'Selected Location');
+    final address = (item['address'] as String?)?.trim() ?? '';
+    final title = (item['title'] as String?)?.trim() ?? 'Selected Location';
 
     LocationService.instance.setSelectedLocation(
       title: title,
-      address: address,
+      address: address.isEmpty ? _searchQuery : address,
       lat: lat,
       lng: lng,
     );
 
     Navigator.pop(context, {
       'title': title,
-      'address': address,
+      'address': address.isEmpty ? _searchQuery : address,
       'lat': lat,
       'lng': lng,
     });
   }
 
-  String _placemarkTitle(Placemark? p, {required String fallback}) {
-    if (p == null) return fallback;
-    return p.locality ?? p.subLocality ?? p.name ?? p.thoroughfare ?? fallback;
-  }
-
-  String _placemarkAddress(Placemark? p, {required String q}) {
-    if (p == null) return q;
-    final parts = [
-      if (p.subLocality != null && p.subLocality!.isNotEmpty) p.subLocality,
-      if (p.locality != null && p.locality!.isNotEmpty) p.locality,
-      if (p.subAdministrativeArea != null && p.subAdministrativeArea!.isNotEmpty) p.subAdministrativeArea,
-      if (p.administrativeArea != null && p.administrativeArea!.isNotEmpty) p.administrativeArea,
-      if (p.postalCode != null && p.postalCode!.isNotEmpty) p.postalCode,
-    ].whereType<String>().toList();
-    return parts.isNotEmpty ? parts.join(', ') : q;
-  }
-
   Widget _buildSearchResultTile(Map<String, dynamic> item) {
     final lat = (item['lat'] as num?)?.toDouble() ?? LocationService.defaultLat;
     final lng = (item['lng'] as num?)?.toDouble() ?? LocationService.defaultLng;
-    final p = item['placemark'] as Placemark?;
-    final address = _placemarkAddress(p, q: _searchQuery);
-    final title = _placemarkTitle(p, fallback: 'Selected Location');
+    final address = (item['address'] as String?) ?? '';
+    final title = (item['title'] as String?) ?? 'Selected Location';
     final distanceStr = _getDistanceString(lat, lng);
 
     return Container(

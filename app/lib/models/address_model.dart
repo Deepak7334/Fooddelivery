@@ -41,6 +41,12 @@ class AddressModel {
     return parts.isNotEmpty ? parts.join(', ') : 'Address not specified';
   }
 
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
   factory AddressModel.fromJson(Map<String, dynamic> json) {
     return AddressModel(
       id: json['_id'] ?? json['id'] ?? '',
@@ -52,8 +58,8 @@ class AddressModel {
       city: json['city'] ?? '',
       state: json['state'] ?? '',
       pincode: json['pincode'] ?? '',
-      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
-      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
       isDefault: json['isDefault'] == true,
     );
   }

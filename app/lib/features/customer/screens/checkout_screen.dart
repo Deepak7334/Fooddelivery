@@ -6,7 +6,6 @@ import '../../../services/order_service.dart';
 import '../../../services/cart_service.dart';
 import '../../../services/address_service.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/location_service.dart';
 import '../../../models/address_model.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
@@ -35,6 +34,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     _loadAddresses();
+    CartService.instance.refreshCharges();
   }
 
   Future<void> _loadAddresses() async {
@@ -79,9 +79,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       builder: (context, _) {
         final items = CartService.instance.items;
         final subtotal = CartService.instance.totalPrice;
-        final deliveryFee = subtotal >= 99 ? 0.0 : 15.0;
-        final platformFee = 3.0;
-        final grandTotal = subtotal > 0 ? (subtotal + deliveryFee + platformFee) : 0.0;
+        final deliveryFee = CartService.instance.deliveryFee;
+        final chargesLoaded = CartService.instance.chargesLoaded;
+        final grandTotal = CartService.instance.grandTotal;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
@@ -135,6 +135,47 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               ],
                             ),
                           )),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        child: Divider(height: 1),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Item Total', style: TextStyle(color: Colors.grey[700], fontSize: 13.5)),
+                          Text('₹${subtotal.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Delivery Fee', style: TextStyle(color: Colors.grey[700], fontSize: 13.5)),
+                          Text(
+                            !chargesLoaded
+                                ? 'Calculated at checkout'
+                                : (deliveryFee == 0 ? 'FREE' : '₹${deliveryFee.toStringAsFixed(0)}'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13.5,
+                              color: chargesLoaded && deliveryFee == 0 ? const Color(0xFF16A34A) : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (chargesLoaded && CartService.instance.isFirstOrderFree) ...[
+                        const SizedBox(height: 6),
+                        const Row(
+                          children: [
+                            Icon(Icons.local_offer_outlined, size: 14, color: Color(0xFF16A34A)),
+                            SizedBox(width: 4),
+                            Text(
+                              'First order free delivery',
+                              style: TextStyle(color: Color(0xFF16A34A), fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8.0),
                         child: Divider(height: 1),
@@ -331,59 +372,63 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Please log in to place your order.')),
                           );
-                          Navigator.push(
+                          final loggedIn = await Navigator.push<bool>(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(popOnSuccess: true),
+                            ),
                           );
+                          if (loggedIn == true) {
+                            await _loadAddresses();
+                            await CartService.instance.refreshCharges();
+                          }
                           return;
                         }
 
                         if (_savedAddresses.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please select or add a delivery address.')),
+                            const SnackBar(
+                                content: Text('Please add a delivery address to continue.')),
+                          );
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AddressesScreen()),
+                          );
+                          _loadAddresses();
+                          return;
+                        }
+
+                        final addr = _selectedAddressIndex >= 0 &&
+                                _selectedAddressIndex < _savedAddresses.length
+                            ? _savedAddresses[_selectedAddressIndex]
+                            : null;
+                        if (addr == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please select a delivery address.')),
                           );
                           return;
                         }
 
                         setState(() => _isPlacingOrder = true);
                         try {
-                          final restId = CartService.instance.restaurantId ??
-                              (items.isNotEmpty && items.first.restaurantId.isNotEmpty
-                                  ? items.first.restaurantId
-                                  : 'default_partner');
+                          final hasCoords =
+                              addr.latitude != null && addr.longitude != null;
 
-                          final payloadItems = items.map((i) => {
-                            'foodId': i.id,
-                            'name': i.name,
-                            'price': i.price,
-                            'quantity': i.quantity,
-                            'type': 'food',
-                            'restaurantId': i.restaurantId.isNotEmpty ? i.restaurantId : restId,
-                            'image': i.image,
-                          }).toList();
-
-                          final addr = _savedAddresses.isNotEmpty && _selectedAddressIndex < _savedAddresses.length
-                              ? _savedAddresses[_selectedAddressIndex]
-                              : null;
-
-                          final selectedAddress = addr?.fullAddress ?? 'Akbarpur, Rohtas, Bihar';
-
-                          final deliveryAddressObj = {
-                            'address': selectedAddress,
-                            'addressLine1': addr?.addressLine1 ?? selectedAddress,
-                            'city': addr?.city.isNotEmpty == true ? addr!.city : 'Rohtas',
-                            'state': addr?.state.isNotEmpty == true ? addr!.state : 'Bihar',
-                            'pincode': addr?.pincode.isNotEmpty == true ? addr!.pincode : '821311',
-                            'latitude': addr?.latitude ?? LocationService.instance.selectedLat,
-                            'longitude': addr?.longitude ?? LocationService.instance.selectedLng,
+                          final deliveryAddressObj = <String, dynamic>{
+                            if (addr.addressLine1.isNotEmpty)
+                              'addressLine1': addr.addressLine1,
+                            if (addr.addressLine2.isNotEmpty)
+                              'addressLine2': addr.addressLine2,
+                            if (addr.landmark.isNotEmpty) 'landmark': addr.landmark,
+                            if (addr.area.isNotEmpty) 'area': addr.area,
+                            if (addr.city.isNotEmpty) 'city': addr.city,
+                            if (addr.state.isNotEmpty) 'state': addr.state,
+                            if (addr.pincode.isNotEmpty) 'pincode': addr.pincode,
+                            if (hasCoords) 'latitude': addr.latitude,
+                            if (hasCoords) 'longitude': addr.longitude,
                           };
 
-                          final deliveryCoords = {
-                            'lat': addr?.latitude ?? LocationService.instance.selectedLat,
-                            'lng': addr?.longitude ?? LocationService.instance.selectedLng,
-                          };
-
-                          // Dynamically verify serviceability and resolve service area
+                          // Verify serviceability and resolve the real service area.
                           String? resolvedServiceAreaId;
                           try {
                             final checkRes = await ApiClient.instance.post(
@@ -403,26 +448,79 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 setState(() => _isPlacingOrder = false);
                                 return;
                               }
-                              if (checkRes['serviceAreaId'] != null) {
-                                resolvedServiceAreaId = checkRes['serviceAreaId'].toString();
+                              resolvedServiceAreaId =
+                                  checkRes['serviceAreaId']?.toString();
+
+                              final minOrder =
+                                  (checkRes['minimumOrderValue'] as num?) ?? 0;
+                              final currentSubtotal =
+                                  CartService.instance.totalPrice;
+                              if (minOrder > 0 && currentSubtotal < minOrder) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Minimum order for this area is ₹${minOrder.toStringAsFixed(0)}. Please add more items.'),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                                setState(() => _isPlacingOrder = false);
+                                return;
                               }
                             }
-                          } catch (_) {
-                            // Fallback to default if network check encounters transient error
+                          } on ApiException catch (e) {
+                            if (!hasCoords) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.message),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              setState(() => _isPlacingOrder = false);
+                              return;
+                            }
                           }
 
-                          // Fallback to default central service area
-                          resolvedServiceAreaId ??= '6ab55c81fdf553743734e6e2';
+                          if (resolvedServiceAreaId == null && !hasCoords) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'We could not verify delivery for this address. Please choose another address.'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            setState(() => _isPlacingOrder = false);
+                            return;
+                          }
+
+                          final payloadItems = items.map((i) {
+                            return <String, dynamic>{
+                              if (i.isProduct) 'productId': i.id else 'foodId': i.id,
+                              'type': i.type,
+                              if (i.isProduct)
+                                'storeId': i.restaurantId
+                              else
+                                'restaurantId': i.restaurantId,
+                              'name': i.name,
+                              'price': i.price,
+                              'quantity': i.quantity,
+                              'image': i.image,
+                            };
+                          }).toList();
 
                           final result = await OrderService.instance.placeOrder(
-                            restaurantId: restId,
+                            restaurantId: CartService.instance.restaurantId,
                             items: payloadItems,
-                            totalAmount: grandTotal,
+                            totalAmount: CartService.instance.totalPrice,
                             deliveryAddress: deliveryAddressObj,
-                            deliveryCoords: deliveryCoords,
+                            deliveryCoords: hasCoords
+                                ? {'lat': addr.latitude, 'lng': addr.longitude}
+                                : null,
                             specialInstructions: _instructionsController.text.trim(),
                             serviceAreaId: resolvedServiceAreaId,
-                            paymentMethod: 'COD',
+                            paymentMethod: _paymentMethod,
                           );
 
                           if (!mounted) return;

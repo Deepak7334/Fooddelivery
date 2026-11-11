@@ -5,7 +5,9 @@ import '../../../core/widgets/safe_image.dart';
 
 class CartScreen extends StatefulWidget {
   final VoidCallback? onBrowseTap;
-  const CartScreen({Key? key, this.onBrowseTap}) : super(key: key);
+  final double bottomNavInset;
+  const CartScreen({Key? key, this.onBrowseTap, this.bottomNavInset = 0})
+      : super(key: key);
 
   @override
   _CartScreenState createState() => _CartScreenState();
@@ -21,9 +23,9 @@ class _CartScreenState extends State<CartScreen> {
       builder: (context, _) {
         final items = CartService.instance.items;
         final subtotal = CartService.instance.totalPrice;
-        final deliveryFee = subtotal >= 99 ? 0.0 : 15.0;
-        final platformFee = 3.0;
-        final grandTotal = subtotal > 0 ? (subtotal + deliveryFee + platformFee) : 0.0;
+        final deliveryFee = CartService.instance.deliveryFee;
+        final chargesLoaded = CartService.instance.chargesLoaded;
+        final grandTotal = CartService.instance.grandTotal;
 
         if (items.isEmpty) {
           return Scaffold(
@@ -133,7 +135,7 @@ class _CartScreenState extends State<CartScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             const Text(
-                              'Delivery to your doorstep • Akbarpur, Rohtas',
+                              'Delivery to your doorstep',
                               style: TextStyle(color: Colors.grey, fontSize: 12),
                             ),
                           ],
@@ -258,11 +260,18 @@ class _CartScreenState extends State<CartScreen> {
                       const SizedBox(height: 8),
                       _buildBillRow(
                         'Delivery Partner Fee',
-                        deliveryFee == 0 ? 'FREE' : '₹$deliveryFee',
-                        isHighlight: deliveryFee == 0,
+                        !chargesLoaded
+                            ? 'Calculated at checkout'
+                            : (deliveryFee == 0 ? 'FREE' : '₹$deliveryFee'),
+                        isHighlight: chargesLoaded && deliveryFee == 0,
                       ),
-                      const SizedBox(height: 8),
-                      _buildBillRow('Platform Fee', '₹$platformFee'),
+                      if (chargesLoaded && CartService.instance.isFirstOrderFree) ...[
+                        const SizedBox(height: 6),
+                        const Text(
+                          'First order free delivery applied',
+                          style: TextStyle(color: Color(0xFF16A34A), fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 12.0),
                         child: Divider(height: 1),
@@ -284,43 +293,46 @@ class _CartScreenState extends State<CartScreen> {
               ],
             ),
           ),
-          bottomNavigationBar: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, -4)),
-              ],
-            ),
-            child: SafeArea(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: jdkartOrange,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0),
-                      child: Text(
-                        '₹${grandTotal.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w900),
+          bottomNavigationBar: Padding(
+            padding: EdgeInsets.only(bottom: widget.bottomNavInset),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, -4)),
+                ],
+              ),
+              child: SafeArea(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: jdkartOrange,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16.0),
+                        child: Text(
+                          '₹${grandTotal.toStringAsFixed(0)}',
+                          style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w900),
+                        ),
                       ),
-                    ),
-                    const Row(
-                      children: [
-                        Text('Proceed to Checkout', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                        SizedBox(width: 16),
-                      ],
-                    ),
-                  ],
+                      const Row(
+                        children: [
+                          Text('Proceed to Checkout', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 16),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

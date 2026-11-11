@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/product_model.dart';
-import '../../../services/cart_service.dart';
+import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/safe_image.dart';
 import 'cart_screen.dart';
 
@@ -208,7 +208,6 @@ class ProductDetailsScreen extends StatelessWidget {
                       children: [
                         _buildBadge(Icons.shield_outlined, 'Hygienic'),
                         _buildBadge(Icons.timer_outlined, 'Fresh Cooked'),
-                        _buildBadge(Icons.delivery_dining_outlined, 'Free Delivery'),
                       ],
                     ),
                   ),
@@ -232,10 +231,26 @@ class ProductDetailsScreen extends StatelessWidget {
         ),
         child: SafeArea(
           child: ElevatedButton(
-            onPressed: () {
-              final restId = food.restaurantId.isNotEmpty ? food.restaurantId : 'food_partner_default';
+            onPressed: () async {
+              if (food.restaurantId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('This item is not available from a vendor right now.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+                return;
+              }
+              final restId = food.restaurantId;
               final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner';
-              CartService.instance.addItem(food, restaurantId: restId, restaurantName: restName);
+              final added = await addToCart(
+                context,
+                food,
+                vendorId: restId,
+                vendorName: restName,
+                type: food.isProduct ? 'product' : 'food',
+              );
+              if (!added || !context.mounted) return;
 
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(

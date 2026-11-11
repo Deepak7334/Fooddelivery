@@ -34,19 +34,22 @@ class OrderService {
     return null;
   }
 
-  /// Create and place order on backend
+  /// Create and place order on backend.
+  /// The server recalculates totals and delivery fee from the item list, so
+  /// [totalAmount] is only used as a fallback for checkout info.
   Future<Map<String, dynamic>> placeOrder({
-    required String restaurantId,
+    String? restaurantId,
     required List<Map<String, dynamic>> items,
     required num totalAmount,
     required dynamic deliveryAddress,
     Map<String, dynamic>? deliveryCoords,
     String? specialInstructions,
     String? serviceAreaId,
-    String paymentMethod = 'COD',
+    String paymentMethod = 'cod',
   }) async {
     final payload = {
-      'restaurantId': restaurantId,
+      if (restaurantId != null && restaurantId.isNotEmpty)
+        'restaurantId': restaurantId,
       'items': items,
       'totalAmount': totalAmount,
       'deliveryAddress': deliveryAddress,
@@ -55,24 +58,26 @@ class OrderService {
         'specialInstructions': specialInstructions,
       if (serviceAreaId != null && serviceAreaId.isNotEmpty)
         'serviceAreaId': serviceAreaId,
-      'paymentMethod': paymentMethod,
+      'paymentMethod': paymentMethod.toLowerCase(),
     };
 
     try {
       final data = await ApiClient.instance
           .post(ApiConstants.orders, payload, auth: true);
 
+      final orders = data is Map && data['orders'] is List
+          ? data['orders'] as List
+          : const [];
+
       OrderModel? orderObj;
-      if (data is Map) {
-        if (data['order'] != null) {
-          orderObj = OrderModel.fromJson(Map<String, dynamic>.from(data['order']));
-        } else if (data['orders'] is List && (data['orders'] as List).isNotEmpty) {
-          orderObj = OrderModel.fromJson(Map<String, dynamic>.from(data['orders'][0]));
-        }
+      if (data is Map && data['order'] != null) {
+        orderObj = OrderModel.fromJson(Map<String, dynamic>.from(data['order']));
+      } else if (orders.isNotEmpty) {
+        orderObj = OrderModel.fromJson(Map<String, dynamic>.from(orders.first));
       }
 
-      final ok = data is Map && data['success'] == true;
-      if (!ok && orderObj == null) {
+      final ok = data is Map && data['success'] == true && orderObj != null;
+      if (!ok) {
         return {
           'success': false,
           'order': null,
@@ -84,7 +89,7 @@ class OrderService {
       return {
         'success': true,
         'order': orderObj,
-        'message': data is Map && data['message'] != null
+        'message': data['message'] != null
             ? data['message'].toString()
             : 'Order placed successfully',
       };
