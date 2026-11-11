@@ -232,7 +232,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context: context,
                     applicationName: 'JDKart',
                     applicationVersion: 'v1.0.0 (Fast Delivery)',
-                    applicationIcon: Image.asset('assets/images/logo.png', width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.delivery_dining, size: 48, color: Color(0xFFF97316))),
+                    applicationIcon: Image.asset('assets/logo.png', width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.delivery_dining, size: 48, color: Color(0xFFF97316))),
                     children: const [
                       SizedBox(height: 10),
                       Text('JDKart is your premier food and essentials delivery partner in Rohtas, Bihar. Fresh meals from top local restaurants delivered straight to your door.'),

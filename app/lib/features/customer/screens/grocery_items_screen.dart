@@ -37,6 +37,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
   List<CategoryModel> _storeCategories = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool _cartBarDismissed = false;
 
   @override
   void initState() {
@@ -184,6 +185,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
         ? dish.restaurantName
         : (_backendStores.isNotEmpty ? _backendStores.first.name : 'JDKart Store');
 
+    _cartBarDismissed = false;
     CartService.instance.addItem(dish, restaurantId: storeId, restaurantName: storeName);
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -212,6 +214,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
         ? dish.restaurantName
         : (_backendStores.isNotEmpty ? _backendStores.first.name : 'JDKart Store');
 
+    _cartBarDismissed = false;
     CartService.instance.addItem(dish, restaurantId: storeId, restaurantName: storeName);
     Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
   }
@@ -479,8 +482,10 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                 style: const TextStyle(color: Color(0xFF64748B), fontSize: 13.5, height: 1.4),
                               ),
                               const SizedBox(height: 20),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 12,
+                                runSpacing: 8,
                                 children: [
                                   if (_searchQuery.isNotEmpty || _selectedCategoryIndex > 0)
                                     OutlinedButton(
@@ -498,8 +503,6 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                       ),
                                       child: Text('Clear Filters', style: TextStyle(color: jdkartOrange)),
                                     ),
-                                  if (_searchQuery.isNotEmpty || _selectedCategoryIndex > 0)
-                                    const SizedBox(width: 12),
                                   ElevatedButton.icon(
                                     onPressed: () {
                                       Navigator.pushReplacement(
@@ -579,7 +582,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
         builder: (context, _) {
           final count = CartService.instance.totalItems;
           final totalPrice = CartService.instance.totalPrice;
-          if (count == 0) return const SizedBox.shrink();
+          if (count == 0 || _cartBarDismissed) return const SizedBox.shrink();
 
           return SafeArea(
             child: Container(
@@ -626,6 +629,15 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                         SizedBox(width: 4),
                         Icon(Icons.arrow_forward_rounded, size: 16),
                       ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => setState(() => _cartBarDismissed = true),
+                    behavior: HitTestBehavior.opaque,
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(Icons.close, color: Colors.white70, size: 20),
                     ),
                   ),
                 ],

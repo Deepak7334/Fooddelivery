@@ -12,6 +12,7 @@ class LocationService {
   static const String _prefSelectedLat = 'jdkart_selected_loc_lat';
   static const String _prefSelectedLng = 'jdkart_selected_loc_lng';
   static const String _prefRecentSearches = 'jdkart_recent_searches';
+  static const String _prefLocationSet = 'jdkart_location_set';
 
   // Default initial coordinates for Rohtas, Bihar
   static const double defaultLat = 24.7570;
@@ -23,6 +24,10 @@ class LocationService {
   double selectedLng = defaultLng;
 
   bool _isInitialized = false;
+  bool _locationSet = false;
+
+  /// True once the user (or GPS) has explicitly chosen a location.
+  bool get isLocationSet => _locationSet;
 
   /// Load cached location on startup
   Future<void> init() async {
@@ -33,10 +38,19 @@ class LocationService {
       selectedAddress = prefs.getString(_prefSelectedAddress) ?? 'Akbarpur, Rohtas, Bihar';
       selectedLat = prefs.getDouble(_prefSelectedLat) ?? defaultLat;
       selectedLng = prefs.getDouble(_prefSelectedLng) ?? defaultLng;
+      _locationSet = prefs.getBool(_prefLocationSet) ?? false;
       _isInitialized = true;
     } catch (_) {
       _isInitialized = true;
     }
+  }
+
+  /// Detect the real GPS location once if the user has never set one.
+  /// Returns the detected location, or null when a location is already set
+  /// or detection is not possible (no permission/service).
+  Future<Map<String, dynamic>?> ensureAutoLocation() async {
+    if (_locationSet) return null;
+    return getCurrentLocation();
   }
 
   /// Update active location and save
@@ -50,6 +64,7 @@ class LocationService {
     selectedAddress = address;
     selectedLat = lat;
     selectedLng = lng;
+    _locationSet = true;
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -57,6 +72,7 @@ class LocationService {
       await prefs.setString(_prefSelectedAddress, address);
       await prefs.setDouble(_prefSelectedLat, lat);
       await prefs.setDouble(_prefSelectedLng, lng);
+      await prefs.setBool(_prefLocationSet, true);
     } catch (_) {}
 
     await addRecentlySearched({
@@ -155,8 +171,8 @@ class LocationService {
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
+          accuracy: LocationAccuracy.best,
+          timeLimit: Duration(seconds: 20),
         ),
       );
 

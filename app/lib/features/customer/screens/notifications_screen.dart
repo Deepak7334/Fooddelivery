@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import '../../../models/notification_model.dart';
 import '../../../services/notification_service.dart';
@@ -16,34 +19,72 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isLoading = true;
   String? _error;
   final Color jdkartOrange = const Color(0xFFF97316);
+  Timer? _refreshTimer;
+  StreamSubscription<RemoteMessage>? _pushSub;
 
   @override
   void initState() {
     super.initState();
     _fetchNotifications();
+    // Live updates while the list is open: instant on FCM push, plus a
+    // periodic refetch so it stays fresh even when push is unavailable.
+    _pushSub = FirebaseMessaging.onMessage.listen((_) => _fetchNotifications(silent: true));
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 20),
+      (_) => _fetchNotifications(silent: true),
+    );
   }
 
-  Future<void> _fetchNotifications() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _pushSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchNotifications({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final data = await NotificationService.instance.getNotifications();
       if (mounted) {
         setState(() {
           _notifications = data;
           _isLoading = false;
+          _error = null;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error =
-              e is ApiException ? e.message : 'Could not load notifications. Please try again.';
-          _isLoading = false;
-        });
-      }
+      if (!mounted || silent) return;
+      setState(() {
+        _error =
+            e is ApiException ? e.message : 'Could not load notifications. Please try again.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Swipe left-to-right removes the notification locally, then on the server.
+  Future<void> _deleteNotification(NotificationModel notif) async {
+    final index = _notifications.indexOf(notif);
+    setState(() => _notifications.remove(notif));
+    try {
+      await NotificationService.instance.deleteNotification(notif.id);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _notifications.insert(index.clamp(0, _notifications.length), notif);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e is ApiException ? e.message : 'Could not delete notification.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -120,7 +161,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final notif = _notifications[index];
-                        return _buildNotificationItem(notif);
+                        return Dismissible(
+                          key: ValueKey(notif.id),
+                          direction: DismissDirection.startToEnd,
+                          background: Container(
+                            color: const Color(0xFFFEE2E2),
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.only(left: 24),
+                            child: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Color(0xFFB91C1C),
+                              size: 26,
+                            ),
+                          ),
+                          onDismissed: (_) => _deleteNotification(notif),
+                          child: _buildNotificationItem(notif),
+                        );
                       },
                     ),
             ),

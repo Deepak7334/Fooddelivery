@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'food_items_screen.dart';
+import 'restaurants_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../models/category_model.dart';
 import '../../../core/network/api_exception.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'restaurant_details_screen.dart';
 import '../../../services/restaurant_service.dart';
+import '../../../services/favorites_service.dart';
 import '../../../models/restaurant_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
@@ -31,10 +32,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
       _error = null;
     });
     try {
+      await FavoritesService.instance.load();
       final rests = await RestaurantService.instance.getRestaurants();
+      final favoriteIds = FavoritesService.instance.ids;
       if (mounted) {
         setState(() {
-          _restaurants = rests;
+          _restaurants = rests.where((r) => favoriteIds.contains(r.id)).toList();
           _isLoading = false;
         });
       }
@@ -150,10 +153,18 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                 Positioned(
                                   top: 10,
                                   right: 10,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                                    child: const Icon(Icons.favorite, color: Colors.redAccent, size: 18),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _restaurants.removeWhere((r) => r.id == rest.id);
+                                      });
+                                      FavoritesService.instance.toggle(rest.id);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                      child: const Icon(Icons.favorite, color: Colors.redAccent, size: 18),
+                                    ),
                                   ),
                                 ),
                               ],

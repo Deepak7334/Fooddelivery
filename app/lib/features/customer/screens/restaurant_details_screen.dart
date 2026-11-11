@@ -46,6 +46,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   String _effectiveRestRating = '4.5';
   String _effectiveDeliveryTime = '20-30 min';
   String _effectiveDeliveryFee = '₹15';
+  bool _cartBarDismissed = false;
 
   @override
   void initState() {
@@ -115,6 +116,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   void _addItem(FoodItemModel dish) {
+    _cartBarDismissed = false;
     CartService.instance.addItem(
       dish,
       restaurantId: _effectiveRestId.isNotEmpty ? _effectiveRestId : dish.restaurantId,
@@ -143,6 +145,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   void _orderItemDirectly(FoodItemModel dish) {
+    _cartBarDismissed = false;
     CartService.instance.addItem(
       dish,
       restaurantId: _effectiveRestId.isNotEmpty ? _effectiveRestId : dish.restaurantId,
@@ -338,7 +341,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],
           ),
-          bottomNavigationBar: totalCartCount > 0
+          bottomNavigationBar: totalCartCount > 0 && !_cartBarDismissed
               ? Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -348,35 +351,50 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                     ],
                   ),
                   child: SafeArea(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: jdkartOrange,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(left: 16.0),
-                            child: Text(
-                              '$totalCartCount ITEMS • ₹$totalPrice',
-                              style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w900),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: jdkartOrange,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 16.0),
+                                  child: Text(
+                                    '$totalCartCount ITEMS • ₹$totalPrice',
+                                    style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w900),
+                                  ),
+                                ),
+                                const Row(
+                                  children: [
+                                    Text('View Cart', style: TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold)),
+                                    SizedBox(width: 4),
+                                    Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
+                                    SizedBox(width: 16),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          const Row(
-                            children: [
-                              Text('View Cart', style: TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.bold)),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
-                              SizedBox(width: 16),
-                            ],
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => setState(() => _cartBarDismissed = true),
+                          behavior: HitTestBehavior.opaque,
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(Icons.close, color: Colors.grey, size: 22),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 )

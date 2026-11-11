@@ -34,6 +34,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
   List<CategoryModel> _categories = [];
   bool _isLoading = true;
   String? _error;
+  bool _cartBarDismissed = false;
 
   @override
   void initState() {
@@ -147,6 +148,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
     final restId = dish.restaurantId.isNotEmpty ? dish.restaurantId : 'food_restaurant_default';
     final restName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Restaurant';
 
+    _cartBarDismissed = false;
     CartService.instance.addItem(dish, restaurantId: restId, restaurantName: restName);
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -171,6 +173,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
     final restId = dish.restaurantId.isNotEmpty ? dish.restaurantId : 'food_restaurant_default';
     final restName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Restaurant';
 
+    _cartBarDismissed = false;
     CartService.instance.addItem(dish, restaurantId: restId, restaurantName: restName);
     Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
   }
@@ -517,7 +520,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
         builder: (context, _) {
           final count = CartService.instance.totalItems;
           final totalPrice = CartService.instance.totalPrice;
-          if (count == 0) return const SizedBox.shrink();
+          if (count == 0 || _cartBarDismissed) return const SizedBox.shrink();
 
           return SafeArea(
             child: Container(
@@ -564,6 +567,15 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                         SizedBox(width: 4),
                         Icon(Icons.arrow_forward_rounded, size: 16),
                       ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => setState(() => _cartBarDismissed = true),
+                    behavior: HitTestBehavior.opaque,
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(Icons.close, color: Colors.white70, size: 20),
                     ),
                   ),
                 ],

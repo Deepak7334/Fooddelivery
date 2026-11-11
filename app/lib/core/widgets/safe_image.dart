@@ -12,10 +12,6 @@ class SafeImage extends StatelessWidget {
   final Color? placeholderColor;
   final Color? iconColor;
 
-  /// Decode the bitmap at this device-pixel width instead of full resolution,
-  /// so long scrolling lists don't stall on huge image decodes.
-  final int? decodeWidth;
-
   const SafeImage({
     Key? key,
     required this.image,
@@ -26,7 +22,6 @@ class SafeImage extends StatelessWidget {
     this.placeholderIcon = Icons.fastfood_rounded,
     this.placeholderColor,
     this.iconColor,
-    this.decodeWidth,
   }) : super(key: key);
 
   @override
@@ -59,7 +54,6 @@ class SafeImage extends StatelessWidget {
           width: width,
           height: height,
           fit: fit,
-          cacheWidth: decodeWidth,
           errorBuilder: (_, __, ___) => _buildPlaceholder(),
         );
       } catch (_) {
@@ -74,7 +68,6 @@ class SafeImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
-        cacheWidth: decodeWidth,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return _buildLoadingShimmer();
@@ -90,7 +83,6 @@ class SafeImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
-        cacheWidth: decodeWidth,
         errorBuilder: (_, __, ___) => _buildPlaceholder(),
       );
     }
