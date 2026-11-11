@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'restaurant_details_screen.dart';
 import '../../../services/restaurant_service.dart';
+import '../../../services/location_service.dart';
 import '../../../models/restaurant_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
@@ -31,7 +32,11 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       _error = null;
     });
     try {
-      final list = await RestaurantService.instance.getRestaurants();
+      await LocationService.instance.init();
+      final list = await RestaurantService.instance.getRestaurants(
+        lat: LocationService.instance.selectedLat,
+        lng: LocationService.instance.selectedLng,
+      );
       if (mounted) {
         setState(() {
           _restaurants = list;
@@ -70,7 +75,16 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                     children: [
                       Icon(Icons.storefront_outlined, size: 54, color: Colors.grey[400]),
                       const SizedBox(height: 12),
-                      const Text('No restaurants found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text('No restaurants in your area', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          'No restaurants deliver within range of your selected location yet. Try changing your delivery location.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       TextButton.icon(
                         onPressed: _fetchRestaurants,
@@ -86,7 +100,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                   itemCount: _restaurants.length,
                   itemBuilder: (context, index) {
                     final res = _restaurants[index];
-                    final cuisines = res.cuisine.isNotEmpty ? res.cuisine.join(' • ') : 'North Indian • Mughlai • Biryani';
+                    final cuisines = res.cuisine.join(' • ');
 
                     return GestureDetector(
                       onTap: () => Navigator.push(

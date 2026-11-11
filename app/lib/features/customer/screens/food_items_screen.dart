@@ -4,6 +4,7 @@ import 'cart_screen.dart';
 import 'checkout_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/cart_service.dart';
+import '../../../services/location_service.dart';
 import '../../../models/product_model.dart';
 import '../../../models/category_model.dart';
 import '../../../core/network/api_exception.dart';
@@ -56,8 +57,12 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
     });
 
     try {
+      await LocationService.instance.init();
       final results = await Future.wait([
-        RestaurantService.instance.getFoods(),
+        RestaurantService.instance.getFoods(
+          lat: LocationService.instance.selectedLat,
+          lng: LocationService.instance.selectedLng,
+        ),
         RestaurantService.instance.getCategories(),
       ]);
 
@@ -483,28 +488,34 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                                 children: [
                                   Icon(Icons.search_off_rounded, size: 54, color: Colors.grey[400]),
                                   const SizedBox(height: 12),
-                                  const Text(
-                                    'No food items match your criteria',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  Text(
+                                    _allFoods.isEmpty
+                                        ? 'No dishes available in your area'
+                                        : 'No food items match your criteria',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Try resetting the search or category filter',
+                                    _allFoods.isEmpty
+                                        ? 'No restaurants within delivery range of your location have listed dishes yet. Try changing your delivery location.'
+                                        : 'Try resetting the search or category filter',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(color: Colors.grey[600], fontSize: 13),
                                   ),
                                   const SizedBox(height: 14),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        _searchQuery = '';
-                                        _selectedCategoryIndex = 0;
-                                        _isVegOnly = false;
-                                      });
-                                    },
-                                    style: ElevatedButton.styleFrom(backgroundColor: jdkartOrange),
-                                    child: const Text('Reset All Filters', style: TextStyle(color: Colors.white)),
-                                  ),
+                                  if (_allFoods.isNotEmpty)
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchQuery = '';
+                                          _selectedCategoryIndex = 0;
+                                          _isVegOnly = false;
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(backgroundColor: jdkartOrange),
+                                      child: const Text('Reset All Filters', style: TextStyle(color: Colors.white)),
+                                    ),
                                 ],
                               ),
                             ),

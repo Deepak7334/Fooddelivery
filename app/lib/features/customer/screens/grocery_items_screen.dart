@@ -5,6 +5,7 @@ import 'checkout_screen.dart';
 import 'food_items_screen.dart';
 import '../../../services/store_service.dart';
 import '../../../services/cart_service.dart';
+import '../../../services/location_service.dart';
 import '../../../models/product_model.dart';
 import '../../../models/restaurant_model.dart';
 import '../../../models/category_model.dart';
@@ -62,16 +63,23 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
     });
 
     try {
+      await LocationService.instance.init();
       final results = await Future.wait([
         StoreService.instance.getProducts(storeId: _selectedStoreId),
-        StoreService.instance.getStores(),
+        StoreService.instance.getStores(
+          lat: LocationService.instance.selectedLat,
+          lng: LocationService.instance.selectedLng,
+        ),
         StoreService.instance.getStoreTypes(),
       ]);
 
       if (mounted) {
-        final products = results[0] as List<FoodItemModel>;
         final stores = results[1] as List<RestaurantModel>;
         final types = results[2] as List<CategoryModel>;
+        final nearbyStoreIds = stores.map((s) => s.id).where((id) => id.isNotEmpty).toSet();
+        final products = (results[0] as List<FoodItemModel>)
+            .where((p) => nearbyStoreIds.contains(p.restaurantId))
+            .toList();
 
         // Build categories dynamically from backend types and product categories
         final List<CategoryModel> categories = [
@@ -150,9 +158,13 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
     });
 
     try {
-      final products = await StoreService.instance.getProducts(
+      final fetched = await StoreService.instance.getProducts(
         storeId: _selectedStoreId,
       );
+      final nearbyStoreIds = _backendStores.map((s) => s.id).toSet();
+      final products = fetched
+          .where((p) => nearbyStoreIds.contains(p.restaurantId))
+          .toList();
       if (!mounted) return;
       setState(() {
         _backendProducts = products;
@@ -620,7 +632,9 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                     ? 'Couldn\'t load grocery items'
                                     : (_selectedStoreId != null
                                         ? 'No items in this store yet'
-                                        : 'No Grocery Items Listed Yet'),
+                                        : (_backendStores.isEmpty
+                                            ? 'No stores deliver to your area yet'
+                                            : 'No Grocery Items Listed Yet')),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 18,
@@ -634,7 +648,9 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                         ? 'No products matched "$_searchQuery". Try clearing your search.'
                                         : (_selectedStoreId != null
                                             ? 'This store has not listed any products yet. Browse another supermarket or view all products.'
-                                            : 'Stores and supermarkets are currently onboarding in your area. You can order fresh meals from our partner restaurants in the meantime.')),
+                                            : (_backendStores.isEmpty
+                                                ? 'We couldn\'t find any grocery stores within delivery range of your location. Try changing your delivery location or browse food dishes.'
+                                                : 'Stores in your area have not listed any products yet. You can order fresh meals from our partner restaurants in the meantime.'))),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(color: Color(0xFF64748B), fontSize: 13.5, height: 1.4),
                               ),

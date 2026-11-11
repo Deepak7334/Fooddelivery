@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'cart_screen.dart';
 import '../../../services/restaurant_service.dart';
+import '../../../services/location_service.dart';
 import '../../../models/product_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/cart_actions.dart';
@@ -32,7 +33,11 @@ class _OffersScreenState extends State<OffersScreen> {
       _error = null;
     });
     try {
-      final foods = await RestaurantService.instance.getFoods();
+      await LocationService.instance.init();
+      final foods = await RestaurantService.instance.getFoods(
+        lat: LocationService.instance.selectedLat,
+        lng: LocationService.instance.selectedLng,
+      );
       if (mounted) {
         setState(() {
           _offers = foods

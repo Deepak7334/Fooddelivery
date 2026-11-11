@@ -35,20 +35,27 @@ class RestaurantService {
     return [];
   }
 
-  /// Fetch popular food items from backend. Throws on failure.
+  /// Fetch popular food items from backend. When lat/lng are provided, only
+  /// items whose restaurant is within delivery range of that point are kept.
   Future<List<FoodItemModel>> getFoods({double? lat, double? lng}) async {
-    String url = ApiConstants.foods;
-    if (lat != null && lng != null) {
-      url += '?lat=$lat&lng=$lng';
-    }
+    final hasLocation = lat != null && lng != null;
 
-    final data = await ApiClient.instance.get(url);
-    if (data is Map && data['foods'] is List) {
-      return (data['foods'] as List)
-          .map((f) => FoodItemModel.fromJson(Map<String, dynamic>.from(f)))
-          .toList();
-    }
-    return [];
+    final results = await Future.wait<dynamic>([
+      if (hasLocation) getRestaurants(lat: lat, lng: lng),
+      ApiClient.instance.get(ApiConstants.foods),
+    ]);
+
+    final nearby = hasLocation ? results[0] as List<RestaurantModel> : null;
+    final data = results[hasLocation ? 1 : 0];
+    if (data is! Map || data['foods'] is! List) return [];
+
+    final foods = (data['foods'] as List)
+        .map((f) => FoodItemModel.fromJson(Map<String, dynamic>.from(f)))
+        .toList();
+    if (nearby == null) return foods;
+
+    final nearbyIds = nearby.map((r) => r.id).toSet();
+    return foods.where((f) => nearbyIds.contains(f.restaurantId)).toList();
   }
 
   /// Fetch restaurant details and full menu grouped. Throws on failure.
