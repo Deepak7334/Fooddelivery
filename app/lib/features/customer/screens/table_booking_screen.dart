@@ -5,6 +5,7 @@ import '../../../core/widgets/error_widget.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/booking_service.dart';
 import '../../auth/screens/login_screen.dart';
+import 'booking_confirmation_screen.dart';
 import 'my_bookings_screen.dart';
 
 class TableBookingScreen extends StatefulWidget {
@@ -178,7 +179,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     return false;
   }
 
-  Future<void> _submitBooking() async {
+  Future<void> _reviewAndSubmit() async {
     if (!await _ensureLoggedIn()) return;
 
     final name = _nameController.text.trim();
@@ -198,6 +199,13 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
       return;
     }
 
+    final confirmed = await _showReviewSheet(
+      name: name,
+      phone: phone,
+      table: table,
+    );
+    if (confirmed != true || !mounted) return;
+
     setState(() => _isSubmitting = true);
 
     final result = await BookingService.instance.createBooking(
@@ -215,77 +223,159 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     setState(() => _isSubmitting = false);
 
     if (result['success'] == true) {
-      _showSuccessDialog(result['message']?.toString() ??
-          'The restaurant will confirm your table shortly.');
+      final booking = result['booking'] is Map
+          ? Map<String, dynamic>.from(result['booking'] as Map)
+          : <String, dynamic>{};
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BookingConfirmationScreen(
+            booking: booking.isEmpty
+                ? {
+                    'restaurantId': widget.restaurantId,
+                    'tableNumber': table.number,
+                    'timeSlot': _selectedSlot,
+                    'partySize': _guestsCount,
+                    'date': _dateStr,
+                    'status': 'pending',
+                  }
+                : booking,
+            restaurantName: _displayName,
+            restaurantAddress: _displayLocation,
+            message: result['message']?.toString() ??
+                'The restaurant will confirm your table shortly.',
+          ),
+        ),
+      );
     } else {
       _showSnack(
         result['message'] ?? 'Failed to book the table. Please try again.',
         error: true,
       );
+      if (result['message']?.toString().toLowerCase().contains('slot') ==
+          true) {
+        _loadAvailability();
+      }
     }
   }
 
-  void _showSuccessDialog(String message) {
-    final table = _selectedTable;
-    showDialog(
+  Future<bool?> _showReviewSheet({
+    required String name,
+    required String phone,
+    required AvailableTable table,
+  }) {
+    return showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded,
-                color: Color(0xFF16A34A), size: 28),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Reservation Request Sent',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Restaurant: $_displayName',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text('Table: ${table?.number ?? '-'}'),
-            Text('Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
-            Text('Time: ${AvailableTable.formatSlot(_selectedSlot)}'),
-            Text('Guests: $_guestsCount people'),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: TextStyle(color: Colors.grey[700], fontSize: 13),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-            },
-            child: const Text('Close',
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              const Text(
+                'Review your reservation',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Check the details before sending the request.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12.5),
+              ),
+              const SizedBox(height: 14),
+              _reviewRow(Icons.restaurant_rounded, 'Restaurant', _displayName),
+              if (_displayLocation.isNotEmpty)
+                _reviewRow(Icons.location_on_outlined, 'Location',
+                    _displayLocation),
+              _reviewRow(Icons.calendar_today_rounded, 'Date',
+                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
+              _reviewRow(Icons.access_time_rounded, 'Time',
+                  AvailableTable.formatSlot(_selectedSlot)),
+              _reviewRow(Icons.group_outlined, 'Guests', '$_guestsCount people'),
+              _reviewRow(Icons.table_bar_rounded, 'Table',
+                  'Table ${table.number} (up to ${table.maxGuests} guests)'),
+              _reviewRow(Icons.person_outline_rounded, 'Name', name),
+              _reviewRow(Icons.call_outlined, 'Phone', phone),
+              if (_notesController.text.trim().isNotEmpty)
+                _reviewRow(Icons.notes_rounded, 'Notes',
+                    _notesController.text.trim()),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: jdkartOrange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Confirm Reservation',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 14.5)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey[700],
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Go back and edit',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: jdkartOrange,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+
+  Widget _reviewRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: jdkartOrange),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 74,
+            child: Text(
+              label,
+              style: const TextStyle(
+                  color: Color(0xFF64748B), fontSize: 12.5),
             ),
-            child: const Text('My Reservations',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, fontSize: 12.5),
+            ),
           ),
         ],
       ),
@@ -556,7 +646,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
               child: ElevatedButton(
                 onPressed: _isSubmitting || _selectedTable == null
                     ? null
-                    : _submitBooking,
+                    : _reviewAndSubmit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: jdkartOrange,
                   disabledBackgroundColor: jdkartOrange.withValues(alpha: 0.45),
@@ -572,7 +662,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                             color: Colors.white, strokeWidth: 2),
                       )
                     : const Text(
-                        'Confirm Table Reservation',
+                        'Review & Reserve',
                         style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

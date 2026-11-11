@@ -1,7 +1,9 @@
 import '../core/constants/api_constants.dart';
 import '../core/network/api_client.dart';
 import '../core/network/api_exception.dart';
+import '../models/restaurant_model.dart';
 import 'auth_service.dart';
+import 'restaurant_service.dart';
 
 class AvailableTable {
   final int number;
@@ -50,6 +52,26 @@ class BookingService {
   BookingService._();
   static final BookingService instance = BookingService._();
 
+  /// Restaurants that accept table reservations from the customer's area.
+  Future<List<RestaurantModel>> getBookableRestaurants({
+    double? lat,
+    double? lng,
+  }) async {
+    final restaurants = await RestaurantService.instance
+        .getRestaurants(lat: lat, lng: lng);
+    return restaurants
+        .where((r) => r.bookingEnabled && r.isActive)
+        .toList();
+  }
+
+  /// Human-friendly, unique reservation code derived from the booking id.
+  static String displayCode(Map<String, dynamic> booking) {
+    final id = (booking['_id'] ?? booking['id'] ?? '').toString();
+    if (id.isEmpty) return '—';
+    final tail = id.length <= 8 ? id : id.substring(id.length - 8);
+    return 'JDK-${tail.toUpperCase()}';
+  }
+
   /// Tables still free for the given date (YYYY-MM-DD). Throws [ApiException].
   Future<List<AvailableTable>> getAvailableTables(
       String restaurantId, String date) async {
@@ -95,11 +117,15 @@ class BookingService {
         'date': date,
       }, auth: true);
 
+      final booking = data is Map && data['booking'] is Map
+          ? Map<String, dynamic>.from(data['booking'] as Map)
+          : <String, dynamic>{};
       return {
         'success': data is Map ? data['success'] != false : true,
         'message': data is Map && data['message'] != null
             ? data['message'].toString()
             : 'Reservation request sent to the restaurant.',
+        'booking': booking,
       };
     } on ApiException catch (e) {
       return {'success': false, 'message': e.message};

@@ -5,6 +5,7 @@ import '../../../core/widgets/error_widget.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/booking_service.dart';
 import '../../auth/screens/login_screen.dart';
+import 'table_booking_discovery_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({Key? key}) : super(key: key);
@@ -242,6 +243,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         ),
         const SizedBox(height: 18),
         Center(
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const TableBookingDiscoveryScreen()),
+            ),
+            icon: const Icon(Icons.search_rounded, size: 18),
+            label: const Text('Find a restaurant'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF97316),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ),
+        Center(
           child: TextButton(
             onPressed: _load,
             child: const Text('Refresh'),
@@ -300,6 +318,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Booking ID • ${BookingService.displayCode(booking)}',
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
           ),
           const SizedBox(height: 10),
           Row(

@@ -7,7 +7,7 @@ import 'restaurant_details_screen.dart';
 import 'restaurants_screen.dart';
 import 'food_items_screen.dart';
 import 'grocery_items_screen.dart';
-import 'categories_screen.dart';
+import 'table_booking_discovery_screen.dart';
 import 'select_location_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/location_service.dart';
@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _HomeShortcut(label: 'Food', icon: Icons.restaurant_rounded, bannerIndex: 0, destination: () => const FoodItemsScreen()),
       _HomeShortcut(label: 'Grocery', icon: Icons.local_grocery_store_rounded, bannerIndex: 1, destination: () => const GroceryItemsScreen()),
       _HomeShortcut(label: 'Restaurants', icon: Icons.storefront_rounded, bannerIndex: 2, destination: () => const RestaurantsScreen()),
-      _HomeShortcut(label: 'Categories', icon: Icons.grid_view_rounded, destination: () => const CategoriesScreen()),
+      _HomeShortcut(label: 'Book a Table', icon: Icons.table_restaurant_rounded, destination: () => const TableBookingDiscoveryScreen()),
     ];
 
     _banners = [
@@ -92,6 +92,18 @@ class _HomeScreenState extends State<HomeScreen> {
         chromeIsDark: true,
         watermarkIcon: Icons.delivery_dining_rounded,
         destination: () => const RestaurantsScreen(),
+      ),
+      _HomeBanner(
+        title: 'Find Your Perfect Table',
+        subtitle: 'Discover your favourite restaurants and reserve your table in just a few clicks.',
+        cta: 'Book Now',
+        imageUrl: 'assets/images/banners/book_a_table_hero.jpg',
+        fallbackIcon: Icons.table_restaurant_rounded,
+        overlayColors: [const Color(0xFF1C1207).withValues(alpha: 0.92), const Color(0xFFF97316).withValues(alpha: 0.35)],
+        accent: jdkartOrange,
+        chromeColors: const [Color(0xFF1C1207), Color(0xFF431407)],
+        chromeIsDark: true,
+        destination: () => const TableBookingDiscoveryScreen(),
       ),
     ];
 
