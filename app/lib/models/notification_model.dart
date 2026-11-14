@@ -3,7 +3,7 @@ class NotificationModel {
   final String title;
   final String body;
   final String type;
-  final bool isRead;
+  bool isRead;
   final DateTime createdAt;
 
   NotificationModel({
@@ -23,7 +23,7 @@ class NotificationModel {
       type: json['type'] ?? 'GENERAL',
       isRead: json['isRead'] == true,
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt']) ?? DateTime.now()
+          ? (DateTime.tryParse(json['createdAt'])?.toLocal() ?? DateTime.now())
           : DateTime.now(),
     );
   }

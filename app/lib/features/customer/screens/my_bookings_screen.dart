@@ -274,7 +274,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final style = _statusStyle(status);
     final rawDate = (booking['date'] ?? '').toString();
     final slot = (booking['timeSlot'] ?? '').toString();
-    final partySize = booking['partySize'];
+    final partySize = int.tryParse('${booking['partySize'] ?? ''}');
     final tableNumber = booking['tableNumber'];
     final notes = (booking['notes'] ?? '').toString();
     final id = (booking['_id'] ?? booking['id']).toString();
@@ -356,7 +356,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             children: [
               const Icon(Icons.group_outlined, size: 15, color: Color(0xFF64748B)),
               const SizedBox(width: 6),
-              Text('$partySize guests', style: const TextStyle(fontSize: 13.5)),
+              Text(
+                partySize == null
+                    ? 'Guests not specified'
+                    : '$partySize ${partySize == 1 ? 'guest' : 'guests'}',
+                style: const TextStyle(fontSize: 13.5),
+              ),
               if (tableNumber != null) ...[
                 const SizedBox(width: 14),
                 const Icon(Icons.table_bar_outlined,

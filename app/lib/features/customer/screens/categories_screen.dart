@@ -5,6 +5,7 @@ import '../../../models/category_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/network/api_client.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({Key? key}) : super(key: key);
@@ -67,7 +68,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: primaryColor))
           : _error != null && _backendCategories.isEmpty
-              ? AppErrorState(message: _error!, onRetry: _fetchCategories)
+              ? AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _fetchCategories(); })
               : _backendCategories.isEmpty
               ? Center(
                   child: Column(
@@ -78,7 +79,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       const Text('No categories found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 8),
                       TextButton.icon(
-                        onPressed: _fetchCategories,
+                        onPressed: () { ApiClient.instance.clearCache(); _fetchCategories(); },
                         icon: const Icon(Icons.refresh),
                         label: const Text('Retry'),
                       )
@@ -90,9 +91,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     final screenWidth = MediaQuery.of(context).size.width;
                     final int crossAxisCount = screenWidth >= 600 ? (screenWidth >= 900 ? 5 : 4) : 3;
 
-                    return GridView.builder(
+                    return RefreshIndicator(
+                      onRefresh: () { ApiClient.instance.clearCache(); return _fetchCategories(); },
+                      color: primaryColor,
+                      child: GridView.builder(
                       padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 120),
-                      physics: const BouncingScrollPhysics(),
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossAxisCount,
                         childAspectRatio: 0.88,
@@ -170,6 +174,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       ),
                     );
                   },
+                ),
                 );
               },
             ),

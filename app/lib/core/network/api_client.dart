@@ -25,11 +25,31 @@ class ApiClient {
 
   static const Duration _responseTimeout = Duration(seconds: 20);
   static const int _maxAttempts = 2;
+  static const Duration _cacheTtl = Duration(minutes: 2);
 
   final http.Client _client = http.Client();
+  final Map<String, ({DateTime at, Future<dynamic> data})> _cache = {};
 
-  Future<dynamic> get(String url, {bool auth = false}) =>
-      _request('GET', url, auth: auth);
+  /// [cache] shares one response (including an in-flight request) between
+  /// screens for a short time. Use only for public catalog data.
+  Future<dynamic> get(String url, {bool auth = false, bool cache = false}) {
+    if (!cache || auth) return _request('GET', url, auth: auth);
+
+    final hit = _cache[url];
+    if (hit != null && DateTime.now().difference(hit.at) < _cacheTtl) {
+      return hit.data;
+    }
+    final future = _request('GET', url);
+    _cache[url] = (at: DateTime.now(), data: future);
+    future.catchError((_) {
+      if (identical(_cache[url]?.data, future)) _cache.remove(url);
+      return null;
+    });
+    return future;
+  }
+
+  /// Drops cached catalog responses so the next request hits the server.
+  void clearCache() => _cache.clear();
 
   Future<dynamic> post(String url, Map<String, dynamic> body,
           {bool auth = false}) =>

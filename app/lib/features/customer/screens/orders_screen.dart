@@ -7,6 +7,7 @@ import '../../../models/order_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../auth/screens/login_screen.dart';
+import '../../../core/utils/format.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({Key? key}) : super(key: key);
@@ -177,10 +178,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             : 'Food Order';
 
                         return GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
-                          ),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+                            );
+                            if (mounted) _fetchOrders();
+                          },
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 16),
                             padding: const EdgeInsets.all(16),
@@ -211,7 +215,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       ),
                                     ),
                                     Text(
-                                      '₹${order.totalAmount}',
+                                      formatPrice(order.finalAmount),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w900,
                                         fontSize: 16,

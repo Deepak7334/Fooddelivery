@@ -33,6 +33,12 @@ class FoodItemModel {
     this.isProduct = false,
   });
 
+  bool get hasDiscount =>
+      discountedPrice != null && price > 0 && discountedPrice! < price;
+
+  int get discountPercent =>
+      hasDiscount ? (((price - discountedPrice!) / price) * 100).round() : 0;
+
   factory FoodItemModel.fromJson(Map<String, dynamic> json) {
     String restId = '';
     String restName = '';

@@ -209,6 +209,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
       context,
       MaterialPageRoute(builder: (_) => const AddressesScreen()),
     );
+    if (!mounted) return;
     _loadLocationData();
   }
 
@@ -538,6 +539,12 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
 
                   const SizedBox(height: 28),
 
+                  // 2b. Remove current location (only when one is set)
+                  if (LocationService.instance.isLocationSet) ...[
+                    _buildRemoveLocationCard(),
+                    const SizedBox(height: 20),
+                  ],
+
                   // 3. SAVED ADDRESSES Section
                   if (_searchQuery.isEmpty && _error != null && _savedAddresses.isEmpty)
                     AppErrorState(message: _error!, onRetry: _loadLocationData)
@@ -625,6 +632,48 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
         ),
       ),
     );
+  }
+
+  Widget _buildRemoveLocationCard() {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: _removeCurrentLocation,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.location_off_outlined, color: Color(0xFFB91C1C), size: 22),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Remove current location',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                    color: Color(0xFFB91C1C),
+                  ),
+                ),
+              ),
+              Icon(Icons.delete_outline_rounded, color: Color(0xFFB91C1C), size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _removeCurrentLocation() async {
+    await LocationService.instance.clearLocation();
+    if (!mounted) return;
+    Navigator.pop(context, {'cleared': true});
   }
 
   Widget _buildSavedAddressTile(AddressModel addr) {
@@ -781,6 +830,17 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
               height: 1.3,
             ),
           ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 20),
+          tooltip: 'Remove',
+          onPressed: () async {
+            await LocationService.instance.removeRecentlySearched(item);
+            if (!mounted) return;
+            final recent = await LocationService.instance.getRecentlySearched();
+            if (!mounted) return;
+            setState(() => _recentSearches = recent);
+          },
         ),
       ),
     );

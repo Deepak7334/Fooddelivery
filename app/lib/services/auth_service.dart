@@ -82,6 +82,9 @@ class AuthService {
           return {'success': false, 'message': 'Login failed: server returned no session token'};
         }
         await _saveSession(token, user);
+        // MainLayout.registerForPush only runs once at app start, so sessions
+        // that begin on an already-built screen would never register.
+        PushService.instance.registerForPush();
         return {
           'success': true,
           'message': data['message'] ?? 'Login successful',
@@ -121,6 +124,7 @@ class AuthService {
         }
         final user = UserModel.fromJson(Map<String, dynamic>.from(data['user'] ?? {}));
         await _saveSession(token, user);
+        PushService.instance.registerForPush();
         return {
           'success': true,
           'user': user,
@@ -186,8 +190,8 @@ class AuthService {
     }
     try {
       final data = await ApiClient.instance.put(ApiConstants.profile, body: {
-        if (name != null) 'name': name,
-        if (phone != null) 'phone': phone,
+        if (name != null) 'name': name.trim(),
+        if (phone != null) 'phone': phone.trim(),
         if (address != null) 'address': address,
       }, auth: true);
 
@@ -197,7 +201,7 @@ class AuthService {
         _currentUser = user;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('foodhub_user', jsonEncode(user.toJson()));
-        return {'success': true, 'message': 'Profile updated'};
+        return {'success': true, 'message': 'Profile updated', 'user': user};
       }
       return {
         'success': false,
@@ -207,6 +211,12 @@ class AuthService {
       };
     } on ApiException catch (e) {
       return {'success': false, 'message': e.message};
+    } catch (e) {
+      debugPrint('Profile update failed: $e');
+      return {
+        'success': false,
+        'message': 'Could not update your profile. Please try again.',
+      };
     }
   }
 

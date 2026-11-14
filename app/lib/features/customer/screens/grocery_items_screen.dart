@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'offers_screen.dart';
 import 'product_details_screen.dart';
 import 'cart_screen.dart';
 import 'checkout_screen.dart';
@@ -12,6 +13,8 @@ import '../../../models/category_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class GroceryItemsScreen extends StatefulWidget {
   final String? initialCategory;
@@ -67,55 +70,22 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       final results = await Future.wait([
         StoreService.instance.getProducts(storeId: _selectedStoreId),
         StoreService.instance.getStores(
-          lat: LocationService.instance.selectedLat,
-          lng: LocationService.instance.selectedLng,
+          lat: LocationService.instance.activeLat,
+          lng: LocationService.instance.activeLng,
         ),
-        StoreService.instance.getStoreTypes(),
       ]);
 
       if (mounted) {
         final stores = results[1] as List<RestaurantModel>;
-        final types = results[2] as List<CategoryModel>;
         final nearbyStoreIds = stores.map((s) => s.id).where((id) => id.isNotEmpty).toSet();
         final products = (results[0] as List<FoodItemModel>)
             .where((p) => nearbyStoreIds.contains(p.restaurantId))
             .toList();
 
-        // Build categories dynamically from backend types and product categories
-        final List<CategoryModel> categories = [
-          CategoryModel(id: 'all', name: 'All Grocery', icon: '🛒'),
-        ];
-
-        if (types.isNotEmpty) {
-          categories.addAll(types);
-        } else {
-          // If types endpoint is empty, extract unique categories from products
-          final productCategories = products
-              .map((p) => p.category.trim())
-              .where((c) => c.isNotEmpty)
-              .toSet();
-
-          for (final cat in productCategories) {
-            categories.add(CategoryModel(
-              id: cat.toLowerCase().replaceAll(' ', '_'),
-              name: cat,
-              icon: _getCategoryIcon(cat),
-            ));
-          }
-
-          if (categories.length == 1) {
-            // Default store catalog categories
-            categories.addAll([
-              CategoryModel(id: 'fruits_veg', name: 'Fruits & Veggies', icon: '🥦'),
-              CategoryModel(id: 'dairy', name: 'Dairy & Milk', icon: '🥛'),
-              CategoryModel(id: 'snacks', name: 'Snacks & Drinks', icon: '🍿'),
-              CategoryModel(id: 'staples', name: 'Atta, Rice & Dal', icon: '🌾'),
-              CategoryModel(id: 'oils', name: 'Cooking Essentials', icon: '🛢️'),
-              CategoryModel(id: 'bakery', name: 'Bakery & Bread', icon: '🍞'),
-              CategoryModel(id: 'cleaning', name: 'Home Care', icon: '🧼'),
-            ]);
-          }
-        }
+        // Chips filter on product.category, so build them from the product
+        // catalog. Store types (Grocery/Pharmacy/...) never match a product
+        // category and would leave every chip empty.
+        final categories = _buildCategories(products);
 
         setState(() {
           _backendProducts = products;
@@ -145,8 +115,28 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
     }
   }
 
+  List<CategoryModel> _buildCategories(List<FoodItemModel> products) {
+    final productCategories = products
+        .map((p) => p.category.trim())
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return [
+      CategoryModel(id: 'all', name: 'All Grocery', icon: '🛒'),
+      for (final cat in productCategories)
+        CategoryModel(
+          id: cat.toLowerCase().replaceAll(' ', '_'),
+          name: cat,
+          icon: _getCategoryIcon(cat),
+        ),
+    ];
+  }
+
   Future<void> _selectStore(RestaurantModel store) async {
     final clearing = _selectedStoreId == store.id;
+    final previousId = _selectedStoreId;
+    final previousName = _selectedStoreName;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -168,16 +158,24 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       if (!mounted) return;
       setState(() {
         _backendProducts = products;
+        _storeCategories = _buildCategories(products);
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
+        _selectedStoreId = previousId;
+        _selectedStoreName = previousName;
         _isLoading = false;
-        _errorMessage = e is ApiException
-            ? e.message
-            : 'Could not load products for this store. Please try again.';
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e is ApiException
+              ? e.message
+              : 'Could not load products for this store. Please try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -414,7 +412,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
               ),
             )
           : RefreshIndicator(
-              onRefresh: _fetchStoreData,
+              onRefresh: () { ApiClient.instance.clearCache(); return _fetchStoreData(); },
               color: jdkartOrange,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -535,7 +533,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                 ),
                               ),
                               TextButton(
-                                onPressed: _fetchStoreData,
+                                onPressed: () { ApiClient.instance.clearCache(); _fetchStoreData(); },
                                 child: const Text('Retry', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                               ),
                             ],
@@ -561,9 +559,15 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                 fontSize: 12.5,
                               ),
                             ),
-                            Text(
-                              'Save More',
-                              style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.bold, fontSize: 12),
+                            GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const OffersScreen()),
+                              ),
+                              child: Text(
+                                'Save More',
+                                style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
                             ),
                           ],
                         ),
@@ -662,7 +666,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                                 children: [
                                   if (_errorMessage != null)
                                     ElevatedButton.icon(
-                                      onPressed: _fetchStoreData,
+                                      onPressed: () { ApiClient.instance.clearCache(); _fetchStoreData(); },
                                       icon: const Icon(Icons.refresh, size: 18),
                                       label: const Text('Try Again'),
                                       style: ElevatedButton.styleFrom(
@@ -801,7 +805,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                         style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '₹$totalPrice',
+                        formatPrice(totalPrice),
                         style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
                       ),
                     ],
@@ -1018,7 +1022,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
         itemCount: dealsList.length,
         itemBuilder: (context, index) {
           final item = dealsList[index];
-          final discountText = 'SAVE ₹${item.price - item.discountedPrice!}';
+          final discountText = 'SAVE ${formatPrice(item.price - item.discountedPrice!)}';
 
           return GestureDetector(
             onTap: () {
@@ -1121,13 +1125,13 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                       Row(
                         children: [
                           Text(
-                            '₹${item.discountedPrice ?? item.price}',
+                            formatPrice(item.discountedPrice ?? item.price),
                             style: TextStyle(color: jdkartOrange, fontSize: 13, fontWeight: FontWeight.w900),
                           ),
                           if (item.discountedPrice != null) ...[
                             const SizedBox(width: 4),
                             Text(
-                              '₹${item.price}',
+                              formatPrice(item.price),
                               style: TextStyle(
                                 color: Colors.grey[500],
                                 fontSize: 11,
@@ -1261,13 +1265,13 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
             Row(
               children: [
                 Text(
-                  '₹$price',
+                  formatPrice(price),
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: jdkartOrangeDark),
                 ),
                 if (item.discountedPrice != null && item.discountedPrice! < item.price) ...[
                   const SizedBox(width: 5),
                   Text(
-                    '₹${item.price}',
+                    formatPrice(item.price),
                     style: TextStyle(color: Colors.grey[500], fontSize: 11.5, decoration: TextDecoration.lineThrough),
                   ),
                 ],

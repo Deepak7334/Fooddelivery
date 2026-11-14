@@ -121,6 +121,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   Widget build(BuildContext context) {
     final order = _order;
+    final hasOrderReference = (widget.order != null) ||
+        (widget.orderId != null && widget.orderId!.isNotEmpty);
     final status = order?.status ?? 'pending';
     final stepIndex = _getStepIndex(status);
     final restaurantName = order != null && order.restaurantName.isNotEmpty ? order.restaurantName : 'Restaurant';
@@ -147,17 +149,40 @@ class _TrackingScreenState extends State<TrackingScreen> {
           )
         ],
       ),
-      body: _error != null && order == null
-          ? AppErrorState(
-              message: _error!,
-              onRetry: () {
-                final id = widget.order?.id ?? widget.orderId;
-                if (id != null) _fetchOrderDetails(id);
-              },
+      body: !hasOrderReference
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.local_shipping_outlined, size: 54, color: Color(0xFF94A3B8)),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'No order to track',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Open tracking from an active order to see live status.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
             )
-          : _isLoading && order == null
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
-              : Column(
+          : _error != null && order == null
+              ? AppErrorState(
+                  message: _error!,
+                  onRetry: () {
+                    final id = widget.order?.id ?? widget.orderId;
+                    if (id != null) _fetchOrderDetails(id);
+                  },
+                )
+              : _isLoading && order == null
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
+                  : Column(
               children: [
                 // Delivery Route Banner / Visual Map Simulation
                 Container(

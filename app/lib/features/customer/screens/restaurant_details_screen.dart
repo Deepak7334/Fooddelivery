@@ -10,6 +10,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
 
 class RestaurantDetailsScreen extends StatefulWidget {
   final String? restaurantId;
@@ -79,33 +80,26 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         return;
       }
 
-      if (_effectiveRestId.isNotEmpty) {
-        final details = await RestaurantService.instance.getRestaurantDetails(_effectiveRestId);
-        if (!mounted) return;
-        setState(() {
-          _menuItems = details.menu;
-          final r = details.restaurant;
-          if (r != null) {
-            if (r.name.isNotEmpty) _effectiveRestName = r.name;
-            if (r.image.isNotEmpty) _effectiveRestImage = r.image;
-            if (r.cuisine.isNotEmpty) {
-              _effectiveRestCuisine = r.cuisine.join(' • ');
-            }
-            _effectiveRestRating = r.rating.toStringAsFixed(1);
-            if (r.deliveryTime.isNotEmpty) {
-              _effectiveDeliveryTime = r.deliveryTime;
-            }
-            _effectiveDeliveryFee = '₹${r.deliveryFee}';
-            _effectiveRestAddress = r.address;
+      final details = await RestaurantService.instance.getRestaurantDetails(_effectiveRestId);
+      if (!mounted) return;
+      setState(() {
+        _menuItems = details.menu;
+        final r = details.restaurant;
+        if (r != null) {
+          if (r.name.isNotEmpty) _effectiveRestName = r.name;
+          if (r.image.isNotEmpty) _effectiveRestImage = r.image;
+          if (r.cuisine.isNotEmpty) {
+            _effectiveRestCuisine = r.cuisine.join(' • ');
           }
-          _isLoadingMenu = false;
-        });
-        return;
-      }
-
-      if (mounted) {
-        setState(() => _isLoadingMenu = false);
-      }
+          _effectiveRestRating = r.rating.toStringAsFixed(1);
+          if (r.deliveryTime.isNotEmpty) {
+            _effectiveDeliveryTime = r.deliveryTime;
+          }
+          _effectiveDeliveryFee = formatPrice(r.deliveryFee);
+          _effectiveRestAddress = r.address;
+        }
+        _isLoadingMenu = false;
+      });
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -393,7 +387,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(left: 16.0),
                                   child: Text(
-                                    '$totalCartCount ITEMS • ₹$totalPrice',
+                                    '$totalCartCount ITEMS • ${formatPrice(totalPrice)}',
                                     style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w900),
                                   ),
                                 ),
@@ -523,11 +517,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Text('₹$price', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      Text(formatPrice(price), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                       if (item.discountedPrice != null && item.discountedPrice! < item.price) ...[
                         const SizedBox(width: 6),
                         Text(
-                          '₹${item.price}',
+                          formatPrice(item.price),
                           style: const TextStyle(color: Colors.grey, fontSize: 12, decoration: TextDecoration.lineThrough),
                         ),
                       ]

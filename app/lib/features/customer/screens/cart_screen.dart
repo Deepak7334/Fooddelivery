@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'checkout_screen.dart';
 import '../../../services/cart_service.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
 
 class CartScreen extends StatefulWidget {
   final VoidCallback? onBrowseTap;
@@ -184,7 +185,7 @@ class _CartScreenState extends State<CartScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '₹${item.price}',
+                                        formatPrice(item.price),
                                         style: TextStyle(color: Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w600),
                                       ),
                                     ],
@@ -204,7 +205,7 @@ class _CartScreenState extends State<CartScreen> {
                                     children: [
                                       InkWell(
                                         onTap: () {
-                                          CartService.instance.updateQuantity(item.id, item.quantity - 1);
+                                          CartService.instance.updateQuantity(item.id, item.quantity - 1, type: item.type);
                                         },
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -217,7 +218,7 @@ class _CartScreenState extends State<CartScreen> {
                                       ),
                                       InkWell(
                                         onTap: () {
-                                          CartService.instance.updateQuantity(item.id, item.quantity + 1);
+                                          CartService.instance.updateQuantity(item.id, item.quantity + 1, type: item.type);
                                         },
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -229,7 +230,7 @@ class _CartScreenState extends State<CartScreen> {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  '₹${item.price * item.quantity}',
+                                  formatPrice(item.price * item.quantity),
                                   style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
                                 ),
                               ],
@@ -256,13 +257,13 @@ class _CartScreenState extends State<CartScreen> {
                     children: [
                       const Text('Bill Summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                       const SizedBox(height: 12),
-                      _buildBillRow('Item Total', '₹$subtotal'),
+                      _buildBillRow('Item Total', formatPrice(subtotal)),
                       const SizedBox(height: 8),
                       _buildBillRow(
                         'Delivery Partner Fee',
                         !chargesLoaded
                             ? 'Calculated at checkout'
-                            : (deliveryFee == 0 ? 'FREE' : '₹$deliveryFee'),
+                            : (deliveryFee == 0 ? 'FREE' : formatPrice(deliveryFee)),
                         isHighlight: chargesLoaded && deliveryFee == 0,
                       ),
                       if (chargesLoaded && CartService.instance.isFirstOrderFree) ...[
@@ -281,7 +282,7 @@ class _CartScreenState extends State<CartScreen> {
                         children: [
                           const Text('Grand Total', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
                           Text(
-                            '₹${grandTotal.toStringAsFixed(0)}',
+                            formatPrice(grandTotal),
                             style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: jdkartOrange),
                           ),
                         ],
@@ -319,7 +320,7 @@ class _CartScreenState extends State<CartScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 16.0),
                         child: Text(
-                          '₹${grandTotal.toStringAsFixed(0)}',
+                          formatPrice(grandTotal),
                           style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w900),
                         ),
                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'offers_screen.dart';
 import 'product_details_screen.dart';
 import 'cart_screen.dart';
 import 'checkout_screen.dart';
@@ -11,6 +12,8 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class FoodItemsScreen extends StatefulWidget {
   final String? initialCategory;
@@ -23,8 +26,6 @@ class FoodItemsScreen extends StatefulWidget {
 class _FoodItemsScreenState extends State<FoodItemsScreen> {
   final Color jdkartOrange = const Color(0xFFF97316);
   final Color jdkartOrangeDark = const Color(0xFFC2410C);
-  final Color jdkartPeach = const Color(0xFFFFF7ED);
-  final Color coralRed = const Color(0xFFE11D48);
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -60,8 +61,8 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
       await LocationService.instance.init();
       final results = await Future.wait([
         RestaurantService.instance.getFoods(
-          lat: LocationService.instance.selectedLat,
-          lng: LocationService.instance.selectedLng,
+          lat: LocationService.instance.activeLat,
+          lng: LocationService.instance.activeLng,
         ),
         RestaurantService.instance.getCategories(),
       ]);
@@ -96,7 +97,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
   }
 
   List<FoodItemModel> get _filteredFoods {
-    List<FoodItemModel> list = _allFoods;
+    List<FoodItemModel> list = [..._allFoods];
 
     // Filter by Veg only
     if (_isVegOnly) {
@@ -282,9 +283,9 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
               ),
             )
           : _error != null && _allFoods.isEmpty
-              ? AppErrorState(message: _error!, onRetry: _fetchFoodData)
+              ? AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _fetchFoodData(); })
               : RefreshIndicator(
-                  onRefresh: _fetchFoodData,
+                  onRefresh: () { ApiClient.instance.clearCache(); return _fetchFoodData(); },
                   color: jdkartOrange,
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -410,9 +411,15 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                                     fontSize: 12.5,
                                   ),
                                 ),
-                                Text(
-                                  'Special Offers',
-                                  style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.bold, fontSize: 12),
+                                GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const OffersScreen()),
+                                  ),
+                                  child: Text(
+                                    'Special Offers',
+                                    style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
                                 ),
                               ],
                             ),
@@ -576,7 +583,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                         style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '₹$totalPrice',
+                        formatPrice(totalPrice),
                         style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
                       ),
                     ],
@@ -803,7 +810,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
         itemBuilder: (context, index) {
           final dish = dealsList[index];
           final discountText = dish.discountedPrice != null
-              ? 'SAVE ₹${dish.price - dish.discountedPrice!}'
+              ? 'SAVE ${formatPrice(dish.price - dish.discountedPrice!)}'
               : 'SPECIAL';
 
           return GestureDetector(
@@ -904,7 +911,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '₹${dish.discountedPrice ?? dish.price}',
+                        formatPrice(dish.discountedPrice ?? dish.price),
                         style: TextStyle(color: jdkartOrange, fontSize: 13, fontWeight: FontWeight.w900),
                       ),
                       GestureDetector(
@@ -1035,13 +1042,13 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
             Row(
               children: [
                 Text(
-                  '₹$price',
+                  formatPrice(price),
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: jdkartOrangeDark),
                 ),
                 if (dish.discountedPrice != null) ...[
                   const SizedBox(width: 5),
                   Text(
-                    '₹${dish.price}',
+                    formatPrice(dish.price),
                     style: TextStyle(
                       color: Colors.grey[500],
                       fontSize: 11.5,

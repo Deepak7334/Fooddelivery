@@ -4,6 +4,7 @@ class OrderModel {
   final String status;
   final num totalAmount;
   final num deliveryFee;
+  final num finalAmount;
   final String paymentMethod;
   final String paymentStatus;
   final String restaurantName;
@@ -13,6 +14,12 @@ class OrderModel {
   final String deliveryOTP;
   final String deliveryAgentName;
   final String deliveryAgentPhone;
+  final String vendorId;
+  final bool isStoreOrder;
+  final bool isReviewed;
+
+  bool get canCancel => status == 'pending' || status == 'accepted';
+  bool get canRate => status == 'delivered' && !isReviewed;
 
   OrderModel({
     required this.id,
@@ -20,6 +27,7 @@ class OrderModel {
     required this.status,
     required this.totalAmount,
     this.deliveryFee = 0,
+    num? finalAmount,
     this.paymentMethod = 'COD',
     this.paymentStatus = 'Pending',
     this.restaurantName = '',
@@ -29,7 +37,10 @@ class OrderModel {
     this.deliveryOTP = '',
     this.deliveryAgentName = '',
     this.deliveryAgentPhone = '',
-  });
+    this.vendorId = '',
+    this.isStoreOrder = false,
+    this.isReviewed = false,
+  }) : finalAmount = finalAmount ?? (totalAmount + deliveryFee);
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     List<OrderItemModel> itemsList = [];
@@ -76,6 +87,9 @@ class OrderModel {
       agentName = json['deliveryAgentName'];
     }
 
+    final restRef = OrderItemModel._refId(json['restaurantId']);
+    final storeRef = OrderItemModel._refId(json['storeId']);
+
     final rawId = (json['_id'] ?? json['id'] ?? '').toString();
     final fallbackNumber = rawId.isEmpty
         ? '—'
@@ -87,33 +101,63 @@ class OrderModel {
           ? json['orderNumber'].toString()
           : fallbackNumber,
       status: json['status'] ?? 'pending',
-      totalAmount: json['totalAmount'] ?? json['finalAmount'] ?? json['totalPrice'] ?? 0,
+      totalAmount: json['totalAmount'] ?? json['totalPrice'] ?? 0,
       deliveryFee: json['deliveryFee'] ?? 0,
+      finalAmount: json['finalAmount'],
       paymentMethod: json['paymentMethod'] ?? 'COD',
       paymentStatus: json['paymentStatus'] ?? 'pending',
       restaurantName: restName.isNotEmpty ? restName : 'JDKart Partner',
       deliveryAddress: addrStr,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) ?? DateTime.now() : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? (DateTime.tryParse(json['createdAt'])?.toLocal() ?? DateTime.now())
+          : DateTime.now(),
       items: itemsList,
       deliveryOTP: json['deliveryOTP']?.toString() ?? '',
       deliveryAgentName: agentName,
       deliveryAgentPhone: agentPhone,
+      vendorId: storeRef.isNotEmpty ? storeRef : restRef,
+      isStoreOrder: storeRef.isNotEmpty,
+      isReviewed: json['isReviewed'] == true,
     );
   }
 }
 
 class OrderItemModel {
+  final String itemId;
+  final String type;
   final String name;
   final int quantity;
   final num price;
+  final String image;
 
-  OrderItemModel({required this.name, required this.quantity, required this.price});
+  OrderItemModel({
+    this.itemId = '',
+    this.type = 'food',
+    required this.name,
+    required this.quantity,
+    required this.price,
+    this.image = '',
+  });
+
+  bool get isProduct => type == 'product';
+
+  static String _refId(dynamic v) {
+    if (v == null) return '';
+    if (v is Map) return (v['_id'] ?? v['id'] ?? '').toString();
+    return v.toString();
+  }
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    final productId = _refId(json['productId']);
+    final foodId = _refId(json['foodId'] ?? json['menuItemId']);
+    final isProduct = productId.isNotEmpty || json['type'] == 'product';
     return OrderItemModel(
+      itemId: isProduct ? productId : foodId,
+      type: isProduct ? 'product' : 'food',
       name: json['name'] ?? json['foodName'] ?? 'Food Item',
-      quantity: json['quantity'] ?? 1,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       price: json['price'] ?? 0,
+      image: json['image']?.toString() ?? '',
     );
   }
 }

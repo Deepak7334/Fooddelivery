@@ -22,7 +22,7 @@ class UserModel {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       role: json['role'] ?? 'customer',
-      avatar: json['avatar'],
+      avatar: json['avatar'] ?? json['profileImage'],
     );
   }
 

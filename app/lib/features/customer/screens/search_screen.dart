@@ -3,6 +3,7 @@ import 'restaurant_details_screen.dart';
 import 'product_details_screen.dart';
 import 'main_layout.dart';
 import '../../../services/restaurant_service.dart';
+import '../../../services/store_service.dart';
 import '../../../services/location_service.dart';
 import '../../../models/product_model.dart';
 import '../../../models/restaurant_model.dart';
@@ -10,6 +11,8 @@ import '../../../models/category_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class SearchScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -43,16 +46,31 @@ class _SearchScreenState extends State<SearchScreen> {
     });
     try {
       await LocationService.instance.init();
-      final lat = LocationService.instance.selectedLat;
-      final lng = LocationService.instance.selectedLng;
+      final lat = LocationService.instance.activeLat;
+      final lng = LocationService.instance.activeLng;
+      final productsFuture = StoreService.instance
+          .getProducts()
+          .catchError((_) => <FoodItemModel>[]);
+      final nearbyFuture = lat != null && lng != null
+          ? StoreService.instance
+              .getStores(lat: lat, lng: lng)
+              .then<Set<String>?>((s) => s.map((e) => e.id).toSet())
+              .catchError((_) => <String>{})
+          : Future<Set<String>?>.value(null);
       final results = await Future.wait([
         RestaurantService.instance.getFoods(lat: lat, lng: lng),
         RestaurantService.instance.getRestaurants(lat: lat, lng: lng),
         RestaurantService.instance.getCategories(),
       ]);
+      final products = await productsFuture;
+      final nearbyStoreIds = await nearbyFuture;
       if (mounted) {
         setState(() {
-          _allFoods = results[0] as List<FoodItemModel>;
+          _allFoods = [
+            ...results[0] as List<FoodItemModel>,
+            ...products.where((p) =>
+                nearbyStoreIds == null || nearbyStoreIds.contains(p.restaurantId)),
+          ];
           _allRestaurants = results[1] as List<RestaurantModel>;
           _categories = results[2] as List<CategoryModel>;
           _isLoading = false;
@@ -131,7 +149,7 @@ class _SearchScreenState extends State<SearchScreen> {
             controller: _searchController,
             autofocus: widget.autofocus,
             decoration: InputDecoration(
-              hintText: 'Search food, dishes, cuisine...',
+              hintText: 'Search food, groceries, restaurants...',
               hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
               prefixIcon: Icon(Icons.search_rounded, color: jdkartOrange, size: 22),
               border: InputBorder.none,
@@ -154,7 +172,7 @@ class _SearchScreenState extends State<SearchScreen> {
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_rounded, color: Colors.black54),
-            onPressed: _loadSearchData,
+            onPressed: () { ApiClient.instance.clearCache(); _loadSearchData(); },
           ),
         ],
       ),
@@ -164,7 +182,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   _allFoods.isEmpty &&
                   _allRestaurants.isEmpty &&
                   _categories.isEmpty
-              ? AppErrorState(message: _error!, onRetry: _loadSearchData)
+              ? AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _loadSearchData(); })
               : hasQuery
                   ? _buildSearchResults()
                   : _buildDefaultSuggestions(),
@@ -187,7 +205,7 @@ class _SearchScreenState extends State<SearchScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 6),
-            Text('Try searching for Biryani, Pizza, Rice, or Dosa', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            Text('Try searching for Biryani, Pizza, Rice, or Milk', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
           ],
         ),
       );
@@ -235,7 +253,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
 
         if (foods.isNotEmpty) ...[
-          Text('Dishes (${foods.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text('Items (${foods.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 10),
           ...foods.map((dish) {
             final price = dish.discountedPrice ?? dish.price;
@@ -257,11 +275,11 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 title: Text(dish.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                  '${dish.restaurantName.isNotEmpty ? dish.restaurantName : "JDKart"} • ₹$price',
+                  '${dish.restaurantName.isNotEmpty ? dish.restaurantName : "JDKart"} • ${formatPrice(price)}',
                   style: TextStyle(color: Colors.grey[700], fontSize: 13),
                 ),
                 trailing: Text(
-                  '₹$price',
+                  formatPrice(price),
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: jdkartOrange),
                 ),
                 onTap: () {
@@ -330,7 +348,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 title: Text(dish.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 subtitle: Text(
-                  '₹${dish.discountedPrice ?? dish.price}',
+                  formatPrice(dish.discountedPrice ?? dish.price),
                   style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.w900),
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),

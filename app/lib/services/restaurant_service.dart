@@ -10,7 +10,7 @@ class RestaurantService {
 
   /// Fetch all active categories from backend. Throws [ApiException] on failure.
   Future<List<CategoryModel>> getCategories() async {
-    final data = await ApiClient.instance.get(ApiConstants.categories);
+    final data = await ApiClient.instance.get(ApiConstants.categories, cache: true);
     if (data is Map && data['categories'] is List) {
       return (data['categories'] as List)
           .map((c) => CategoryModel.fromJson(Map<String, dynamic>.from(c)))
@@ -26,7 +26,7 @@ class RestaurantService {
       url += '?lat=$lat&lng=$lng';
     }
 
-    final data = await ApiClient.instance.get(url);
+    final data = await ApiClient.instance.get(url, cache: true);
     if (data is Map && data['restaurants'] is List) {
       return (data['restaurants'] as List)
           .map((r) => RestaurantModel.fromJson(Map<String, dynamic>.from(r)))
@@ -42,7 +42,7 @@ class RestaurantService {
 
     final results = await Future.wait<dynamic>([
       if (hasLocation) getRestaurants(lat: lat, lng: lng),
-      ApiClient.instance.get(ApiConstants.foods),
+      ApiClient.instance.get(ApiConstants.foods, cache: true),
     ]);
 
     final nearby = hasLocation ? results[0] as List<RestaurantModel> : null;

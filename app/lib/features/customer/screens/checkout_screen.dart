@@ -12,6 +12,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({Key? key}) : super(key: key);
@@ -52,6 +53,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           final defIdx = _savedAddresses.indexWhere((a) => a.isDefault);
           if (defIdx != -1) {
             _selectedAddressIndex = defIdx;
+          } else if (_selectedAddressIndex >= _savedAddresses.length) {
+            // Previously selected address was removed.
+            _selectedAddressIndex = 0;
           }
         });
       }
@@ -129,7 +133,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '₹${i.price * i.quantity}',
+                                  formatPrice(i.price * i.quantity),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
                               ],
@@ -143,7 +147,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('Item Total', style: TextStyle(color: Colors.grey[700], fontSize: 13.5)),
-                          Text('₹${subtotal.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                          Text(formatPrice(subtotal), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -154,7 +158,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           Text(
                             !chargesLoaded
                                 ? 'Calculated at checkout'
-                                : (deliveryFee == 0 ? 'FREE' : '₹${deliveryFee.toStringAsFixed(0)}'),
+                                : (deliveryFee == 0 ? 'FREE' : formatPrice(deliveryFee)),
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 13.5,
@@ -185,7 +189,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         children: [
                           const Text('Total to Pay', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
                           Text(
-                            '₹${grandTotal.toStringAsFixed(0)}',
+                            formatPrice(grandTotal),
                             style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: jdkartOrange),
                           ),
                         ],
@@ -460,7 +464,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                        'Minimum order for this area is ₹${minOrder.toStringAsFixed(0)}. Please add more items.'),
+                                        'Minimum order for this area is ${formatPrice(minOrder)}. Please add more items.'),
                                     backgroundColor: Colors.redAccent,
                                   ),
                                 );
@@ -513,7 +517,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           final result = await OrderService.instance.placeOrder(
                             restaurantId: CartService.instance.restaurantId,
                             items: payloadItems,
-                            totalAmount: CartService.instance.totalPrice,
+                            totalAmount: grandTotal,
                             deliveryAddress: deliveryAddressObj,
                             deliveryCoords: hasCoords
                                 ? {'lat': addr.latitude, 'lng': addr.longitude}
@@ -572,9 +576,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            'Place Order (Cash on Delivery) • ₹${grandTotal.toStringAsFixed(0)}',
-                            style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                          Flexible(
+                            child: Text(
+                              'Place Order (Cash on Delivery) • ${formatPrice(grandTotal)}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ],
                       ),

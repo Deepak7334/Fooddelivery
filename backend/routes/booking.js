@@ -20,24 +20,38 @@ const DEFAULT_TABLES = [
   { number: 2, maxGuests: 6 }
 ];
 
-// Return active tables for a restaurant, lazily seeding defaults when none exist
-// so booking works even before the owner configures tables manually.
+// Tables created before `isActive` existed have no value; only an explicit
+// false means the table is switched off.
+const ACTIVE_TABLE = { isActive: { $ne: false } };
+
+// Active tables for a restaurant, or null when it does not take bookings.
+// Defaults are seeded once so booking works before the owner configures
+// tables; owner deletions and disabled tables are always respected.
 async function ensureTables(restaurantId) {
-  if (!restaurantId) return [];
-  const tables = await Table.find({ restaurantId, isActive: true }).sort({ number: 1 });
-  if (tables.length > 0) return tables;
+  if (!restaurantId) return null;
+  const restaurant = await Restaurant.findById(restaurantId).select('bookingEnabled defaultTablesSeeded');
+  if (!restaurant || restaurant.bookingEnabled === false) return null;
 
-  const restaurant = await Restaurant.findById(restaurantId);
-  if (!restaurant) return [];
-
-  try {
-    return await Table.insertMany(
-      DEFAULT_TABLES.map(t => ({ restaurantId: restaurant._id, number: t.number, maxGuests: t.maxGuests }))
-    );
-  } catch (e) {
-    // A concurrent request may have seeded already; return whatever exists.
-    return Table.find({ restaurantId, isActive: true }).sort({ number: 1 });
+  if (!restaurant.defaultTablesSeeded) {
+    let settled = (await Table.countDocuments({ restaurantId: restaurant._id })) > 0;
+    if (!settled) {
+      try {
+        await Table.insertMany(
+          DEFAULT_TABLES.map(t => ({ restaurantId: restaurant._id, number: t.number, maxGuests: t.maxGuests }))
+        );
+        settled = true;
+      } catch (e) {
+        // A concurrent request may have seeded already; otherwise retry next time.
+        settled = (await Table.countDocuments({ restaurantId: restaurant._id })) > 0;
+        if (!settled) console.error('Table seeding failed:', e.message);
+      }
+    }
+    if (settled) {
+      await Restaurant.updateOne({ _id: restaurant._id }, { $set: { defaultTablesSeeded: true } });
+    }
   }
+
+  return Table.find({ restaurantId: restaurant._id, ...ACTIVE_TABLE }).sort({ number: 1 });
 }
 
 // Customer routes
@@ -52,6 +66,9 @@ router.get('/availability/:restaurantId/:date', async (req, res) => {
     
     // Find tables for restaurant (seed defaults if none configured yet)
     const tables = await ensureTables(restaurantId);
+    if (!tables) {
+      return res.json({ tables: [], date: startOfDay, bookingEnabled: false });
+    }
     
     // Find existing bookings
     const existingBookings = await Booking.find({
@@ -91,6 +108,9 @@ router.post('/customer/bookings', protect, async (req, res) => {
 
     // Check availability (simple)
     const tables = await ensureTables(restaurantId);
+    if (!tables) {
+      return res.status(400).json({ message: 'This restaurant is not accepting table bookings right now.' });
+    }
     const table = tables.find(t => t.number === Number(tableNumber));
     if (!table) return res.status(400).json({ message: 'Table not found' });
 
@@ -160,7 +180,9 @@ router.get('/customer/bookings/mine', protect, async (req, res) => {
 // Restaurant routes (owner only)
 router.put('/restaurant/bookings/:id/confirm', protect, authorize('restaurant'), async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id).populate('restaurantId');
+    const booking = await Booking.findById(req.params.id)
+      .populate('restaurantId')
+      .populate('userId', 'email');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
     if (booking.restaurantId._id.toString() !== req.user.restaurantId.toString()) {
@@ -170,12 +192,15 @@ router.put('/restaurant/bookings/:id/confirm', protect, authorize('restaurant'),
     booking.status = 'confirmed';
     await booking.save();
 
-    // Notify customer
-    await sendEmail({
-      to: booking.phone, // Use phone for SMS later, temp email?
-      subject: 'Booking Confirmed',
-      html: `Your booking for Table ${booking.tableNumber} on ${booking.date.toDateString()} at ${booking.timeSlot} is confirmed!`
-    });
+    // Notify customer by email (fall back gracefully when no address is known).
+    const customerEmail = booking.userId && booking.userId.email ? booking.userId.email : null;
+    if (customerEmail) {
+      await sendEmail({
+        to: customerEmail,
+        subject: 'Booking Confirmed',
+        html: `Your booking for Table ${booking.tableNumber} on ${booking.date.toDateString()} at ${booking.timeSlot} is confirmed!`
+      });
+    }
 
     res.json({ message: 'Booking confirmed' });
   } catch (err) {
@@ -284,8 +309,12 @@ router.delete('/restaurant/tables/:id', protect, authorize('restaurant'), async 
     const restaurant = await Restaurant.findById(req.user.restaurantId);
     if (!restaurant) return res.status(404).json({ message: 'Restaurant not found' });
 
-    const table = await Table.findOneAndDelete({ _id: req.params.id, restaurantId: restaurant._id });
+    const table = await Table.findOne({ _id: req.params.id, restaurantId: restaurant._id });
     if (!table) return res.status(404).json({ message: 'Table not found' });
+
+    // Record owner intent before deleting the last table, so defaults cannot return.
+    await Restaurant.updateOne({ _id: restaurant._id }, { $set: { defaultTablesSeeded: true } });
+    await table.deleteOne();
 
     res.json({ message: 'Table removed' });
   } catch (err) {
