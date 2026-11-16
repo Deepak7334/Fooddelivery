@@ -195,6 +195,32 @@
 .customer-transactions .step-line.done { background: #FDBA74; }
 .customer-transactions .tx-tracking-status { width: fit-content; margin: 0 auto; padding: 6px 12px; border-radius: 8px; background: #FFF7ED; color: #C2410C; font-size: 14px; font-weight: 700; text-align: center; }
 
+/* Cancellation Timer & Help Actions */
+.btn-cancel-countdown {
+  transition: opacity .3s ease, transform .3s ease, background-color .2s ease;
+  animation: txFadeIn .3s ease;
+}
+.btn-cancel-countdown:hover {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #B91C1C !important;
+}
+.btn-whatsapp-support {
+  transition: opacity .3s ease, transform .3s ease, background-color .2s ease;
+  animation: txFadeIn .3s ease;
+}
+.btn-whatsapp-support:hover {
+  background: #20BA5A !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+}
+.cancellation-window-banner {
+  animation: txFadeIn .3s ease;
+}
+@keyframes txFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Offers */
 .customer-transactions .tx-offer-banner { display: flex; align-items: center; gap: 14px; padding: 20px; margin-bottom: 20px; background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 14px; }
 .customer-transactions .tx-offer-banner .tx-icon-tile { background: #FFEDD5; }

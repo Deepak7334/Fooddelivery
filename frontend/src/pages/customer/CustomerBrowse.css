@@ -33,6 +33,10 @@
   margin-bottom: 24px;
 }
 
+.customer-layout .customer-browse .browse-filters.browse-filters-right {
+  justify-content: flex-end;
+}
+
 .customer-layout .customer-browse .browse-search {
   position: relative;
   display: flex;
