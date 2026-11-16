@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
+import { FiTrash2, FiPlus, FiMinus, FiShoppingBag, FiShoppingCart, FiArrowRight } from 'react-icons/fi';
+import './CustomerTransactions.css';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { calculateDistance } from '../../utils/distance';
@@ -118,10 +119,13 @@ export default function CartPage() {
   const total = totalPrice + fee;
 
   if (totalItems === 0) return (
-    <div className="page-wrapper">
-      <div className="empty-state" style={{ paddingTop: 80 }}>
-        <div className="empty-state-icon"></div>
-        <h3>Your Cart is Empty</h3>
+    <div className="page-wrapper customer-transactions tx-cart tx-with-nav">
+      <header className="tx-page-header">
+        <div className="container tx-header-inner"><h1>Your Cart</h1></div>
+      </header>
+      <div className="empty-state">
+        <div className="empty-state-icon"><FiShoppingBag size={52} /></div>
+        <h3>Your cart is empty</h3>
         <p>Add items from a restaurant or store to get started</p>
         <button onClick={() => navigate('/')} className="btn btn-primary btn-lg" style={{ marginTop: 24 }}>Browse Home</button>
       </div>
@@ -129,10 +133,14 @@ export default function CartPage() {
   );
 
   return (
-    <div className="page-wrapper">
+    <div className="page-wrapper customer-transactions tx-cart tx-with-nav">
+      <header className="tx-page-header">
+        <div className="container tx-header-inner">
+          <h1>Your Cart</h1>
+          <button onClick={clearCart} className="tx-clear-button"><FiTrash2 size={15} /> Clear</button>
+        </div>
+      </header>
       <div className="container">
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Your <span style={{ color: 'var(--primary)' }}>Cart</span></h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: outOfService ? 16 : 32 }}>Review your items before checkout</p>
 
         {outOfService && (
           <div style={{ marginBottom: 32, padding: 24, background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', borderRadius: 16, border: '2px solid rgba(244,67,54,0.3)', textAlign: 'center', animation: 'fadeIn 0.5s ease' }}>
@@ -163,14 +171,21 @@ export default function CartPage() {
 
         <div className="cart-layout">
           {/* Cart Items */}
-          <div>
+          <div className="tx-cart-items">
+            <div className="card tx-vendor-card">
+              <span className="tx-icon-tile"><FiShoppingBag size={22} /></span>
+              <div>
+                <h2>{cartItems[0]?.restaurantName || cartItems[0]?.storeName || 'JDkart Partner'}</h2>
+                <p>Delivery to your doorstep</p>
+              </div>
+            </div>
             <div className="card" style={{ padding: 0 }}>
               {cartItems.map((item, i) => {
                 const id = item.cartItemId || item.foodId || item.productId || item._id;
                 return (
-                <div key={id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16, padding: '16px 20px', borderBottom: i < cartItems.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: '1 1 min-content', minWidth: 200 }}>
-                    {item.image ? <img loading="lazy" src={item.image} alt={item.name} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8 }} /> : <div style={{ width: 60, height: 60, background: 'var(--bg-card2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}></div>}
+                <div key={id} className="tx-cart-row" style={{ borderBottom: i < cartItems.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <div className="tx-cart-item-info">
+                    {item.image ? <img loading="lazy" src={item.image} alt={item.name} style={{ width: 58, height: 58, objectFit: 'cover', borderRadius: 10 }} /> : <span className="tx-icon-tile" style={{ width: 58, height: 58 }}><FiShoppingCart size={24} /></span>}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>
                         {item.name}
@@ -186,35 +201,26 @@ export default function CartPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>₹{item.price}</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: '1 1 auto', minWidth: 200 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button onClick={() => updateQuantity(id, item.quantity - 1)} style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', color: 'var(--primary)', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <FiMinus size={14} />
-                      </button>
-                      <span style={{ width: 28, textAlign: 'center', fontWeight: 700 }}>{item.quantity}</span>
-                      <button onClick={() => updateQuantity(id, item.quantity + 1)} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--primary)', border: 'none', color: 'white', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <FiPlus size={14} />
-                      </button>
-                      <button onClick={() => removeFromCart(id)} style={{ width: 30, height: 30, borderRadius: 8, background: 'rgba(244,67,54,0.1)', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                        <FiTrash2 size={14} />
-                      </button>
+                  <div className="tx-cart-item-actions">
+                    <div className="tx-quantity">
+                      <button onClick={() => updateQuantity(id, item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`}><FiMinus size={14} /></button>
+                      <span>{item.quantity}</span>
+                      <button onClick={() => updateQuantity(id, item.quantity + 1)} aria-label={`Increase ${item.name} quantity`}><FiPlus size={14} /></button>
                     </div>
-                    <div style={{ minWidth: 80, textAlign: 'right', fontWeight: 700 }}>₹{item.price * item.quantity}</div>
+                    <strong>₹{item.price * item.quantity}</strong>
+                    <button onClick={() => removeFromCart(id)} className="tx-remove-button" aria-label={`Remove ${item.name}`}><FiTrash2 size={15} /></button>
                   </div>
                 </div>
               )})}
             </div>
-            <button onClick={clearCart} className="btn btn-secondary btn-sm" style={{ marginTop: 12 }}>
-              <FiTrash2 size={14} /> Clear Cart
-            </button>
           </div>
 
           {/* Order Summary */}
-          <div className="card" style={{ padding: 24, position: 'sticky', top: 90 }}>
-            <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 20 }}>Order Summary</h3>
+          <div className="card tx-cart-summary tx-section">
+            <h3 className="tx-section-title">Bill Summary</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)' }}>
-                <span>Subtotal ({totalItems} items)</span><span>₹{totalPrice}</span>
+                <span>Item Total ({totalItems} items)</span><span>₹{totalPrice}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)' }}>
                 <span>Delivery Fee ({vendorTime})</span><span>{fee === 0 ? <span style={{ color: 'var(--success)', fontWeight: 700 }}>Free</span> : `₹${fee}`}</span>
@@ -226,12 +232,12 @@ export default function CartPage() {
             </div>
 
             <button 
-              onClick={() => { if (!user) navigate('/login'); else navigate('/checkout'); }} 
+              onClick={() => { if (!user) navigate('/login', { state: { from: { pathname: '/checkout' } } }); else navigate('/checkout'); }} 
               disabled={outOfService || (minOrderRequired > 0 && totalPrice < minOrderRequired) || (!manualMode && distance === null)}
               className="btn btn-primary btn-full btn-lg"
               style={{ opacity: (outOfService || (minOrderRequired > 0 && totalPrice < minOrderRequired) || (!manualMode && distance === null)) ? 0.5 : 1, cursor: (outOfService || (minOrderRequired > 0 && totalPrice < minOrderRequired) || (!manualMode && distance === null)) ? 'not-allowed' : 'pointer' }}
             >
-              Proceed to Checkout →
+              <span className="tx-cart-checkout"><span>₹{total}</span><span>Proceed to Checkout</span><FiArrowRight size={18} /></span>
             </button>
             
             {!outOfService && minOrderRequired > 0 && totalPrice < minOrderRequired && (
@@ -248,8 +254,8 @@ export default function CartPage() {
       </div>
 
       {showLocationPrompt && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--bg-card)', padding: '32px 24px', borderRadius: 24, width: '90%', maxWidth: 400, textAlign: 'center', animation: 'scaleIn 0.3s ease', position: 'relative' }}>
+        <div className="tx-modal-backdrop">
+          <div className="tx-location-modal">
             <button
               type="button"
               onClick={() => setShowLocationPrompt(false)}

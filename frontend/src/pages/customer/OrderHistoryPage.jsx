@@ -2,26 +2,29 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { FiPackage, FiCalendar, FiXCircle } from 'react-icons/fi';
+import { useAuth } from '../../context/AuthContext';
+import { FiPackage, FiCalendar, FiXCircle, FiClock, FiUsers, FiGrid, FiStar, FiCheckCircle, FiLock } from 'react-icons/fi';
+import './CustomerTransactions.css';
 import ReviewOrderModal from './ReviewOrderModal';
 
 const STATUS_STYLES = {
-  pending:   { bg: 'rgba(255,152,0,0.12)',  color: '#FF9800',  label: '⏳ Pending' },
-  confirmed: { bg: 'rgba(76,175,80,0.12)',  color: '#4CAF50',  label: '✅ Confirmed' },
-  rejected:  { bg: 'rgba(244,67,54,0.12)',  color: '#F44336',  label: '❌ Rejected' },
-  cancelled: { bg: 'rgba(96,96,112,0.15)',  color: '#9090A0',  label: '🚫 Cancelled' },
+  pending:   { bg: '#FEF3C7', color: '#B45309', label: 'Pending' },
+  confirmed: { bg: '#DCFCE7', color: '#15803D', label: 'Confirmed' },
+  rejected:  { bg: '#FEE2E2', color: '#B91C1C', label: 'Rejected' },
+  cancelled: { bg: '#F1F5F9', color: '#64748B', label: 'Cancelled' },
 };
 
 const ORDER_STATUS = {
-  pending:          { bg: 'rgba(255,152,0,0.2)',  color: '#FF9800' },
-  accepted:         { bg: 'rgba(0,188,212,0.2)',  color: '#00BCD4' },
-  preparing:        { bg: 'rgba(156,39,176,0.2)', color: '#CE93D8' },
-  out_for_delivery: { bg: 'rgba(33,150,243,0.2)', color: '#90CAF9' },
-  delivered:        { bg: 'rgba(76,175,80,0.2)',  color: '#4CAF50' },
-  cancelled:        { bg: 'rgba(244,67,54,0.2)',  color: '#F44336' },
+  pending:          { bg: '#FEF3C7', color: '#B45309' },
+  accepted:         { bg: '#FEF3C7', color: '#B45309' },
+  preparing:        { bg: '#FEF3C7', color: '#B45309' },
+  out_for_delivery: { bg: '#FEF3C7', color: '#B45309' },
+  delivered:        { bg: '#DCFCE7', color: '#15803D' },
+  cancelled:        { bg: '#FEE2E2', color: '#B91C1C' },
 };
 
 export default function OrderHistoryPage() {
+  const { user } = useAuth();
   const locationObj = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(locationObj.search);
@@ -38,18 +41,30 @@ export default function OrderHistoryPage() {
   const [ratingOrder, setRatingOrder] = useState(null);
 
   useEffect(() => {
+    if (!user) {
+      setOrders([]);
+      setLoadingOrders(false);
+      return;
+    }
+    setLoadingOrders(true);
     api.get('/customer/orders')
       .then(res => setOrders(res.data.orders || []))
       .catch(console.error)
       .finally(() => setLoadingOrders(false));
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setBookings([]);
+      setLoadingBookings(false);
+      return;
+    }
+    setLoadingBookings(true);
     api.get('/booking/customer/bookings/mine')
       .then(res => setBookings(Array.isArray(res.data) ? res.data : []))
       .catch(console.error)
       .finally(() => setLoadingBookings(false));
-  }, []);
+  }, [user]);
 
   // Sync tab with URL param
   useEffect(() => {
@@ -101,20 +116,14 @@ export default function OrderHistoryPage() {
   });
 
   return (
-    <div className="page-wrapper">
+    <div className="page-wrapper customer-transactions tx-orders tx-with-nav">
+      <header className="tx-page-header">
+        <div className="container tx-header-inner"><h1>My Orders</h1></div>
+      </header>
       <div className="container">
-        {/* Page Title */}
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 24 }}>
-          My <span style={{ color: 'var(--primary)' }}>Activity</span>
-        </h1>
 
         {/* Tab Bar */}
-        <div style={{
-          display: 'flex', gap: 4, marginBottom: 28,
-          background: 'var(--bg-card)', borderRadius: 12,
-          padding: 6, border: '1px solid var(--border)',
-          width: 'fit-content'
-        }}>
+        <div className="tx-tabs">
           <button
             onClick={() => switchTab('orders')}
             className={tab === 'orders' ? 'tab-btn tab-btn-active' : 'tab-btn'}
@@ -131,7 +140,49 @@ export default function OrderHistoryPage() {
           </button>
         </div>
 
-        {/* ORDERS TAB */}
+        {!user ? (
+          <div className="card" style={{ maxWidth: 520, margin: '32px auto', padding: '40px 24px', textAlign: 'center', background: '#FFF' }}>
+            <div style={{
+              width: 76,
+              height: 76,
+              margin: '0 auto 18px',
+              borderRadius: '50%',
+              background: '#FFF7ED',
+              color: '#F97316',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <FiLock size={36} />
+            </div>
+            <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px', color: '#0F172A' }}>
+              {tab === 'bookings' ? 'Log in to see your reservations' : 'Log in to see your orders'}
+            </h3>
+            <p style={{ color: '#64748B', fontSize: 14, margin: '0 0 24px' }}>
+              {tab === 'bookings'
+                ? 'Sign in to view, manage or cancel your table bookings.'
+                : 'Sign in to track your live food deliveries and order history.'}
+            </p>
+            <button
+              onClick={() => navigate('/login', { state: { from: locationObj } })}
+              className="btn btn-primary btn-lg"
+              style={{
+                width: '100%',
+                maxWidth: 280,
+                margin: '0 auto',
+                height: 48,
+                borderRadius: 12,
+                fontSize: 15,
+                fontWeight: 700,
+                background: '#F97316'
+              }}
+            >
+              Log in / Sign up
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* ORDERS TAB */}
         {tab === 'orders' && (
           loadingOrders ? (
             <div style={{ padding: '60px 0', textAlign: 'center' }}>
@@ -139,35 +190,35 @@ export default function OrderHistoryPage() {
             </div>
           ) : orders.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">📦</div>
+              <div className="empty-state-icon"><FiPackage size={52} /></div>
               <h3>No orders yet!</h3>
               <p>Start exploring restaurants/Stores and place your first order.</p>
               <Link to="/restaurants" className="btn btn-primary" style={{ marginTop: 24 }}>Browse Restaurants</Link>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="tx-history-list">
               {orders.map(order => {
                 const st = ORDER_STATUS[order.status] || ORDER_STATUS.pending;
                 return (
                   <div key={order._id} className="card" style={{ padding: 20, cursor: 'pointer', transition: 'transform 0.2s' }} onClick={() => navigate(`/orders/${order._id}/track`)} onMouseEnter={e => e.currentTarget.style.transform='scale(1.01)'} onMouseLeave={e => e.currentTarget.style.transform='none'}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                    <div className="tx-order-content">
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                           <div style={{ fontWeight: 700, fontSize: 16 }}>{order.restaurantName || order.restaurantId?.name || order.storeName || order.storeId?.name || 'JDkart Order'}</div>
-                          <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', background: st.bg, color: st.color }}>
+                          <span className="tx-status-badge" style={{ background: st.bg, color: st.color }}>
                             {order.status?.replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                        <div className="tx-order-items">
                           {order.items?.map(i => `${i.name} ×${i.quantity}`).join(' · ')}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                           {new Date(order.createdAt).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--primary)', marginBottom: 10 }}>₹{order.finalAmount}</div>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <div className="tx-order-price-actions">
+                        <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--primary)', marginBottom: 10, textAlign: 'right' }}>₹{order.finalAmount}</div>
+                        <div className="tx-order-actions">
                           {order.status === 'delivered' && !order.isReviewed ? (
                             <button className="btn btn-secondary btn-sm" onClick={(e) => {
                               e.stopPropagation();
@@ -213,18 +264,18 @@ export default function OrderHistoryPage() {
             </div>
           ) : bookings.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">🪑</div>
+              <div className="empty-state-icon"><FiGrid size={52} /></div>
               <h3>No table bookings yet!</h3>
               <p>Browse restaurants and book a table at your favourite spot.</p>
               <Link to="/restaurants" className="btn btn-primary" style={{ marginTop: 24 }}>Find a Restaurant</Link>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="tx-history-list">
               {bookings.map(b => {
                 const s = STATUS_STYLES[b.status] || STATUS_STYLES.pending;
                 return (
                   <div key={b._id} className="card" style={{ padding: 20 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                    <div className="tx-order-content">
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {/* Restaurant name */}
                         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
@@ -270,6 +321,8 @@ export default function OrderHistoryPage() {
               })}
             </div>
           )
+        )}
+          </>
         )}
       </div>
 

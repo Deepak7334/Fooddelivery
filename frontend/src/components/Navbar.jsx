@@ -2,64 +2,182 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { useTheme } from '../context/ThemeContext';
-import { FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiHome, FiList, FiCalendar, FiShoppingBag, FiSun, FiMoon } from 'react-icons/fi';
+import { 
+  FiBell, FiCalendar, FiChevronDown, FiGrid, 
+  FiLogOut, FiMapPin, FiPackage, FiSearch, FiSettings, 
+  FiShoppingBag, FiShoppingCart, FiUser, FiX
+} from 'react-icons/fi';
+import { MdOutlineRestaurant, MdOutlineStorefront, MdOutlineTableRestaurant } from 'react-icons/md';
 import NotificationBell from './NotificationBell';
+import { homeBanners } from './customerHomeDesign';
 import api from '../lib/api';
+
+const shortcuts = [
+  { label: 'Food', to: '/?view=food', icon: MdOutlineRestaurant },
+  { label: 'Grocery', to: '/stores', icon: FiShoppingCart },
+  { label: 'Restaurants', to: '/restaurants', icon: MdOutlineStorefront },
+  { label: 'Book a Table', to: '/booking', icon: MdOutlineTableRestaurant },
+];
+
+/**
+ * Deterministic color palette for customer email
+ */
+const getEmailAvatarColor = (str = '') => {
+  if (!str) return '#F97316';
+  let hash = 0;
+  const lower = str.trim().toLowerCase();
+  for (let i = 0; i < lower.length; i++) {
+    hash = lower.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const palette = [
+    '#F97316', // Foodhub Brand Orange
+    '#2563EB', // Blue
+    '#059669', // Emerald
+    '#7C3AED', // Violet
+    '#DB2777', // Pink
+    '#0891B2', // Cyan
+    '#D97706', // Amber
+    '#4F46E5', // Indigo
+    '#0D9488', // Teal
+    '#E11D48', // Rose
+  ];
+  return palette[Math.abs(hash) % palette.length];
+};
+
+const getAvatarInitial = (user) => {
+  if (!user) return 'U';
+  if (user.name && user.name.trim()) return user.name.trim().charAt(0).toUpperCase();
+  if (user.email && user.email.trim()) return user.email.trim().charAt(0).toUpperCase();
+  return 'U';
+};
+
+function NavbarUserAvatar({ user }) {
+  const [imgError, setImgError] = useState(false);
+  const [gravatarUrl, setGravatarUrl] = useState(null);
+  const [gravatarFailed, setGravatarFailed] = useState(false);
+
+  const realImage = user?.profileImage || user?.avatar || user?.photoURL;
+
+  useEffect(() => {
+    setImgError(false);
+    setGravatarFailed(false);
+
+    if (!realImage && user?.email && window.crypto?.subtle) {
+      let isMounted = true;
+      const calcGravatar = async () => {
+        try {
+          const buffer = new TextEncoder().encode(user.email.trim().toLowerCase());
+          const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          if (isMounted) {
+            setGravatarUrl(`https://www.gravatar.com/avatar/${hex}?d=404&s=84`);
+          }
+        } catch {
+          if (isMounted) setGravatarFailed(true);
+        }
+      };
+      calcGravatar();
+      return () => { isMounted = false; };
+    } else {
+      setGravatarUrl(null);
+    }
+  }, [realImage, user?.email]);
+
+  if (!user) {
+    return <FiUser size={20} />;
+  }
+
+  // 1. User uploaded real profile picture
+  if (realImage && !imgError) {
+    return (
+      <img
+        src={realImage}
+        alt={user.name || user.email || 'Profile'}
+        className="customer-navbar-avatar-img"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  // 2. Gravatar picture associated with email (if available)
+  if (gravatarUrl && !gravatarFailed) {
+    return (
+      <img
+        src={gravatarUrl}
+        alt={user.name || user.email || 'Profile'}
+        className="customer-navbar-avatar-img"
+        onError={() => setGravatarFailed(true)}
+      />
+    );
+  }
+
+  // 3. Deterministic colorful email initial badge
+  const bg = getEmailAvatarColor(user.email || user.name);
+  const initial = getAvatarInitial(user);
+
+  return (
+    <span
+      className="customer-navbar-avatar-badge"
+      style={{ backgroundColor: bg, color: '#FFFFFF' }}
+      title={user.name || user.email}
+    >
+      {initial}
+    </span>
+  );
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { totalItems } = useCart();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const params = new URLSearchParams(location.search);
+  const isHome = location.pathname === '/' && !params.has('view') && !params.has('category');
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [locName, setLocName] = useState(() => localStorage.getItem('jdkart_loc_name') || '');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  const handleLogout = () => { logout(); navigate('/'); setMobileOpen(false); };
-  const isActive = (path) => location.pathname === path;
-
-  useEffect(() => {
-    // eslint-disable-next-line
-    setMobileOpen(false); setDropdownOpen(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const searchParams = new URLSearchParams(location.search);
-  const vegOnly = searchParams.get('veg') === 'true';
-
-  const [scrolled, setScrolled] = useState(false);
-  const [locName, setLocName] = useState(localStorage.getItem('jdkart_loc_name') || '');
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(() => params.get('view') === 'search');
   const [navSearch, setNavSearch] = useState('');
   const [navSuggestions, setNavSuggestions] = useState([]);
   const [showNavSuggestions, setShowNavSuggestions] = useState(false);
+  const dropdownRef = useRef(null);
+  const searchBarRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const banner = isHome ? homeBanners[bannerIndex] : homeBanners[0];
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (!isActive('/')) {
-        setScrolled(window.scrollY > 120);
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [location.pathname]);
+    if (params.get('view') === 'search') {
+      setSearchOpen(true);
+      setTimeout(() => searchInputRef.current?.focus(), 60);
+    }
+  }, [location.search]);
 
   useEffect(() => {
-    const handleHeroVis = (e) => {
-      if (isActive('/')) {
-        setScrolled(Boolean(e.detail?.showSticky));
+    const handleOutsideClick = (e) => {
+      if (searchBarRef.current && !searchBarRef.current.contains(e.target)) {
+        if (!e.target.closest('.customer-header-search-btn')) {
+          setSearchOpen(false);
+          setShowNavSuggestions(false);
+        }
       }
     };
-    window.addEventListener('heroSearchVisibility', handleHeroVis);
-    return () => window.removeEventListener('heroSearchVisibility', handleHeroVis);
-  }, [location.pathname]);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSearchOpen(false);
+        setShowNavSuggestions(false);
+      }
+    };
+    if (searchOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [searchOpen]);
 
   useEffect(() => {
     if (!navSearch.trim()) {
@@ -69,466 +187,267 @@ export default function Navbar() {
     const timer = setTimeout(async () => {
       try {
         const res = await api.get(`/customer/search-suggestions?q=${encodeURIComponent(navSearch.trim())}`);
-        if (res.data.success) {
+        if (res.data?.success) {
           setNavSuggestions(res.data.suggestions || []);
+          setShowNavSuggestions(true);
         }
       } catch (err) {
-        console.error('Navbar search error:', err);
+        setNavSuggestions([]);
       }
-    }, 200);
+    }, 180);
     return () => clearTimeout(timer);
   }, [navSearch]);
+
+  const toggleSearch = () => {
+    setSearchOpen(prev => {
+      const next = !prev;
+      if (next) {
+        setTimeout(() => searchInputRef.current?.focus(), 60);
+      } else {
+        setShowNavSuggestions(false);
+      }
+      return next;
+    });
+  };
 
   const handleNavSearchSubmit = (e) => {
     e.preventDefault();
     if (!navSearch.trim()) return;
     setShowNavSuggestions(false);
+    setSearchOpen(false);
     navigate(`/restaurants?search=${encodeURIComponent(navSearch.trim())}`);
   };
 
+  const handleSelectSuggestion = (s) => {
+    setShowNavSuggestions(false);
+    setSearchOpen(false);
+    setNavSearch('');
+    if (s.itemType === 'food') navigate(`/food/${s._id}`);
+    else if (s.itemType === 'product') navigate(`/product/${s._id}`);
+    else if (s.itemType === 'restaurant') navigate(`/restaurants/${s._id}`);
+    else if (s.itemType === 'store') navigate(`/stores/${s._id}`);
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const hero = document.querySelector('.customer-hero-section');
+      const header = dropdownRef.current?.closest('.customer-header') || document.querySelector('.customer-header');
+      if (hero && header) {
+        const heroBottom = hero.getBoundingClientRect().bottom;
+        const headerBottom = header.offsetHeight;
+        // Navbar curves ONLY if hero has fully scrolled up behind the navbar
+        setIsScrolled(prev => {
+          if (prev) {
+            return heroBottom <= headerBottom + 10;
+          }
+          return heroBottom <= headerBottom;
+        });
+      } else {
+        setIsScrolled(window.scrollY > 40);
+      }
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [location.pathname, location.search]);
+
   useEffect(() => {
     const updateLoc = () => setLocName(localStorage.getItem('jdkart_loc_name') || '');
+    const updateBanner = event => setBannerIndex(event.detail);
     window.addEventListener('locationUpdated', updateLoc);
-    return () => window.removeEventListener('locationUpdated', updateLoc);
+    window.addEventListener('homeBannerChanged', updateBanner);
+    return () => {
+      window.removeEventListener('locationUpdated', updateLoc);
+      window.removeEventListener('homeBannerChanged', updateBanner);
+    };
   }, []);
 
-  const handleVegToggle = () => {
-    const params = new URLSearchParams(location.search);
-    params.set('veg', (!vegOnly).toString());
-    navigate(`${location.pathname}?${params.toString()}`);
-  };
+  useEffect(() => {
+    const closeMenu = event => {
+      if (!dropdownRef.current?.contains(event.target) || event.key === 'Escape') setDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', closeMenu);
+    document.addEventListener('keydown', closeMenu);
+    return () => {
+      document.removeEventListener('mousedown', closeMenu);
+      document.removeEventListener('keydown', closeMenu);
+    };
+  }, []);
 
-  const handleMobileSearch = (e) => {
-    e.preventDefault();
-    const val = e.target.search.value;
-    const params = new URLSearchParams(location.search);
-    if (val.trim()) params.set('search', val.trim());
-    else params.delete('search');
-    navigate(`/${location.pathname === '/' ? 'restaurants' : location.pathname.substring(1)}?${params.toString()}`);
+  const requestLocation = () => {
+    if (location.pathname === '/') window.dispatchEvent(new Event('requestLocationPrompt'));
+    else navigate('/?location=select');
   };
-
-  const showStickySearch = (
-    isActive('/') && scrolled
-  ) || (
-    (location.pathname.startsWith('/restaurants') || location.pathname.startsWith('/stores')) && 
-    (scrolled || searchParams.has('search'))
-  );
+  const dashboard = { admin: '/admin', sub_admin: '/admin', restaurant: '/restaurant', store_owner: '/store-owner', delivery: '/delivery' }[user?.role];
 
   return (
-    <>
-      <nav style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 500,
-        background: 'var(--bg-dark)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex', flexDirection: 'column',
-      }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '70px' }}>
-          {/* Logo */}
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 22, color: 'var(--primary)', textDecoration: 'none' }}>
-            <span>JD<span style={{ color: 'var(--text-primary)' }}>kart</span></span>
-          </Link>
+    <header className={`customer-header ${isHome ? 'customer-header-home' : ''} ${isHome && banner.dark ? 'customer-header-dark' : ''} ${isScrolled ? 'customer-header-curved' : ''}`}
+      style={{ '--header-color': isHome ? banner.chrome : '#ffffff', '--header-accent': banner.accent }}>
+      <div className="container customer-header-row">
+        <button className="customer-delivery-location" onClick={requestLocation} aria-label="Choose delivery location">
+          <span className="customer-location-icon"><FiMapPin size={21} /></span>
+          <span className="customer-address">
+            <span className="customer-delivering">DELIVERING TO</span>
+            <strong>{locName.replace(/^[📍\s]+/, '') || 'Select location'} <FiChevronDown size={18} /></strong>
+            <span className="customer-address-subtitle">{locName ? 'Your delivery location' : 'Showing all stores & restaurants'}</span>
+          </span>
+        </button>
 
-          {/* Desktop Nav */}
-          <div className="desktop-nav" style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '0 20px' }}>
-            {showStickySearch ? (
-              <div style={{ display: 'flex', width: '100%', maxWidth: 720, gap: 12, alignItems: 'center' }}>
-                <form onSubmit={handleNavSearchSubmit} className="search-form" style={{ flex: 1, margin: 0, padding: '4px 6px', position: 'relative' }}>
-                  <div 
-                    className="search-location" 
-                    onClick={() => window.dispatchEvent(new Event('requestLocationPrompt'))}
-                    style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                  >
-                    <span style={{ fontSize: 18, color: 'var(--primary)', marginRight: 8, display: 'flex' }}>📍</span>
-                    <input
-                      type="text"
-                      className="search-input-field"
-                      placeholder="Enter city or detect"
-                      value={locName ? locName.replace('📍 ', '') : ''}
-                      readOnly
-                      style={{ color: 'var(--text-primary)', padding: '10px 0', fontSize: 14, cursor: 'pointer', pointerEvents: 'none' }}
-                    />
-                  </div>
-                  <div className="search-input-wrap" style={{ position: 'relative' }}>
-                    <input
-                      name="search"
-                      className="search-input-field"
-                      placeholder="Search restaurants, foods, groceries…"
-                      value={navSearch}
-                      onChange={e => { setNavSearch(e.target.value); setShowNavSuggestions(true); }}
-                      onFocus={() => setShowNavSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowNavSuggestions(false), 200)}
-                      autoComplete="off"
-                      style={{ color: 'var(--text-primary)', padding: '10px 0', fontSize: 14 }}
-                    />
+        {/* Desktop Centre: Navigation Pills OR Search Bar when open */}
+        {searchOpen ? (
+          <div className="customer-header-search-container" ref={searchBarRef}>
+            <form className="customer-header-search-form" onSubmit={handleNavSearchSubmit}>
+              <FiSearch size={18} className="customer-header-search-icon" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="customer-header-search-input"
+                placeholder="Search food, groceries, restaurants…"
+                value={navSearch}
+                onChange={e => { setNavSearch(e.target.value); setShowNavSuggestions(true); }}
+                onFocus={() => { if (navSuggestions.length > 0) setShowNavSuggestions(true); }}
+                autoComplete="off"
+              />
+            </form>
 
-                    {showNavSuggestions && navSuggestions.length > 0 && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        minWidth: 320,
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 12,
-                        marginTop: 10,
-                        zIndex: 9999,
-                        boxShadow: '0 12px 36px rgba(0,0,0,0.4)',
-                        maxHeight: 360,
-                        overflowY: 'auto'
-                      }}>
-                        {navSuggestions.map((s, i) => (
-                          <div
-                            key={i}
-                            onMouseDown={() => {
-                              setNavSearch(s.name);
-                              setShowNavSuggestions(false);
-                              if (s.itemType === 'restaurant') navigate(`/restaurants/${s._id}`);
-                              else if (s.itemType === 'store') navigate(`/stores/${s._id}`);
-                              else if (s.itemType === 'food') navigate(`/food/${s._id}`);
-                              else if (s.itemType === 'product') navigate(`/product/${s._id}`);
-                            }}
-                            style={{
-                              padding: '12px 16px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 12,
-                              cursor: 'pointer',
-                              borderBottom: i < navSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
-                              transition: 'background 0.2s',
-                              textAlign: 'left'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-border)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                          >
-                            <div style={{ fontSize: 18 }}>
-                              {s.itemType === 'food' ? '🍽️' : s.itemType === 'product' ? '📦' : s.itemType === 'restaurant' ? '🏪' : '🛒'}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                                {s.itemType.charAt(0).toUpperCase() + s.itemType.slice(1)}
-                                {s.restaurantId?.name ? ` from ${s.restaurantId.name}` : s.storeId?.name ? ` from ${s.storeId.name}` : ''}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+            {showNavSuggestions && navSuggestions.length > 0 && (
+              <div className="customer-header-search-dropdown">
+                {navSuggestions.map((item, idx) => {
+                  const icon = item.itemType === 'food' ? '🍲' : item.itemType === 'product' ? '🛒' : item.itemType === 'restaurant' ? '🏪' : '🏬';
+                  const subtitle = item.restaurantId?.name 
+                    ? `Restaurant · ${item.restaurantId.name}` 
+                    : item.storeId?.name 
+                    ? `Store · ${item.storeId.name}` 
+                    : item.itemType.charAt(0).toUpperCase() + item.itemType.slice(1);
+                  return (
+                    <div
+                      key={idx}
+                      className="customer-header-search-item"
+                      onMouseDown={() => handleSelectSuggestion(item)}
+                    >
+                      <span className="customer-search-item-badge">{icon}</span>
+                      <div className="customer-search-item-info">
+                        <strong>{item.name}</strong>
+                        <small>{subtitle}</small>
                       </div>
-                    )}
-                  </div>
-                  <button type="submit" className="btn btn-primary search-submit-btn">
-                    Search
-                  </button>
-                </form>
-                
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: 4 }}>
-                <Link to="/" className={`btn btn-secondary btn-sm ${isActive('/') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Home</Link>
-                <Link to="/restaurants" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/restaurants') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Restaurants</Link>
-                <Link to="/stores" className={`btn btn-secondary btn-sm ${location.pathname.startsWith('/stores') ? 'nav-active' : ''}`} style={{ border: 'none', background: 'transparent' }}>Stores</Link>
-              </div>
-            )}
-          </div>
-
-          {/* Right side */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* Theme Toggle */}
-            <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: 'var(--glass)', color: 'var(--text-primary)', transition: 'var(--transition)', border: '1px solid var(--glass-border)', cursor: 'pointer' }} aria-label="Toggle theme">
-              {theme === 'dark' ? <FiSun size={18} /> : <FiMoon size={18} />}
-            </button>
-
-            {/* Notifications */}
-            {user && <NotificationBell />}
-
-            {/* Cart */}
-            <Link to="/cart" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: 'var(--glass)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', transition: 'var(--transition)' }}>
-              <FiShoppingCart size={18} />
-              {totalItems > 0 && (
-                <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--primary)', color: 'white', fontSize: 10, fontWeight: 700, width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {totalItems > 9 ? '9+' : totalItems}
-                </span>
-              )}
-            </Link>
-
-            {/* Desktop user dropdown */}
-            {user ? (
-              <div style={{ position: 'relative' }} ref={dropdownRef} className="desktop-nav">
-                <button onClick={() => setDropdownOpen(!dropdownOpen)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                  background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.2)',
-                  borderRadius: 100, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                }}>
-                  <FiUser size={16} color="var(--primary)" />
-                  {user.name ? user.name.split(' ')[0] : 'User'}
-                </button>
-                {dropdownOpen && (
-                  <div style={{
-                    position: 'absolute', top: '110%', right: 0,
-                    background: 'var(--bg-card)', border: '1px solid var(--glass-border)',
-                    borderRadius: 12, padding: 8, minWidth: 180, zIndex: 600,
-                    boxShadow: 'var(--shadow)',
-                  }}>
-                    <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <FiUser size={16} /> My Profile
-                    </Link>
-                    {user.role === 'customer' && (
-                      <>
-                        <Link to="/orders" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <FiPackage size={16} /> My Orders
-                        </Link>
-                        <Link to="/orders?tab=bookings" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <FiCalendar size={16} /> My Bookings
-                        </Link>
-                      </>
-                    )}
-                    {(user.role === 'admin' || user.role === 'sub_admin') && (
-                      <Link to="/admin" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        Admin Panel
-                      </Link>
-                    )}
-                    {user.role === 'store_owner' && (
-                      <Link to="/store-owner" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        Store Panel
-                      </Link>
-                    )}
-                    {user.role === 'restaurant' && (
-                      <Link to="/restaurant" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        Dashboard
-                      </Link>
-                    )}
-                    {user.role === 'delivery' && (
-                      <Link to="/delivery" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--text-secondary)', transition: 'var(--transition)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,87,34,0.08)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        Delivery Panel
-                      </Link>
-                    )}
-                    <div className="divider" style={{ margin: '6px 0' }} />
-                    <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, fontSize: 14, color: 'var(--danger)', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'var(--transition)' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(244,67,54,0.08)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <FiLogOut size={16} /> Logout
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link to="/login" className="btn btn-primary btn-sm desktop-nav">Sign In</Link>
-            )}
-
-            {/* Hamburger — mobile only */}
-            <button className="hamburger-btn" onClick={() => setMobileOpen(o => !o)} aria-label="Toggle menu">
-              {mobileOpen ? <FiX size={20} /> : <FiMenu size={20} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Extra (Search + Veg Toggle) */}
-        {showStickySearch && (
-          <div className="mobile-only" style={{ width: '100%', padding: '0 4px 4px 8px', display: 'flex' }}>
-            <div style={{ display: 'flex', width: '100%', gap: 4, alignItems: 'center' }}>
-              <form onSubmit={handleNavSearchSubmit} className="search-form" style={{ flex: 1, margin: 0, padding: '2px 4px', display: 'flex', alignItems: 'center', position: 'relative' }}>
-                <div 
-                  className="search-location" 
-                  onClick={() => window.dispatchEvent(new Event('requestLocationPrompt'))}
-                  style={{ display: 'flex', alignItems: 'center', padding: '0 4px', flex: '1 1 40px', minWidth: 0, borderRight: '1px solid var(--border)', cursor: 'pointer' }}
-                >
-                  <span style={{ fontSize: 12, color: 'var(--primary)', marginRight: 2, display: 'flex' }}>📍</span>
-                  <input
-                    type="text"
-                    className="search-input-field"
-                    placeholder="City"
-                    value={locName ? locName.replace('📍 ', '') : ''}
-                    readOnly
-                    style={{ pointerEvents: 'none', color: 'var(--text-primary)', padding: '4px 0', fontSize: 10, cursor: 'pointer', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', background: 'transparent', border: 'none', outline: 'none' }}
-                  />
-                </div>
-                <div className="search-input-wrap" style={{ display: 'flex', alignItems: 'center', padding: '0 4px', flex: '2 1 60px', minWidth: 0, position: 'relative' }}>
-                  <input
-                    name="search"
-                    className="search-input-field"
-                    placeholder="Search foods, groceries…"
-                    value={navSearch}
-                    onChange={e => { setNavSearch(e.target.value); setShowNavSuggestions(true); }}
-                    onFocus={() => setShowNavSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowNavSuggestions(false), 200)}
-                    autoComplete="off"
-                    style={{ color: 'var(--text-primary)', padding: '4px 0', fontSize: 11, width: '100%', background: 'transparent', border: 'none', outline: 'none' }}
-                  />
-
-                  {showNavSuggestions && navSuggestions.length > 0 && (
-                    <div style={{
-                      position: 'fixed',
-                      top: '110px',
-                      left: '12px',
-                      right: '12px',
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 12,
-                      zIndex: 9999,
-                      boxShadow: '0 12px 36px rgba(0,0,0,0.5)',
-                      maxHeight: 320,
-                      overflowY: 'auto'
-                    }}>
-                      {navSuggestions.map((s, i) => (
-                        <div
-                          key={i}
-                          onMouseDown={() => {
-                            setNavSearch(s.name);
-                            setShowNavSuggestions(false);
-                            if (s.itemType === 'restaurant') navigate(`/restaurants/${s._id}`);
-                            else if (s.itemType === 'store') navigate(`/stores/${s._id}`);
-                            else if (s.itemType === 'food') navigate(`/food/${s._id}`);
-                            else if (s.itemType === 'product') navigate(`/product/${s._id}`);
-                          }}
-                          style={{
-                            padding: '10px 14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            cursor: 'pointer',
-                            borderBottom: i < navSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
-                            textAlign: 'left'
-                          }}
-                        >
-                          <div style={{ fontSize: 18 }}>
-                            {s.itemType === 'food' ? '🍽️' : s.itemType === 'product' ? '📦' : s.itemType === 'restaurant' ? '🏪' : '🛒'}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                              {s.itemType.charAt(0).toUpperCase() + s.itemType.slice(1)}
-                              {s.restaurantId?.name ? ` from ${s.restaurantId.name}` : s.storeId?.name ? ` from ${s.storeId.name}` : ''}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
                     </div>
-                  )}
-                </div>
-                <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: 10, borderRadius: 100, flexShrink: 0, margin: 0 }}>
-                  Search
-                </button>
-              </form>
-              
-              
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* Adjust padding for the navbar since it's now taller on mobile */}
-      {location.pathname.startsWith('/restaurants') && (
-        <div className="mobile-only" style={{ paddingTop: 60 }} />
-      )}
-
-      {/* Mobile drawer overlay */}
-      {mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-            zIndex: 490, backdropFilter: 'blur(4px)',
-          }}
-        />
-      )}
-
-      {/* Mobile Drawer */}
-      <div style={{
-        position: 'fixed', top: 70, left: 0, right: 0, zIndex: 495,
-        background: 'var(--bg-card)',
-        borderBottom: '1px solid var(--border)',
-        padding: '12px 16px 20px',
-        transform: mobileOpen ? 'translateY(0)' : 'translateY(-110%)',
-        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
-          <Link to="/" onClick={() => setMobileOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 15, fontWeight: 600, color: isActive('/') ? 'var(--primary)' : 'var(--text-secondary)', background: isActive('/') ? 'rgba(255,87,34,0.08)' : 'transparent' }}>
-            <FiHome size={18} /> Home
-          </Link>
-          <Link to="/restaurants" onClick={() => setMobileOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 15, fontWeight: 600, color: location.pathname.startsWith('/restaurants') ? 'var(--primary)' : 'var(--text-secondary)', background: location.pathname.startsWith('/restaurants') ? 'rgba(255,87,34,0.08)' : 'transparent' }}>
-            <FiList size={18} /> Restaurants
-          </Link>
-          <Link to="/stores" onClick={() => setMobileOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 15, fontWeight: 600, color: location.pathname.startsWith('/stores') ? 'var(--primary)' : 'var(--text-secondary)', background: location.pathname.startsWith('/stores') ? 'rgba(255,87,34,0.08)' : 'transparent' }}>
-            <FiShoppingBag size={18} /> Stores
-          </Link>
-        </div>
-
-        <div className="divider" />
-
-        {user ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
-            <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
-              👋 {user.name || 'User'}
-            </div>
-            <Link to="/profile" onClick={() => setMobileOpen(false)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-              <FiUser size={16} /> My Profile
-            </Link>
-            {user.role === 'customer' && (
-              <>
-                <Link to="/orders" onClick={() => setMobileOpen(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                  <FiPackage size={16} /> My Orders
-                </Link>
-                <Link to="/orders?tab=bookings" onClick={() => setMobileOpen(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                  <FiCalendar size={16} /> My Bookings
-                </Link>
-              </>
+                  );
+                })}
+              </div>
             )}
-            {(user.role === 'admin' || user.role === 'sub_admin') && (
-              <Link to="/admin" onClick={() => setMobileOpen(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                Admin Panel
-              </Link>
-            )}
-            {user.role === 'store_owner' && (
-              <Link to="/store-owner" onClick={() => setMobileOpen(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                Store Panel
-              </Link>
-            )}
-            {user.role === 'restaurant' && (
-              <Link to="/restaurant" onClick={() => setMobileOpen(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                Dashboard
-              </Link>
-            )}
-            {user.role === 'delivery' && (
-              <Link to="/delivery" onClick={() => setMobileOpen(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                Delivery Panel
-              </Link>
-            )}
-            <button onClick={handleLogout}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, fontSize: 14, color: 'var(--danger)', background: 'transparent', width: '100%', border: 'none', cursor: 'pointer' }}>
-              <FiLogOut size={16} /> Logout
-            </button>
           </div>
         ) : (
-          <div style={{ padding: '8px 0' }}>
-            <Link to="/login" className="btn btn-primary btn-full" onClick={() => setMobileOpen(false)}>Sign In</Link>
-          </div>
+          <nav className="customer-header-center-nav" aria-label="Services navigation">
+            {shortcuts.map(({ label, to, icon: Icon }) => {
+              const isActive = 
+                label === 'Food' ? (location.pathname === '/' && (params.get('view') === 'food' || !params.has('view')) && !params.has('category')) :
+                label === 'Grocery' ? location.pathname.startsWith('/stores') :
+                label === 'Restaurants' ? (location.pathname.startsWith('/restaurants') && params.get('action') !== 'book') :
+                label === 'Book a Table' ? ((location.pathname.startsWith('/restaurants') && params.get('action') === 'book') || location.pathname.startsWith('/booking')) :
+                false;
+
+              return (
+                <Link 
+                  key={label} 
+                  to={to} 
+                  className={`customer-header-pill ${isActive ? 'active' : ''}`}
+                >
+                  <Icon size={17} />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
         )}
+
+        <div className="customer-header-actions">
+          {/* Desktop Search Button */}
+          <button 
+            type="button"
+            onClick={toggleSearch} 
+            className={`customer-round-button customer-header-search-btn ${searchOpen ? 'active' : ''}`} 
+            aria-label={searchOpen ? "Close search" : "Search"} 
+            title={searchOpen ? "Close search" : "Search food & grocery"}
+          >
+            {searchOpen ? <FiX size={19} /> : <FiSearch size={20} />}
+          </button>
+
+          {/* Desktop Cart Button with live count badge */}
+          <Link 
+            to="/cart" 
+            className="customer-round-button customer-header-cart-btn" 
+            aria-label="View Cart" 
+            title="View Cart"
+          >
+            <FiShoppingBag size={20} />
+            {totalItems > 0 && (
+              <span className="customer-cart-count">{totalItems > 9 ? '9+' : totalItems}</span>
+            )}
+          </Link>
+
+          {user ? (
+            <NotificationBell />
+          ) : (
+            <Link className="customer-round-button" to="/login" aria-label="Notifications" title="Notifications">
+              <FiBell size={21} />
+            </Link>
+          )}
+
+          <div className="customer-account-menu" ref={dropdownRef}>
+            <button 
+              className={`customer-round-button customer-header-avatar-btn ${user ? 'has-user' : ''}`} 
+              onClick={() => setDropdownOpen(!dropdownOpen)} 
+              aria-label="Account menu" 
+              aria-expanded={dropdownOpen}
+              title={user ? (user.name || user.email || 'My Account') : 'Account menu'}
+            >
+              <NavbarUserAvatar user={user} />
+            </button>
+            {dropdownOpen && (
+              <div className="customer-menu" onClick={() => setDropdownOpen(false)}>
+                {user && (
+                  <div className="customer-menu-user-header">
+                    <div className="customer-menu-user-avatar">
+                      <NavbarUserAvatar user={user} />
+                    </div>
+                    <div className="customer-menu-user-meta">
+                      <strong>{user.name || 'Customer'}</strong>
+                      {user.email && <span>{user.email}</span>}
+                    </div>
+                  </div>
+                )}
+                <Link to="/profile"><FiUser />{user ? 'My Profile' : 'Sign In / Profile'}</Link>
+                <Link to="/orders"><FiPackage />My Orders</Link>
+                <Link to="/orders?tab=bookings"><FiCalendar />My Bookings</Link>
+                <Link to="/offers"><FiGrid />Offers</Link>
+                {user && <Link to="/profile?tab=settings"><FiSettings />Settings</Link>}
+                {dashboard && <Link to={dashboard}><MdOutlineStorefront />Dashboard</Link>}
+                {user && <button onClick={() => { logout(); navigate('/'); }}><FiLogOut />Logout</button>}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </>
+
+      {isHome && (
+        <nav className="container customer-shortcuts" aria-label="Shop by service">
+          {shortcuts.map(({ label, to, icon: Icon }, index) => (
+            <Link 
+              key={label} 
+              to={to} 
+              className={`customer-shortcut ${index === bannerIndex && index < 3 ? 'selected' : ''}`}
+            >
+              <Icon size={16} />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
+    </header>
   );
 }

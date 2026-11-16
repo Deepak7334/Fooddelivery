@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { FiClock, FiStar, FiShoppingBag, FiTag, FiArrowRight, FiAlertCircle, FiCalendar, FiMinus, FiPlus } from 'react-icons/fi';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import './CustomerDetails.css';
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const p = 0.017453292519943295;
@@ -12,8 +13,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
   return 12742 * Math.asin(Math.sqrt(a));
 }
-// ... existing imports ...
-import { Link } from 'react-router-dom';
 
 export default function RestaurantDetailPage() {
   const { id } = useParams();
@@ -30,26 +29,23 @@ export default function RestaurantDetailPage() {
     api.get(`/customer/restaurants/${id}`)
       .then(res => {
         setRestaurant(res.data.restaurant);
-        
+
         const rawGrouped = res.data.menuGrouped || {};
         const cleanGrouped = {};
-        
+
         Object.keys(rawGrouped).forEach(key => {
           let norm = key.trim().toLowerCase();
-          
-          // Capitalize each word (e.g., "north indian" -> "North Indian")
           norm = norm.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-          
           if (!cleanGrouped[norm]) {
             cleanGrouped[norm] = [];
           }
           cleanGrouped[norm] = cleanGrouped[norm].concat(rawGrouped[key]);
         });
-        
+
         setMenuGrouped(cleanGrouped);
         const cats = Object.keys(cleanGrouped);
         if (cats.length) setActiveCategory(cats[0]);
-        
+
         const locStr = localStorage.getItem('jdkart_coords');
         const rLoc = res.data.restaurant?.location;
         const rLat = rLoc?.lat != null ? rLoc.lat : (rLoc?.coordinates ? rLoc.coordinates[1] : null);
@@ -89,96 +85,64 @@ export default function RestaurantDetailPage() {
   };
 
   if (loading) return <div style={{ padding: '120px 24px', textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto 16px' }} /></div>;
-  if (!restaurant) return <div className="empty-state" style={{ paddingTop: 120 }}><div className="empty-state-icon">❌</div><h3>Restaurant not found</h3></div>;
+  if (!restaurant) return <div className="empty-state" style={{ paddingTop: 120 }}><div className="empty-state-icon"><FiAlertCircle /></div><h3>Restaurant not found</h3></div>;
 
   const categories = Object.keys(menuGrouped);
   const cartCount = cartItems.filter(() => restaurantId === restaurant._id).reduce((s, item) => s + item.quantity, 0);
 
   return (
-    <div>
-      {/* Hero Banner */}
-      <div style={{ height: 280, position: 'relative', background: 'var(--bg-card2)', overflow: 'hidden' }}>
-        {restaurant.image ? (
-          <img loading="lazy" src={restaurant.image} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}></div>
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,15,26,1) 0%, rgba(15,15,26,0.3) 60%, transparent 100%)' }} />
-        <div className="container" style={{ position: 'absolute', bottom: 24, left: 0, right: 0 }}>
-          <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>{restaurant.name}</h1>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 14, color: 'var(--text-secondary)' }}>
-            <span>⭐ {restaurant.rating?.toFixed(1)} · {restaurant.totalRatings}+ ratings</span>
-            <span>🕐 {restaurant.deliveryTime}</span>
-            <span>₹{restaurant.deliveryFee} delivery</span>
-            <span style={{ color: restaurant.isOpen ? 'var(--success)' : 'var(--danger)' }}>
-              {restaurant.isOpen ? '🟢 Open' : '🔴 Closed'}
-            </span>
-            {restaurant.bookingEnabled && (
-              <button
-                onClick={() => navigate(`/booking/${restaurant._id}`)}
-                style={{
-                  padding: '6px 14px',
-                  background: 'rgba(34,197,94,0.1)',
-                  border: '1px solid rgba(34,197,94,0.3)',
-                  color: 'var(--success)',
-                  borderRadius: 20,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                🪑 Book Table
-              </button>
-            )}
+    <div className="customer-vendor-page">
+      <header className="cd-vendor-header">
+        <div className="container cd-vendor-summary">
+          <div className="cd-vendor-image">
+            {restaurant.image ? <img src={restaurant.image} alt={restaurant.name} /> : <FiShoppingBag aria-hidden="true" />}
           </div>
-          {restaurant.cuisine && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>{restaurant.cuisine.join(' • ')}</div>}
+          <div className="cd-vendor-info">
+            <h1>{restaurant.name}</h1>
+            {restaurant.cuisine && <p className="cd-vendor-cuisine">{restaurant.cuisine.join(' • ')}</p>}
+            <div className="cd-vendor-meta">
+              <span className="cd-rating">{restaurant.rating?.toFixed(1)} <FiStar /></span>
+              <span>{restaurant.totalRatings}+ ratings</span>
+              <span><FiClock /> {restaurant.deliveryTime}</span>
+              <span>₹{restaurant.deliveryFee} delivery</span>
+            </div>
+            <div className="cd-vendor-status-row">
+              <span className={`cd-status${restaurant.isOpen ? '' : ' is-closed'}`}>{restaurant.isOpen ? 'Open' : 'Closed'}</span>
+              {restaurant.bookingEnabled && <button className="cd-book-button" onClick={() => navigate(`/booking/${restaurant._id}`)}><FiCalendar /> Book Table</button>}
+            </div>
+          </div>
         </div>
-      </div>
-
+      </header>
       {!canDeliver && (
-        <div style={{ background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', padding: '16px 24px', textAlign: 'center', borderBottom: '1px solid rgba(244,67,54,0.2)' }}>
-          <strong>⚠️ Sorry, we can't reach you!</strong> You are {distance.toFixed(1)}km away. We only deliver within a 5km radius.
-        </div>
+        <div className="cd-delivery-warning"><FiAlertCircle /><span><strong>Sorry, we can't reach you!</strong> You are {distance.toFixed(1)}km away. We only deliver within a 5km radius.</span></div>
       )}
-
-      <div className="container restaurant-layout">
-        {/* Category Sidebar */}
-        <div className="restaurant-sidebar">
-          <div className="restaurant-sidebar-inner">
+      <div className="container cd-vendor-layout">
+        <aside className="cd-category-sidebar">
+          <nav className="cd-category-list" aria-label="Menu categories">
             {categories.map(cat => (
-              <button key={cat} onClick={() => { setActiveCategory(cat); document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
-                style={{ padding: '10px 14px', borderRadius: 10, background: activeCategory === cat ? 'rgba(255,87,34,0.1)' : 'transparent', border: activeCategory === cat ? '1px solid rgba(255,87,34,0.3)' : '1px solid transparent', color: activeCategory === cat ? 'var(--primary)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }}>
-                {cat}
-              </button>
+              <button key={cat} className={`cd-chip${activeCategory === cat ? ' is-selected' : ''}`} aria-pressed={activeCategory === cat} onClick={() => { setActiveCategory(cat); document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>{cat}</button>
             ))}
-          </div>
-        </div>
-
-        {/* Menu Items */}
-        <div className="restaurant-content">
+          </nav>
+        </aside>
+        <div className="cd-vendor-content">
           {categories.length === 0 ? (
             <div className="empty-state"><div className="empty-state-icon"></div><h3>Menu coming soon!</h3></div>
           ) : categories.map(cat => (
-            <div key={cat} id={`cat-${cat}`} style={{ marginBottom: 40 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>{cat}</h2>
-              <div className="items-grid-small">
+            <section key={cat} id={`cat-${cat}`} className="cd-menu-section">
+              <h2>{cat}</h2>
+              <div className="cd-item-grid">
                 {menuGrouped[cat].map(food => (
                   <FoodCard key={food._id} food={food} qty={getItemQty(food._id)} onAdd={() => handleAdd(food)}
-                    onBuy={() => { if (!user) { navigate('/login'); return; } handleAdd(food); navigate('/cart'); }} />
+                    onBuy={() => { handleAdd(food); navigate('/cart'); }} />
                 ))}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       </div>
-
-      {/* Sticky Cart Bar */}
       {cartCount > 0 && restaurantId === restaurant._id && (
-        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 300 }}>
-          <button onClick={() => navigate('/cart')} className="btn btn-primary btn-lg" style={{ boxShadow: '0 8px 32px rgba(255,87,34,0.5)', borderRadius: 100, minWidth: 280, justifyContent: 'space-between', animation: 'glow 2s infinite' }}>
-            <span>🛒 {cartCount} items</span>
-            <span>View Cart →</span>
-          </button>
+        <div className="cd-vendor-cart">
+          <button onClick={() => navigate('/cart')}><span><FiShoppingBag /> {cartCount} items</span><span>View Cart <FiArrowRight /></span></button>
         </div>
       )}
     </div>
@@ -207,81 +171,41 @@ function FoodCard({ food, qty, onAdd, onBuy }) {
     : 0;
 
   return (
-    <div className="item-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', transition: 'var(--transition)' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,87,34,0.25)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-      
-      <Link to={`/food/${food._id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
-        {/* Image */}
-        <div style={{ height: 130, borderRadius: 10, overflow: 'hidden', marginBottom: 10, background: 'var(--bg-dark)', position: 'relative' }}>
-          {food.image ? (
-            <img loading="lazy" src={food.image} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🍽️</div>
-          )}
-          <div style={{ position: 'absolute', top: 6, left: 6, width: 20, height: 20, background: '#fff', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${food.isVeg ? '#4CAF50' : '#F44336'}` }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: food.isVeg ? '#4CAF50' : '#F44336' }}></div>
+    <div className="cd-item-card">
+      <Link to={`/food/${food._id}`} className="cd-card-link">
+        <div className="cd-card-image">
+          {food.image ? <img loading="lazy" src={food.image} alt={food.name} /> : <div className="cd-image-placeholder"><FiShoppingBag /></div>}
+          <span className={`cd-veg-mark${food.isVeg ? '' : ' is-nonveg'}`} aria-label={food.isVeg ? 'Vegetarian' : 'Non-vegetarian'}><span /></span>
+          <div className="cd-card-badges">
+            {food.freeDelivery && <span className="cd-delivery-badge">Free Delivery</span>}
+            {food.offer ? <span className="cd-offer"><FiTag /> {food.offer}</span> : discount > 0 ? <span className="cd-discount">{discount}% off</span> : null}
           </div>
-            <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-              {food.freeDelivery && (
-                 <span style={{ background: 'linear-gradient(90deg, #ECFDF5 0%, #D1FAE5 100%)', color: '#059669', padding: '3px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}> Free Delivery</span>
-              )}
-              {food.offer ? (
-                <span style={{ background: 'linear-gradient(90deg, #F0F9FF 0%, #E0F2FE 100%)', color: '#0369A1', border: '1px dashed #7DD3FC', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>🏷️ {food.offer}</span>
-              ) : discount > 0 ? (
-                <span style={{ background: '#388E3C', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4 }}>{discount}% off</span>
-              ) : null}
-            </div>
         </div>
-
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{food.name}</div>
-        {food.orderCount > 0 && <div style={{ fontSize: 10, color: '#E53935', fontWeight: 700, marginBottom: 4 }}>🔥 Ordered {food.orderCount}+ times</div>}
-        {food.description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{food.description}</div>}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 10 }}>
-          {dPrice ? (
-            <>
-              <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{prefix}₹{dPrice}</span>
-              <span style={{ fontSize: 12, color: '#878787', textDecoration: 'line-through' }}>₹{pPrice}</span>
-            </>
-          ) : (
-            <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{prefix}₹{pPrice}</span>
-          )}
+        <div className="cd-card-info">
+          <h3>{food.name}</h3>
+          {food.orderCount > 0 && <div className="cd-order-count">Ordered {food.orderCount}+ times</div>}
+          {food.description && <p className="cd-card-description">{food.description}</p>}
+          <div className="cd-card-pricing">
+            {dPrice ? <><strong>{prefix}₹{dPrice}</strong><span className="cd-original-price">₹{pPrice}</span></> : <strong>{prefix}₹{pPrice}</strong>}
+          </div>
         </div>
       </Link>
-
-      {/* Add / Qty stepper */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+      <div className="cd-card-actions">
         {qty > 0 && !hasVariants ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, padding: '4px 8px', height: 36 }}>
-            <button onClick={() => updateQuantity(food._id, qty - 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>−</button>
-            <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
-            <button onClick={() => updateQuantity(food._id, qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
+          <div className="cd-card-quantity">
+            <button aria-label={`Remove one ${food.name}`} onClick={() => updateQuantity(food._id, qty - 1)}><FiMinus /></button>
+            <span>{qty}</span>
+            <button aria-label={`Add one ${food.name}`} onClick={() => updateQuantity(food._id, qty + 1)}><FiPlus /></button>
           </div>
         ) : hasVariants ? (
           <>
-            <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, color: 'var(--primary)', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, boxSizing: 'border-box' }}>
-              + Cart
-            </Link>
-            <Link to={`/food/${food._id}`} style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, boxSizing: 'border-box' }}>
-              Order
-            </Link>
+            <Link to={`/food/${food._id}`} className="cd-action-add">ADD</Link>
+            <Link to={`/food/${food._id}`} className="cd-action-primary">Order</Link>
           </>
         ) : (
-          <button
-            onClick={onAdd}
-            disabled={!food.isAvailable}
-            style={{ flex: 1, padding: '9px 0', background: food.isAvailable ? 'rgba(255,87,34,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${food.isAvailable ? 'rgba(255,87,34,0.3)' : 'var(--border)'}`, borderRadius: 8, color: food.isAvailable ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', height: 36 }}
-          >
-            {food.isAvailable ? '+ Cart' : 'Unavailable'}
-          </button>
+          <button onClick={onAdd} disabled={!food.isAvailable} className="cd-action-add">{food.isAvailable ? 'ADD' : 'Unavailable'}</button>
         )}
-        {!hasVariants && (
-          <button onClick={onBuy} disabled={!food.isAvailable}
-            style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: food.isAvailable ? 'pointer' : 'not-allowed', opacity: food.isAvailable ? 1 : 0.5, height: 36 }}>
-            Order
-          </button>
-        )}
+        {!hasVariants && <button onClick={onBuy} disabled={!food.isAvailable} className="cd-action-primary">Order</button>}
       </div>
     </div>
   );

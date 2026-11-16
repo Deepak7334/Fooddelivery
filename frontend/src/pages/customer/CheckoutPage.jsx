@@ -6,6 +6,8 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { getCurrentCoordinates, reverseGeocodeCoords } from '../../utils/geolocation';
 import { cleanUserName } from '../../utils/address';
+import { FiMapPin, FiPackage, FiCreditCard, FiEdit3, FiCheck } from 'react-icons/fi';
+import './CustomerTransactions.css';
 
 // ==========================================
 // 📍 DYNAMIC DELIVERY AREA SETTINGS
@@ -509,35 +511,36 @@ export default function CheckoutPage() {
   if (cartItems.length === 0) return null;
 
   return (
-    <div className="page-wrapper">
+    <div className="page-wrapper customer-transactions tx-checkout">
+      <header className="tx-page-header">
+        <div className="container tx-header-inner"><h1>Checkout</h1></div>
+      </header>
       <div className="container">
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 32 }}>
-          <span style={{ color: 'var(--primary)' }}>Checkout</span>
-        </h1>
-        <div className="cart-layout">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="tx-checkout-grid">
+          <div className="tx-checkout-details">
             {/* Delivery Address */}
-            <div className="card" style={{ padding: 24 }}>
+            <div className="card tx-section">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 17, margin: 0 }}> Delivery Address</h3>
+                <h3 className="tx-section-title" style={{ margin: 0 }}><FiMapPin size={18} /> Delivery Address</h3>
               </div>
 
               {!showNewAddressForm && savedAddresses.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                <div className="tx-address-grid">
                   {savedAddresses.map((addr, idx) => (
                     <div 
                       key={idx} 
                       onClick={() => setSelectedAddressIndex(idx)}
                       style={{ 
                         padding: 16, border: `2px solid ${selectedAddressIndex === idx ? 'var(--primary)' : 'var(--border)'}`, 
-                        borderRadius: 12, cursor: 'pointer', background: selectedAddressIndex === idx ? 'rgba(255,87,34,0.05)' : 'var(--bg-card)' 
+                        borderRadius: 12, cursor: 'pointer', background: selectedAddressIndex === idx ? '#FFF7ED' : 'var(--bg-card)' 
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 700, fontSize: 14 }}>
                             {addr.label ? addr.label.charAt(0).toUpperCase() + addr.label.slice(1).toLowerCase() : 'Other'}
                           </span>
+                          {selectedAddressIndex === idx && <span className="tx-selected-badge"><FiCheck size={11} /> Selected</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <button 
@@ -688,37 +691,23 @@ export default function CheckoutPage() {
             </div>
 
             {/* Special Instructions */}
-            <div className="card" style={{ padding: 24 }}>
-              <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}> Special Instructions</h3>
-              <textarea className="form-input" rows={2} placeholder="e.g. No onions, extra spicy..." value={instructions} onChange={e => setInstructions(e.target.value)} style={{ resize: 'none' }} />
+            <div className="card tx-section">
+              <h3 className="tx-section-title"><FiEdit3 size={18} /> Cooking & Delivery Notes</h3>
+              <textarea className="form-input" rows={2} placeholder="e.g. Less spicy, leave at door..." value={instructions} onChange={e => setInstructions(e.target.value)} style={{ resize: 'none' }} />
             </div>
 
             {/* Payment Method */}
-            <div className="card" style={{ padding: 24 }}>
-              <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 17 }}>Payment Method</h3>
+            <div className="card tx-section">
+              <h3 className="tx-section-title"><FiCreditCard size={18} /> Payment Method</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, background: 'rgba(255,87,34,0.08)', borderRadius: 12, border: '1.5px solid rgba(255,87,34,0.4)', cursor: 'pointer', transition: 'var(--transition)' }}>
-                  <input type="radio" name="payment" value="cod" checked={true} readOnly style={{ marginTop: 3, accentColor: 'var(--primary)' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)' }}>
-                      <span>💵</span> Cash on Delivery
+                <label className="tx-payment-option">
+                  <input type="radio" name="payment" value="cod" checked={true} readOnly />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      Cash on Delivery
+                      <span className="tx-selected-badge">Available & recommended</span>
                     </div>
-                    <div style={{
-                      marginTop: 10,
-                      padding: '10px 14px',
-                      background: 'rgba(34, 197, 94, 0.08)',
-                      border: '1px solid rgba(34, 197, 94, 0.25)',
-                      borderRadius: 10,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#232424'
-                    }}>
-                      <span style={{ fontSize: 16 }}></span>
-                      <span>Ap delivery boy ko Cash ya online payment kar skte hai (GPay / PhonePe / Paytm / QR Code)...</span>
-                    </div>
+                    <div className="tx-payment-note">Pay your delivery partner in cash or via GPay, PhonePe, Paytm or QR code when your order arrives.</div>
                   </div>
                 </label>
               </div>
@@ -726,12 +715,14 @@ export default function CheckoutPage() {
           </div>
 
           {/* Summary */}
-          <div className="card" style={{ padding: 24, position: 'sticky', top: 90 }}>
-            <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>Order Summary</h3>
+          <div className="tx-checkout-side">
+          <div className="card tx-checkout-summary tx-section">
+            <h3 className="tx-section-title"><FiPackage size={18} /> Order Items ({cartItems.length})</h3>
             {cartItems.map(item => (
-              <div key={item.foodId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                <span>{item.name} × {item.quantity}</span>
-                <span>₹{item.price * item.quantity}</span>
+              <div key={item.foodId} className="tx-checkout-item">
+                {item.image ? <img src={item.image} alt={item.name} /> : <span className="tx-item-placeholder"><FiPackage size={20} /></span>}
+                <span>{item.quantity}x {item.name}</span>
+                <strong>₹{item.price * item.quantity}</strong>
               </div>
             ))}
             <div className="divider" />
@@ -754,17 +745,20 @@ export default function CheckoutPage() {
                 ?? Festive Offer Applied! You saved ?{totalSavings} on this order!
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px dashed var(--border)', fontWeight: 800, fontSize: 18, marginBottom: 20 }}>
-              <span>Total</span>
+            <div className="tx-total-row">
+              <span>Total to Pay</span>
               <span style={{ color: 'var(--primary)' }}>₹{calculating ? '...' : total}</span>
             </div>
+          </div>
+          <div className="tx-checkout-action">
             <button 
               className="btn btn-primary btn-lg btn-full" 
               onClick={handlePlaceOrder}
               disabled={loading || calculating || cartItems.length === 0}
             >
-              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? ' Place Order' : paymentMethod === 'upi' ? `Proceed to UPI Payment · ₹${calculating ? '...' : total}` : ` Pay ₹${calculating ? '...' : total}`}
+              {loading ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Placing...</> : paymentMethod === 'cod' ? `Place Order (Cash on Delivery) · ₹${calculating ? '...' : total}` : paymentMethod === 'upi' ? `Proceed to UPI Payment · ₹${calculating ? '...' : total}` : ` Pay ₹${calculating ? '...' : total}`}
             </button>
+          </div>
           </div>
         </div>
       </div>
