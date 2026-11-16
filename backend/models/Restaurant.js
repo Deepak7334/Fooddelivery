@@ -102,6 +102,12 @@ restaurantSchema.add({
   bookingEnabled: {
     type: Boolean,
     default: true
+  },
+  // Default tables are seeded once; if the owner later removes every table we
+  // must not recreate them.
+  defaultTablesSeeded: {
+    type: Boolean,
+    default: false
   }
 });
 

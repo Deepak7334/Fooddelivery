@@ -11,6 +11,8 @@ import 'restaurant_details_screen.dart';
 import 'select_location_screen.dart';
 import 'table_booking_details_screen.dart';
 import 'table_booking_screen.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class TableBookingDiscoveryScreen extends StatefulWidget {
   const TableBookingDiscoveryScreen({Key? key}) : super(key: key);
@@ -65,8 +67,8 @@ class _TableBookingDiscoveryScreenState
     try {
       await LocationService.instance.init();
       final restaurants = await BookingService.instance.getBookableRestaurants(
-        lat: LocationService.instance.selectedLat,
-        lng: LocationService.instance.selectedLng,
+        lat: LocationService.instance.activeLat,
+        lng: LocationService.instance.activeLng,
       );
       final availability =
           await Future.wait(restaurants.map((r) => _safeAvailability(r.id)));
@@ -246,12 +248,12 @@ class _TableBookingDiscoveryScreenState
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFFF97316)))
           : _error != null && _restaurants.isEmpty
-              ? AppErrorState(message: _error!, onRetry: _load)
+              ? AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _load(); })
               : Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 980),
                     child: RefreshIndicator(
-                      onRefresh: _load,
+                      onRefresh: () { ApiClient.instance.clearCache(); return _load(); },
                       color: jdkartOrange,
                       child: CustomScrollView(
                         physics: const AlwaysScrollableScrollPhysics(
@@ -302,7 +304,9 @@ class _TableBookingDiscoveryScreenState
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                LocationService.instance.selectedAddress,
+                LocationService.instance.isLocationSet
+                    ? LocationService.instance.selectedAddress
+                    : 'Set your location to see nearby tables',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -738,7 +742,7 @@ class _TableBookingDiscoveryScreenState
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
-                        'Min order ₹${restaurant.minOrder}',
+                        'Min order ${formatPrice(restaurant.minOrder)}',
                         style: const TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
@@ -780,7 +784,7 @@ class _TableBookingDiscoveryScreenState
                                 restaurantDeliveryTime:
                                     restaurant.deliveryTime,
                                 restaurantDeliveryFee:
-                                    '₹${restaurant.deliveryFee}',
+                                    formatPrice(restaurant.deliveryFee),
                               ),
                             ),
                           ),

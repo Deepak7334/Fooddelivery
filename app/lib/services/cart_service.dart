@@ -86,9 +86,14 @@ class CartService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString('foodhub_cart');
       if (data != null) {
-        final list = jsonDecode(data) as List;
+        final decoded = jsonDecode(data);
+        if (decoded is! List) {
+          // Corrupt/older schema — clear rather than crash.
+          await prefs.remove('foodhub_cart');
+          return;
+        }
         _items.clear();
-        _items.addAll(list.map((i) => CartItem.fromJson(i)));
+        _items.addAll(decoded.map((i) => CartItem.fromJson(i)));
         if (_items.isEmpty) {
           _currentRestaurantId = null;
           _currentRestaurantName = null;
@@ -211,8 +216,8 @@ class CartService extends ChangeNotifier {
     refreshCharges();
   }
 
-  void updateQuantity(String id, int quantity) {
-    final index = _items.indexWhere((i) => i.id == id);
+  void updateQuantity(String id, int quantity, {String type = 'food'}) {
+    final index = _items.indexWhere((i) => i.id == id && i.type == type);
     if (index >= 0) {
       if (quantity <= 0) {
         _items.removeAt(index);

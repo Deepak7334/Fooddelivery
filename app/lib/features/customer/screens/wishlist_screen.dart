@@ -6,6 +6,8 @@ import '../../../models/restaurant_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({Key? key}) : super(key: key);
@@ -65,7 +67,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
           : _error != null && _restaurants.isEmpty
-              ? AppErrorState(message: _error!, onRetry: _loadFavorites)
+              ? AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _loadFavorites(); })
               : _restaurants.isEmpty
               ? Center(
                   child: Padding(
@@ -106,7 +108,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
                     ),
                   ),
                 )
-              : ListView.builder(
+              : RefreshIndicator(
+                  onRefresh: () { ApiClient.instance.clearCache(); return _loadFavorites(); },
+                  color: const Color(0xFFF97316),
+                  child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: _restaurants.length,
                   itemBuilder: (context, index) {
@@ -122,7 +128,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                             restaurantCuisine: rest.cuisine.isNotEmpty ? rest.cuisine.join(', ') : 'North Indian',
                             restaurantRating: rest.rating.toString(),
                             restaurantDeliveryTime: rest.deliveryTime,
-                            restaurantDeliveryFee: '₹${rest.deliveryFee}',
+                            restaurantDeliveryFee: formatPrice(rest.deliveryFee),
                           ),
                         ),
                       ),
@@ -232,6 +238,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       ),
                     );
                   },
+                ),
                 ),
     );
   }

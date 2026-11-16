@@ -61,11 +61,6 @@ body {
   margin: 0;
 }
 
-/* Offset for customer pages with fixed navbar */
-.customer-layout {
-  padding-top: 70px;
-}
-
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

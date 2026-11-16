@@ -524,7 +524,9 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
       
       createdOrders.push(order);
         // Increment orderCount for items
-        const groupItemIds = group.items.map(i => i.menuItemId);
+        const groupItemIds = group.items
+          .map(i => i.foodId || i.productId || i.menuItemId)
+          .filter(Boolean);
         if (group.vendorType === 'restaurant') {
           Food.updateMany({ _id: { $in: groupItemIds } }, { $inc: { orderCount: 1 } }).catch(console.error);
         } else {

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'cart_screen.dart';
 import '../../../services/restaurant_service.dart';
+import '../../../services/store_service.dart';
 import '../../../services/location_service.dart';
 import '../../../models/product_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class OffersScreen extends StatefulWidget {
   const OffersScreen({Key? key}) : super(key: key);
@@ -34,16 +37,32 @@ class _OffersScreenState extends State<OffersScreen> {
     });
     try {
       await LocationService.instance.init();
-      final foods = await RestaurantService.instance.getFoods(
-        lat: LocationService.instance.selectedLat,
-        lng: LocationService.instance.selectedLng,
-      );
+      final lat = LocationService.instance.activeLat;
+      final lng = LocationService.instance.activeLng;
+      final productsFuture = StoreService.instance
+          .getProducts()
+          .catchError((_) => <FoodItemModel>[]);
+      final nearbyFuture = lat != null && lng != null
+          ? StoreService.instance
+              .getStores(lat: lat, lng: lng)
+              .then<Set<String>?>((s) => s.map((e) => e.id).toSet())
+              .catchError((_) => <String>{})
+          : Future<Set<String>?>.value(null);
+      final foods = await RestaurantService.instance.getFoods(lat: lat, lng: lng);
+      final products = await productsFuture;
+      final nearbyStoreIds = await nearbyFuture;
+
+      bool discounted(FoodItemModel f) =>
+          f.discountedPrice != null && f.discountedPrice! < f.price;
+
       if (mounted) {
         setState(() {
-          _offers = foods
-              .where((f) =>
-                  f.discountedPrice != null && f.discountedPrice! < f.price)
-              .toList();
+          _offers = [
+            ...foods.where(discounted),
+            ...products.where((p) =>
+                discounted(p) &&
+                (nearbyStoreIds == null || nearbyStoreIds.contains(p.restaurantId))),
+          ];
           _isLoading = false;
         });
       }
@@ -70,7 +89,11 @@ class _OffersScreenState extends State<OffersScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
-          : ListView(
+          : RefreshIndicator(
+              onRefresh: () { ApiClient.instance.clearCache(); return _loadOffers(); },
+              color: jdkartOrange,
+              child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
                 // Banner
@@ -96,7 +119,7 @@ class _OffersScreenState extends State<OffersScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Fresh discounts from JDKart partner restaurants near you.',
+                        'Fresh discounts from JDKart partner restaurants and stores near you.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
                       ),
@@ -104,11 +127,11 @@ class _OffersScreenState extends State<OffersScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text('Featured Food Deals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Featured Deals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
 
                 if (_error != null && _offers.isEmpty)
-                  AppErrorState(message: _error!, onRetry: _loadOffers)
+                  AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _loadOffers(); })
                 else if (_offers.isEmpty)
                   const Center(
                     child: Padding(
@@ -117,8 +140,9 @@ class _OffersScreenState extends State<OffersScreen> {
                     ),
                   )
                 else
-                  ..._offers.map((food) => _buildOfferCard(food)).toList(),
+                  ..._offers.map((food) => _buildOfferCard(food)),
               ],
+            ),
             ),
     );
   }
@@ -134,14 +158,19 @@ class _OffersScreenState extends State<OffersScreen> {
     Future<bool> add() async {
       if (!vendorReady) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('This offer is not linked to a restaurant right now.'),
+          SnackBar(
+            content: Text(food.isProduct
+                ? 'This offer is not linked to a store right now.'
+                : 'This offer is not linked to a restaurant right now.'),
             backgroundColor: Colors.redAccent,
           ),
         );
         return false;
       }
-      return addToCart(context, food, vendorId: restId, vendorName: restName);
+      return addToCart(context, food,
+          vendorId: restId,
+          vendorName: restName,
+          type: food.isProduct ? 'product' : 'food');
     }
 
     return Container(
@@ -200,10 +229,10 @@ class _OffersScreenState extends State<OffersScreen> {
                     ),
                     Row(
                       children: [
-                        Text('₹$price', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: jdkartOrange)),
+                        Text(formatPrice(price), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: jdkartOrange)),
                         if (hasDiscount) ...[
                           const SizedBox(width: 6),
-                          Text('₹${food.price}', style: const TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.lineThrough)),
+                          Text(formatPrice(food.price), style: const TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.lineThrough)),
                         ],
                       ],
                     ),
@@ -252,7 +281,7 @@ class _OffersScreenState extends State<OffersScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('Order Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(food.isProduct ? 'Buy Now' : 'Order Now', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

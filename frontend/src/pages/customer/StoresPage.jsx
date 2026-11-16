@@ -6,18 +6,20 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useMemo } from 'react';
 import { getVendorDistance, formatDistance } from '../../utils/distance';
+import { FiClock, FiMapPin, FiPackage, FiSearch, FiShoppingBag, FiStar, FiX } from 'react-icons/fi';
+import './CustomerBrowse.css';
 
 const STORE_TYPES = [
-  { key: 'all',         label: 'All Stores',    icon: '🏬', color: '#9E9E9E' },
-  { key: 'grocery',     label: 'Grocery',        icon: '🛒', color: '#4CAF50' },
-  { key: 'pharmacy',    label: 'Pharmacy',       icon: '💊', color: '#2196F3' },
-  { key: 'electronics', label: 'Electronics',    icon: '📱', color: '#9C27B0' },
-  { key: 'beauty',      label: 'Beauty',         icon: '🧴', color: '#E91E63' },
-  { key: 'pets',        label: 'Pets',           icon: '🐾', color: '#FF9800' },
-  { key: 'bakery',      label: 'Bakery',         icon: '🥐', color: '#FF5722' },
-  { key: 'supermarket', label: 'Supermarket',    icon: '🏪', color: '#607D8B' },
-  { key: 'stationery',  label: 'Stationery',     icon: '📚', color: '#795548' },
-  { key: 'sports',      label: 'Sports',         icon: '⚽', color: '#00BCD4' },
+  { key: 'all', label: 'All Stores' },
+  { key: 'grocery', label: 'Grocery' },
+  { key: 'pharmacy', label: 'Pharmacy' },
+  { key: 'electronics', label: 'Electronics' },
+  { key: 'beauty', label: 'Beauty' },
+  { key: 'pets', label: 'Pets' },
+  { key: 'bakery', label: 'Bakery' },
+  { key: 'supermarket', label: 'Supermarket' },
+  { key: 'stationery', label: 'Stationery' },
+  { key: 'sports', label: 'Sports' },
 ];
 
 export default function StoresPage() {
@@ -123,162 +125,102 @@ export default function StoresPage() {
     return cartItems.find(i => i.product?._id === productId)?.quantity || 0;
   };
 
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const searchSuggestions = search.trim() ? [
-    ...products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => ({ ...p, itemType: 'product' })),
-    ...stores.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map(s => ({ ...s, itemType: 'store' }))
-  ].slice(0, 6) : [];
-
   const typeInfo = STORE_TYPES.find(t => t.key === type);
 
   return (
-    <div className="page-wrapper">
+    <div className="page-wrapper customer-browse">
       <div className="container">
-        {/* Header - Hidden when searching via URL */}
-        {!searchParams.has('search') ? (
-          <div style={{ marginBottom: 32 }}>
-            <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
-              All <span style={{ color: 'var(--primary)' }}>Stores</span>
-            </h1>
-            <p style={{ color: 'var(--text-secondary)' }}>Browse top shops and daily essentials</p>
-          </div>
-        ) : (
-          <div style={{ marginBottom: 32 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
-              Search Results for <span style={{ color: 'var(--primary)' }}>"{searchParams.get('search')}"</span>
-            </h1>
-          </div>
-        )}
+        <header className="browse-header">
+          {!searchParams.has('search') ? (
+            <>
+              <h1>Grocery & Stores</h1>
+              <p>Browse top shops and daily essentials</p>
+            </>
+          ) : (
+            <h1>Search Results for <span>"{searchParams.get('search')}"</span></h1>
+          )}
+        </header>
 
-        {/* Filters - Hidden when searching via URL to avoid redundant search boxes */}
-        {!searchParams.has('search') && (
-          <div style={{ display: 'flex', gap: 12, marginBottom: 32, flexWrap: 'wrap', alignItems: 'center' }}>
-            <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: 0, flex: '1 1 300px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'visible', position: 'relative' }}>
-              <input
-                name="search"
-                type="text"
-                value={search}
-                onChange={e => { setSearch(e.target.value); setShowSuggestions(true); }}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                placeholder="🔍 Search stores or products..."
-                style={{ flex: 1, padding: '12px 16px', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
-              />
-              <button type="submit" className="btn btn-primary btn-sm" style={{ margin: 6, borderRadius: 8 }}>Search</button>
+        <div className="browse-filters">
+          <select value={sort} onChange={e => setSort(e.target.value)} className={`browse-filter${sort ? ' is-active' : ''}`} aria-label="Sort stores">
+            <option value="">Sort by</option>
+            <option value="nearest">Nearest</option>
+            <option value="rating">Rating</option>
+            <option value="deliveryTime">Delivery Time</option>
+            <option value="deliveryFee">Delivery Fee</option>
+          </select>
+          <select value={type} onChange={e => setType(e.target.value)} className={`browse-filter${type && type !== 'all' ? ' is-active' : ''}`} aria-label="Store category">
+            <option value="">All Categories</option>
+            {STORE_TYPES.filter(t => t.key !== 'all').map(t => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
+          {type && type !== 'all' && (
+            <button onClick={() => setType('')} className="browse-filter is-active" aria-label={`Clear ${typeInfo?.label || type} filter`}>
+              {typeInfo?.label || type} <FiX size={14} aria-hidden="true" />
+            </button>
+          )}
+          {searchParams.has('search') && (
+            <button onClick={() => navigate('/stores')} className="browse-filter is-active" aria-label="Clear search">
+              Search: "{searchParams.get('search')}" <FiX size={14} aria-hidden="true" />
+            </button>
+          )}
+        </div>
 
-              {showSuggestions && searchSuggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, marginTop: 4, zIndex: 999, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                  {searchSuggestions.map((s, i) => (
-                    <div key={i} onClick={() => {
-                      setSearch(s.name);
-                      setShowSuggestions(false);
-                    }} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: i < searchSuggestions.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-border)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div style={{ fontSize: 18 }}>
-                        {s.itemType === 'product' ? '📦' : '🛒'}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                          {s.itemType.charAt(0).toUpperCase() + s.itemType.slice(1)} 
-                          {s.storeId?.name ? ` from ${s.storeId.name}` : ''}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </form>
-
-            <select value={sort} onChange={e => setSort(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
-              <option value="">Sort by</option>
-              <option value="nearest">📍 Nearest</option>
-              <option value="rating">⭐ Rating</option>
-              <option value="deliveryTime">Delivery Time</option>
-              <option value="deliveryFee">Delivery Fee</option>
-            </select>
-
-            <select value={type} onChange={e => setType(e.target.value)} className="form-input" style={{ width: 'auto', padding: '12px 16px' }}>
-              <option value="">All Categories</option>
-              {STORE_TYPES.filter(t => t.key !== 'all').map(t => (
-                <option key={t.key} value={t.key}>{t.icon} {t.label}</option>
-              ))}
-            </select>
-
-            {type && type !== 'all' && (
-              <button onClick={() => setType('')} className="btn btn-secondary btn-sm">
-                {typeInfo?.label || type} ✕
-              </button>
-            )}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* Stores Section */}
+        <div className="browse-sections">
           {(!searchParams.has('search') || stores.length > 0) && (
-            <div style={{ order: searchParams.has('search') ? 2 : 1, marginBottom: 40 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
-                {searchParams.has('search') ? 'Matching Stores' : searchParams.get('city') ? `Stores near ${searchParams.get('city')}` : searchParams.get('lat') ? `Stores near you` : 'Top Stores'}
-              </h2>
+            <section className="browse-section" style={{ order: searchParams.has('search') ? 2 : 1 }}>
+              <h2>{searchParams.has('search') ? 'Matching Stores' : searchParams.get('city') ? `Stores near ${searchParams.get('city')}` : searchParams.get('lat') ? 'Stores near you' : 'Top Stores'}</h2>
               {loading ? (
-                <div className="vendor-grid">
-                  {Array(3).fill(0).map((_, i) => <div key={i} style={{ height: 280, borderRadius: 16 }} className="shimmer" />)}
+                <div className="browse-vendor-grid" aria-label="Loading stores" aria-busy="true">
+                  {Array(3).fill(0).map((_, i) => <div key={i} className="shimmer browse-skeleton" />)}
                 </div>
               ) : stores.length === 0 ? (
                 searchParams.get('city') || searchParams.get('lat') ? (
-                  <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 80, marginBottom: 24 }}>😔</div>
-                    <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, marginBottom: 16 }}>
-                      "our service not started in your area yet !! soon we expand it in your area"
-                    </h2>
-                    <button className="btn btn-primary" style={{ marginTop: 24, padding: '12px 28px' }} onClick={() => {
+                  <div className="browse-empty">
+                    <FiMapPin size={40} aria-hidden="true" />
+                    <h2>No stores in your area yet</h2>
+                    <p>Our service is not available in your area yet. We hope to be there soon.</p>
+                    <button className="browse-primary" onClick={() => {
                       if (searchParams.get('lat')) localStorage.removeItem('jdkart_coords');
                       navigate('/stores');
-                    }}>
-                      Try Again
-                    </button>
+                    }}>Try Again</button>
                   </div>
                 ) : (
-                  <div className="empty-state">
-                    <p>No stores found</p>
-                  </div>
+                  <div className="browse-empty"><p>No stores found</p></div>
                 )
               ) : (
-                <div className="vendor-grid">
+                <div className="browse-vendor-grid">
                   {displayedStores.map(s => <StoreCard key={s._id} store={s} userCoords={userCoords} />)}
                 </div>
               )}
-            </div>
+            </section>
           )}
 
-          {/* Products Section */}
           {(products.length > 0 || !searchParams.has('search')) && (
-            <div style={{ order: searchParams.has('search') ? 1 : 2, marginBottom: 40 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
-                {searchParams.has('search') ? 'Matching Products' : 'Popular Products'}
-              </h2>
+            <section className="browse-section" style={{ order: searchParams.has('search') ? 1 : 2 }}>
+              <h2>{searchParams.has('search') ? 'Matching Products' : 'Popular Products'}</h2>
               {loading ? (
-                <div className="items-grid">
-                  {Array(6).fill(0).map((_, i) => <div key={i} style={{ height: 160, borderRadius: 16 }} className="shimmer" />)}
+                <div className="browse-product-grid" aria-label="Loading products" aria-busy="true">
+                  {Array(6).fill(0).map((_, i) => <div key={i} className="shimmer browse-skeleton" />)}
                 </div>
               ) : products.length === 0 ? (
-                <div className="empty-state">
-                  <p>No products found</p>
-                </div>
+                <div className="browse-empty"><p>No products found</p></div>
               ) : (
-                <div className="items-grid">
+                <div className="browse-product-grid">
                   {products.map(product => (
-                    <HomeProductCard 
-                      key={product._id} 
-                      product={product} 
+                    <HomeProductCard
+                      key={product._id}
+                      product={product}
                       qty={getProductQty(product._id, product.storeId?._id)}
                       onAdd={() => handleAddProduct(product)}
                       onUpdate={(qty) => updateQuantity(product._id, qty)}
-                      onBuy={() => { if (!user) { navigate('/login'); return; } handleAddProduct(product); navigate('/cart'); }}
+                      onBuy={() => { handleAddProduct(product); navigate('/cart'); }}
                     />
                   ))}
                 </div>
               )}
-            </div>
+            </section>
           )}
         </div>
       </div>
@@ -292,28 +234,24 @@ function StoreCard({ store, userCoords }) {
   const distStr = formatDistance(dist);
   
   return (
-    <Link to={`/stores/${store._id}`} className="card" style={{ textDecoration: 'none' }}>
-      <div style={{ position: 'relative', height: 170, background: 'var(--bg-card2)', overflow: 'hidden' }}>
+    <Link to={`/stores/${store._id}`} className="browse-vendor-card">
+      <div className="browse-vendor-image">
         {store.image ? (
-          <img loading="lazy" src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img loading="lazy" src={store.image} alt={store.name} />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>{typeInfo.icon || '🏬'}</div>
+          <div className="browse-image-placeholder"><FiShoppingBag size={38} aria-hidden="true" /></div>
         )}
-        {!store.isOpen && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>Closed</div>}
-        <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.7)', padding: '3px 10px', borderRadius: 100, fontSize: 12 }}>
-          <span style={{ color: '#FFD700' }}>⭐ {store.rating?.toFixed(1)}</span>
-        </div>
-        {distStr && (
-          <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', padding: '3px 9px', borderRadius: 100, fontSize: 11, color: '#fff', fontWeight: 600 }}>
-            📍 {distStr}
-          </div>
-        )}
+        {!store.isOpen && <div className="browse-closed">Closed</div>}
+        {distStr && <span className="browse-distance"><FiMapPin size={12} aria-hidden="true" /> {distStr}</span>}
       </div>
-      <div style={{ padding: '14px 16px' }}>
-        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{store.name}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{typeInfo.label}</div>
-        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
-          <span>⏱ {store.deliveryTime}</span>
+      <div className="browse-vendor-details">
+        <div className="browse-vendor-title">
+          <h3>{store.name}</h3>
+          <span className="browse-rating"><FiStar size={12} aria-hidden="true" /> {store.rating?.toFixed(1)}</span>
+        </div>
+        <p>{typeInfo.label}</p>
+        <div className="browse-vendor-meta">
+          <span><FiClock size={13} aria-hidden="true" /> {store.deliveryTime}</span>
           <span>₹{store.deliveryFee} delivery</span>
           {store.minOrder > 0 && <span>Min ₹{store.minOrder}</span>}
         </div>
@@ -328,55 +266,41 @@ function HomeProductCard({ product, qty, onAdd, onUpdate, onBuy }) {
     : 0;
 
   return (
-    <div className="card item-card" style={{ display: 'flex', flexDirection: 'column', padding: 14 }}>
-      <Link to={`/product/${product._id}`} className="item-link" style={{ display: 'flex', gap: 14, marginBottom: 14, textDecoration: 'none', color: 'inherit' }}>
-        <div className="item-text" style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-            <span style={{ fontSize: 10, background: 'rgba(33,150,243,0.1)', color: '#2196F3', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
-              Store Product
-            </span>
-            {discount > 0 && <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 700 }}>★ -{discount}% OFF</span>}
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{product.name}</div>
-          {product.storeId && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>from {product.storeId.name}</div>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {product.discountedPrice ? (
-              <>
-                <span style={{ fontWeight: 800, fontSize: 15 }}>₹{product.discountedPrice}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{product.price}</span>
-              </>
-            ) : <span style={{ fontWeight: 800, fontSize: 15 }}>₹{product.price}</span>}
-          </div>
-        </div>
-        <div className="item-img" style={{ width: 90, height: 80, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
+    <article className="browse-product-card">
+      <Link to={`/product/${product._id}`} className="browse-product-link">
+        <div className="browse-product-image">
           {product.image ? (
-            <img loading="lazy" src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" src={product.image} alt={product.name} />
           ) : (
-            <div style={{ width: '100%', height: '100%', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>
+            <div className="browse-image-placeholder"><FiPackage size={30} aria-hidden="true" /></div>
           )}
+          {discount > 0 && <span className="browse-discount">{discount}% OFF</span>}
+        </div>
+        <div className="browse-product-details">
+          <div className="browse-badges"><span className="browse-chip">Store Product</span></div>
+          <h3>{product.name}</h3>
+          {product.storeId && <p className="browse-product-vendor">from {product.storeId.name}</p>}
+          <div className="browse-price">
+            {product.discountedPrice ? (
+              <><strong>₹{product.discountedPrice}</strong><del>₹{product.price}</del></>
+            ) : <strong>₹{product.price}</strong>}
+          </div>
         </div>
       </Link>
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+      <div className="browse-product-actions">
         {qty > 0 ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,87,34,0.1)', border: '1px solid rgba(255,87,34,0.3)', borderRadius: 8, padding: '4px 8px', height: 36 }}>
-            <button onClick={() => onUpdate(qty - 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>−</button>
-            <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
-            <button onClick={() => onUpdate(qty + 1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 20, cursor: 'pointer', fontWeight: 700, width: 28, height: 28 }}>+</button>
+          <div className="browse-quantity">
+            <button onClick={() => onUpdate(qty - 1)} aria-label={`Remove one ${product.name}`}>−</button>
+            <span>{qty}</span>
+            <button onClick={() => onUpdate(qty + 1)} aria-label={`Add one ${product.name}`}>+</button>
           </div>
         ) : (
-          <button
-            onClick={onAdd}
-            disabled={!product.isAvailable}
-            style={{ flex: 1, padding: '9px 0', background: product.isAvailable ? 'rgba(255,87,34,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${product.isAvailable ? 'rgba(255,87,34,0.3)' : 'var(--border)'}`, borderRadius: 8, color: product.isAvailable ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: product.isAvailable ? 'pointer' : 'not-allowed', height: 36 }}
-          >
-            {product.isAvailable ? '+ Cart' : 'Unavailable'}
+          <button onClick={onAdd} disabled={!product.isAvailable} className="browse-add">
+            {product.isAvailable ? 'ADD' : 'Unavailable'}
           </button>
         )}
-        <button onClick={onBuy} disabled={!product.isAvailable}
-          style={{ flex: 1, padding: '9px 0', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 700, fontSize: 13, cursor: product.isAvailable ? 'pointer' : 'not-allowed', opacity: product.isAvailable ? 1 : 0.5, height: 36 }}>
-          Buy
-        </button>
+        <button onClick={onBuy} disabled={!product.isAvailable} className="browse-buy">Buy</button>
       </div>
-    </div>
+    </article>
   );
 }

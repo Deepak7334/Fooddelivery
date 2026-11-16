@@ -32,6 +32,16 @@ class FavoritesService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Wipe saved favourites — called on logout so the next account starts clean.
+  Future<void> clear() async {
+    _ids.clear();
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefKey);
+    } catch (_) {}
+  }
+
   Future<void> toggle(String restaurantId) async {
     if (restaurantId.isEmpty) return;
     if (_ids.contains(restaurantId)) {

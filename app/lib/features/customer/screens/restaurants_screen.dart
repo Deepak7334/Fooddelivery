@@ -6,6 +6,8 @@ import '../../../models/restaurant_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class RestaurantsScreen extends StatefulWidget {
   const RestaurantsScreen({Key? key}) : super(key: key);
@@ -34,8 +36,8 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
     try {
       await LocationService.instance.init();
       final list = await RestaurantService.instance.getRestaurants(
-        lat: LocationService.instance.selectedLat,
-        lng: LocationService.instance.selectedLng,
+        lat: LocationService.instance.activeLat,
+        lng: LocationService.instance.activeLng,
       );
       if (mounted) {
         setState(() {
@@ -67,7 +69,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: jdkartOrange))
           : _error != null && _restaurants.isEmpty
-              ? AppErrorState(message: _error!, onRetry: _fetchRestaurants)
+              ? AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _fetchRestaurants(); })
               : _restaurants.isEmpty
               ? Center(
                   child: Column(
@@ -87,16 +89,19 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                       ),
                       const SizedBox(height: 8),
                       TextButton.icon(
-                        onPressed: _fetchRestaurants,
+                        onPressed: () { ApiClient.instance.clearCache(); _fetchRestaurants(); },
                         icon: const Icon(Icons.refresh),
                         label: const Text('Retry'),
                       )
                     ],
                   ),
                 )
-              : ListView.builder(
+              : RefreshIndicator(
+                  onRefresh: () { ApiClient.instance.clearCache(); return _fetchRestaurants(); },
+                  color: jdkartOrange,
+                  child: ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  physics: const BouncingScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   itemCount: _restaurants.length,
                   itemBuilder: (context, index) {
                     final res = _restaurants[index];
@@ -113,7 +118,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                             restaurantCuisine: cuisines,
                             restaurantRating: res.rating.toStringAsFixed(1),
                             restaurantDeliveryTime: res.deliveryTime,
-                            restaurantDeliveryFee: '₹${res.deliveryFee}',
+                            restaurantDeliveryFee: formatPrice(res.deliveryFee),
                           ),
                         ),
                       ),
@@ -188,7 +193,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                                       const SizedBox(width: 4),
                                       Text(res.deliveryTime, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                                       const SizedBox(width: 12),
-                                      Text('₹${res.minOrder} min order', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                                      Text('${formatPrice(res.minOrder)} min order', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                                     ],
                                   ),
                                 ],
@@ -199,6 +204,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                       ),
                     );
                   },
+                ),
                 ),
     );
   }

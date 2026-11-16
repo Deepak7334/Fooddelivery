@@ -120,11 +120,14 @@ class BookingService {
       final booking = data is Map && data['booking'] is Map
           ? Map<String, dynamic>.from(data['booking'] as Map)
           : <String, dynamic>{};
+      final ok = data is Map && data['success'] != false && booking.isNotEmpty;
       return {
-        'success': data is Map ? data['success'] != false : true,
+        'success': ok,
         'message': data is Map && data['message'] != null
             ? data['message'].toString()
-            : 'Reservation request sent to the restaurant.',
+            : ok
+                ? 'Reservation request sent to the restaurant.'
+                : 'Could not create the reservation. Please try again.',
         'booking': booking,
       };
     } on ApiException catch (e) {

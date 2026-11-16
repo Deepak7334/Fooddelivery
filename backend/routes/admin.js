@@ -275,8 +275,11 @@ router.put('/restaurants/:id/tables/:tableId', async (req, res) => {
 
 router.delete('/restaurants/:id/tables/:tableId', async (req, res) => {
   try {
-    const table = await Table.findOneAndDelete({ _id: req.params.tableId, restaurantId: req.params.id });
+    const table = await Table.findOne({ _id: req.params.tableId, restaurantId: req.params.id });
     if (!table) return res.status(404).json({ success: false, message: 'Table not found' });
+    // Record admin intent before deleting the last table, so defaults cannot return.
+    await Restaurant.updateOne({ _id: req.params.id }, { $set: { defaultTablesSeeded: true } });
+    await table.deleteOne();
     res.json({ success: true, message: 'Table removed' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

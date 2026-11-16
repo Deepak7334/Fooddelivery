@@ -10,6 +10,43 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
 };
 
+// Legacy numeric prefixes must not consume real initials such as "E. Kumar".
+const sanitizeName = (value) =>
+  typeof value === 'string' ? value.trim().replace(/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\s+/, '') : '';
+
+// `phone` is a unique sparse index, so the field must be absent (not '')
+// when a customer has no number. Blank strings collide across accounts.
+const normalizePhone = (value) => {
+  if (value === undefined || value === null) return null;
+  const digits = String(value)
+    .replace(/\D/g, '')
+    .replace(/^91(?=\d{10}$)/, '')
+    .replace(/^0(?=\d{10}$)/, '');
+  return digits.length > 0 ? digits : null;
+};
+
+// Never send credentials, OTPs or device tokens back to the client.
+const PRIVATE_USER_FIELDS = ['password', 'emailOtp', 'emailOtpExpiry', 'fcmToken', 'firebaseUid', '__v'];
+
+// Full profile (minus secrets) so web/app sessions keep role-specific fields
+// such as storeId, deliveryStatus or serviceAreaIds after a profile save.
+const publicUser = (user) => {
+  const obj = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+  PRIVATE_USER_FIELDS.forEach((field) => delete obj[field]);
+  return {
+    ...obj,
+    id: obj._id,
+    name: obj.name || '',
+    email: obj.email || '',
+    phone: obj.phone || '',
+    address: obj.address || '',
+    addresses: obj.addresses || [],
+    profileImage: obj.profileImage || '',
+    restaurantId: obj.restaurantId || null,
+    storeId: obj.storeId || null,
+  };
+};
+
 // @POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
@@ -22,7 +59,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashed, phone, address, role: 'customer' });
+    const user = await User.create({
+      name,
+      email,
+      password: hashed,
+      phone: normalizePhone(phone) || undefined,
+      address,
+      role: 'customer',
+    });
     
     // Notify admin about new registration
     const NotificationService = require('../services/notificationService');
@@ -270,8 +314,9 @@ router.post('/firebase-login', async (req, res) => {
       user = new User({
         email: verifiedEmail,
         name: verifiedName || 'JDkart Customer',
-        phone: phoneNumber || '',
-        firebaseUid: firebaseUid || '',
+        // Leave these unset rather than '' — both are unique sparse fields.
+        phone: normalizePhone(phoneNumber) || undefined,
+        firebaseUid: firebaseUid || undefined,
         role: 'customer',
         loginProvider,
       });
@@ -325,16 +370,7 @@ router.post('/firebase-login', async (req, res) => {
 router.get('/me', require('../middleware/auth').protect, async (req, res) => {
   res.json({
     success: true,
-    user: {
-      id: req.user._id,
-      name: (typeof req.user.name === 'string' ? req.user.name.replace(/^[0-9.eE+]+\s+/, '').trim() : req.user.name),
-      email: req.user.email,
-      role: req.user.role,
-      phone: req.user.phone,
-      address: req.user.address,
-      addresses: req.user.addresses || [],
-      restaurantId: req.user.restaurantId,
-    },
+    user: { ...publicUser(req.user), name: sanitizeName(req.user.name) },
   });
 });
 
@@ -342,77 +378,124 @@ router.get('/me', require('../middleware/auth').protect, async (req, res) => {
 router.put('/profile', require('../middleware/auth').protect, async (req, res) => {
   try {
     const { name, password, phone, address, profileImage, newAddress } = req.body;
-    
+
     // Fetch current user to compare
     const currentUser = await User.findById(req.user._id);
     if (!currentUser) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    let updateFields = {};
-    let changes = [];
+    const setFields = {};
+    const unsetFields = {};
+    const changes = [];
 
     // Compare fields and log changes
-    if (name && name !== currentUser.name) {
-      updateFields.name = typeof name === 'string' ? name.replace(/^[0-9.eE+]+\s+/, '').trim() : name;
-      changes.push({ field: 'Name', oldValue: currentUser.name || '', newValue: name });
+    if (name !== undefined) {
+      const cleanName = sanitizeName(name);
+      if (!cleanName) {
+        return res.status(400).json({ success: false, message: 'Name cannot be empty.' });
+      }
+      if (cleanName !== currentUser.name) {
+        setFields.name = cleanName;
+        changes.push({ field: 'Name', oldValue: currentUser.name || '', newValue: cleanName });
+      }
     }
-    if (phone !== undefined && phone !== currentUser.phone) {
-      updateFields.phone = phone;
-      changes.push({ field: 'Mobile Number', oldValue: currentUser.phone || '', newValue: phone });
+
+    const profilePhone = phone !== undefined
+      ? phone
+      : (!currentUser.phone ? newAddress?.alternatePhone : undefined);
+    if (profilePhone !== undefined) {
+      const cleanPhone = normalizePhone(profilePhone);
+      const hasPhoneInput = profilePhone != null && String(profilePhone).trim() !== '';
+      if (hasPhoneInput && !/^\d{10}$/.test(cleanPhone || '')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Enter a valid 10-digit mobile number.',
+        });
+      }
+      if (cleanPhone !== (currentUser.phone || null)) {
+        if (!cleanPhone) {
+          // Never persist '' — the unique sparse index only allows one blank.
+          unsetFields.phone = '';
+        } else {
+          const taken = await User.findOne({
+            phone: cleanPhone,
+            _id: { $ne: currentUser._id },
+          }).select('_id');
+          if (taken) {
+            return res.status(409).json({
+              success: false,
+              message: 'This mobile number is already linked to another account.',
+            });
+          }
+          setFields.phone = cleanPhone;
+        }
+        changes.push({
+          field: 'Mobile Number',
+          oldValue: currentUser.phone || '',
+          newValue: cleanPhone || '',
+        });
+      }
     }
+
     if (address !== undefined && address !== currentUser.address) {
-      updateFields.address = address;
+      setFields.address = address;
       changes.push({ field: 'Address', oldValue: currentUser.address || '', newValue: address });
     }
     if (profileImage !== undefined && profileImage !== currentUser.profileImage) {
-      updateFields.profileImage = profileImage;
+      setFields.profileImage = profileImage;
       // We don't strictly need to log base64 image strings in the audit log
     }
-    
+
     if (password) {
-      updateFields.password = await bcrypt.hash(password, 10);
+      setFields.password = await bcrypt.hash(password, 10);
     }
-    
+
     // Handle new address for multiple addresses
     if (newAddress) {
       currentUser.addresses.push(newAddress);
-      updateFields.addresses = currentUser.addresses;
-      if (!currentUser.phone && newAddress.alternatePhone) {
-        updateFields.phone = newAddress.alternatePhone;
-      }
+      setFields.addresses = currentUser.addresses;
     }
-    
+
     // Support full array replacement (for edit/delete)
     if (req.body.addresses !== undefined) {
-      updateFields.addresses = req.body.addresses;
+      setFields.addresses = req.body.addresses;
     }
 
-    // Perform update if there are changes
-    if (Object.keys(updateFields).length > 0) {
-      const updatedUser = await User.findByIdAndUpdate(
-        req.user._id,
-        updateFields,
-        { new: true }
-      ).select('-password');
+    const hasSet = Object.keys(setFields).length > 0;
+    const hasUnset = Object.keys(unsetFields).length > 0;
 
-      // Save audit log if non-password fields were changed
-      if (changes.length > 0) {
-        const ProfileAuditLog = require('../models/ProfileAuditLog');
-        await ProfileAuditLog.create({
-          userId: req.user._id,
-          changes
-        });
-      }
-
-      return res.json({ success: true, user: updatedUser });
+    if (!hasSet && !hasUnset) {
+      return res.json({ success: true, user: publicUser(currentUser) });
     }
 
-    // If nothing changed
-    const user = await User.findById(req.user._id).select('-password');
-    res.json({ success: true, user });
+    const update = {};
+    if (hasSet) update.$set = setFields;
+    if (hasUnset) update.$unset = unsetFields;
+
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, update, {
+      new: true,
+    }).select('-password');
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Save audit log if non-password fields were changed
+    if (changes.length > 0) {
+      const ProfileAuditLog = require('../models/ProfileAuditLog');
+      await ProfileAuditLog.create({ userId: req.user._id, changes });
+    }
+
+    return res.json({ success: true, user: publicUser(updatedUser) });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'That mobile number is already linked to another account.',
+      });
+    }
+    console.error('Profile update error:', err);
+    res.status(500).json({ success: false, message: 'Could not update your profile. Please try again.' });
   }
 });
 

@@ -28,6 +28,27 @@ class AddressService {
         .post(ApiConstants.addresses, address.toJson(), auth: true);
   }
 
+  /// Update an existing address. Empty fields are sent so they can be cleared.
+  Future<void> updateAddress(AddressModel address) async {
+    await ApiClient.instance.patch(
+      '${ApiConstants.addresses}/${address.id}',
+      body: {
+        'label': address.label,
+        'addressLine1': address.addressLine1,
+        'addressLine2': address.addressLine2,
+        'landmark': address.landmark,
+        'area': address.area,
+        'city': address.city,
+        'state': address.state,
+        'pincode': address.pincode,
+        if (address.latitude != null) 'latitude': address.latitude,
+        if (address.longitude != null) 'longitude': address.longitude,
+        if (address.isDefault) 'isDefault': true,
+      },
+      auth: true,
+    );
+  }
+
   /// Delete address
   Future<void> deleteAddress(String id) async {
     await ApiClient.instance

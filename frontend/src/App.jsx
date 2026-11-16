@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { FiMenu } from 'react-icons/fi';
 import NotificationBell from './components/NotificationBell';
@@ -10,6 +10,8 @@ import { Analytics } from '@vercel/analytics/react';
 // ── Layouts (eager — always needed) ──────────────────────────────────────────
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import BottomNav from './components/BottomNav';
+import './customer.css';
 import AdminSidebar from './components/AdminSidebar';
 import RestaurantSidebar from './components/RestaurantSidebar';
 import DeliveryLayout from './components/DeliveryLayout';
@@ -81,8 +83,9 @@ const PageLoader = () => (
 // ── Route guards ──────────────────────────────────────────────────────────────
 const PrivateRoute = ({ children, role }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <PageLoader />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   if (role) {
     if (role === 'admin' && user.role === 'sub_admin') {
       // sub_admin is allowed in admin routes
@@ -107,6 +110,7 @@ const CustomerLayout = ({ children }) => (
     <main>{children}</main>
     <ChatBox />
     <Footer />
+    <BottomNav />
   </div>
 );
 
@@ -165,16 +169,15 @@ export default function App() {
     <Suspense fallback={<PageLoader />}>
       <PostLoginPrompt />
       <Routes>
-        {/* Global Protected Routes */}
-        <Route path="/profile"               element={<PrivateRoute><CustomerLayout><ProfilePage /></CustomerLayout></PrivateRoute>} />
-        
-        {/* Customer Routes */}
+        {/* Customer Routes (Open to all visitors like the JDKart Mobile App) */}
+        <Route path="/profile"               element={<CustomerLayout><ProfilePage /></CustomerLayout>} />
         <Route path="/"                      element={<CustomerLayout><HomePage /></CustomerLayout>} />
         <Route path="/offers"                 element={<CustomerLayout><OffersPage /></CustomerLayout>} />
         <Route path="/restaurants"           element={<CustomerLayout><RestaurantsPage /></CustomerLayout>} />
         <Route path="/restaurants/:id"       element={<CustomerLayout><RestaurantDetailPage /></CustomerLayout>} />
         <Route path="/food/:id"              element={<CustomerLayout><FoodDetailPage /></CustomerLayout>} />
         <Route path="/product/:id"           element={<CustomerLayout><ProductDetailPage /></CustomerLayout>} />
+        <Route path="/booking"               element={<CustomerLayout><TableBookingPage /></CustomerLayout>} />
         <Route path="/booking/:restaurantId" element={<CustomerLayout><TableBookingPage /></CustomerLayout>} />
         <Route path="/stores"                element={<CustomerLayout><StoresPage /></CustomerLayout>} />
         <Route path="/stores/:id"            element={<CustomerLayout><StoreDetailPage /></CustomerLayout>} />
@@ -182,8 +185,8 @@ export default function App() {
         <Route path="/login"                 element={<AuthPage />} />
         <Route path="/checkout"              element={<PrivateRoute role="customer"><CustomerLayout><CheckoutPage /></CustomerLayout></PrivateRoute>} />
         <Route path="/payment/upi"           element={<PrivateRoute role="customer"><UpiPaymentPage /></PrivateRoute>} />
-        <Route path="/orders"                element={<PrivateRoute role="customer"><CustomerLayout><OrderHistoryPage /></CustomerLayout></PrivateRoute>} />
-        <Route path="/orders/:id/track"      element={<PrivateRoute role="customer"><CustomerLayout><OrderTrackingPage /></CustomerLayout></PrivateRoute>} />
+        <Route path="/orders"                element={<CustomerLayout><OrderHistoryPage /></CustomerLayout>} />
+        <Route path="/orders/:id/track"      element={<CustomerLayout><OrderTrackingPage /></CustomerLayout>} />
 
         {/* Admin Routes */}
         <Route path="/admin"                    element={<PrivateRoute role="admin"><AdminLayout><AdminDashboard /></AdminLayout></PrivateRoute>} />

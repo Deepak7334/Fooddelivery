@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/product_model.dart';
 import '../../../core/utils/cart_actions.dart';
+import '../../../core/utils/format.dart';
 import '../../../core/widgets/safe_image.dart';
 import 'cart_screen.dart';
 
@@ -22,10 +23,8 @@ class ProductDetailsScreen extends StatelessWidget {
     }
 
     final price = food.discountedPrice ?? food.price;
-    final hasDiscount = food.discountedPrice != null && food.discountedPrice! < food.price;
-    final num discountPercent = hasDiscount
-        ? (((food.price - food.discountedPrice!) / food.price) * 100).round()
-        : 0;
+    final hasDiscount = food.hasDiscount;
+    final discountPercent = food.discountPercent;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -137,13 +136,13 @@ class ProductDetailsScreen extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '₹$price',
+                        formatPrice(price),
                         style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
                       ),
                       if (hasDiscount) ...[
                         const SizedBox(width: 10),
                         Text(
-                          '₹${food.price}',
+                          formatPrice(food.price),
                           style: const TextStyle(fontSize: 16, color: Colors.grey, decoration: TextDecoration.lineThrough),
                         ),
                         const SizedBox(width: 10),
@@ -190,7 +189,9 @@ class ProductDetailsScreen extends StatelessWidget {
                   Text(
                     food.description.isNotEmpty
                         ? food.description
-                        : 'Authentic ${food.name} prepared fresh with top quality ingredients by ${food.restaurantName.isNotEmpty ? food.restaurantName : "our chefs"} on JDKart.',
+                        : food.isProduct
+                            ? 'Quality ${food.name} from ${food.restaurantName.isNotEmpty ? food.restaurantName : "a JDKart partner store"}, delivered to your door.'
+                            : 'Authentic ${food.name} prepared fresh with top quality ingredients by ${food.restaurantName.isNotEmpty ? food.restaurantName : "our chefs"} on JDKart.',
                     style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
                   ),
                   const SizedBox(height: 24),
@@ -206,8 +207,11 @@ class ProductDetailsScreen extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildBadge(Icons.shield_outlined, 'Hygienic'),
-                        _buildBadge(Icons.timer_outlined, 'Fresh Cooked'),
+                        _buildBadge(Icons.shield_outlined, food.isProduct ? 'Quality Checked' : 'Hygienic'),
+                        _buildBadge(
+                          food.isProduct ? Icons.local_shipping_outlined : Icons.timer_outlined,
+                          food.isProduct ? 'Fast Delivery' : 'Fresh Cooked',
+                        ),
                       ],
                     ),
                   ),
@@ -230,55 +234,84 @@ class ProductDetailsScreen extends StatelessWidget {
           ],
         ),
         child: SafeArea(
-          child: ElevatedButton(
-            onPressed: () async {
-              if (food.restaurantId.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('This item is not available from a vendor right now.'),
-                    backgroundColor: Colors.redAccent,
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _addToCart(context, food, goToCart: false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: jdkartOrange,
+                    backgroundColor: const Color(0xFFFFF7ED),
+                    side: BorderSide(color: jdkartOrange.withValues(alpha: 0.4)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                );
-                return;
-              }
-              final restId = food.restaurantId;
-              final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner';
-              final added = await addToCart(
-                context,
-                food,
-                vendorId: restId,
-                vendorName: restName,
-                type: food.isProduct ? 'product' : 'food',
-              );
-              if (!added || !context.mounted) return;
-
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Added "${food.name}" to cart!'),
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 2),
-                  backgroundColor: jdkartOrange,
-                  action: SnackBarAction(
-                    label: 'VIEW CART',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
-                    },
+                  child: const Text('ADD',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: () => _addToCart(context, food, goToCart: true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: jdkartOrange,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    '${food.isProduct ? 'Buy' : 'Order'} • ${formatPrice(price)}',
+                    style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: jdkartOrange,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text(
-              'Add to Cart • ₹$price',
-              style: const TextStyle(fontSize: 17, color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addToCart(BuildContext context, FoodItemModel food,
+      {required bool goToCart}) async {
+    const jdkartOrange = Color(0xFFF97316);
+    if (food.restaurantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This item is not available from a vendor right now.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    final added = await addToCart(
+      context,
+      food,
+      vendorId: food.restaurantId,
+      vendorName: food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner',
+      type: food.isProduct ? 'product' : 'food',
+    );
+    if (!added || !context.mounted) return;
+
+    if (goToCart) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+      return;
+    }
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added "${food.name}" to cart!'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        backgroundColor: jdkartOrange,
+        action: SnackBarAction(
+          label: 'VIEW CART',
+          textColor: Colors.white,
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+          },
         ),
       ),
     );

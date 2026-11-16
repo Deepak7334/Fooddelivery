@@ -103,4 +103,33 @@ class OrderService {
     await ApiClient.instance
         .patch('${ApiConstants.orders}/$orderId/cancel', auth: true);
   }
+
+  /// Submit a review for a delivered order. Throws [ApiException] on failure.
+  Future<void> rateOrder(
+    OrderModel order, {
+    required int vendorRating,
+    String vendorReview = '',
+    required int deliveryRating,
+    String deliveryReview = '',
+    Map<String, int> itemRatings = const {},
+  }) async {
+    await ApiClient.instance.post(
+      '${ApiConstants.orders}/${order.id}/rate',
+      {
+        'vendorRating': vendorRating,
+        'vendorReview': vendorReview,
+        'deliveryRating': deliveryRating,
+        'deliveryReview': deliveryReview,
+        'itemRatings': order.items
+            .where((i) => i.itemId.isNotEmpty)
+            .map((i) => {
+                  'itemId': i.itemId,
+                  'itemType': i.type,
+                  'rating': itemRatings[i.itemId] ?? vendorRating,
+                })
+            .toList(),
+      },
+      auth: true,
+    );
+  }
 }

@@ -3,19 +3,24 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'notifications_screen.dart';
-import 'restaurant_details_screen.dart';
 import 'restaurants_screen.dart';
 import 'food_items_screen.dart';
 import 'grocery_items_screen.dart';
 import 'table_booking_discovery_screen.dart';
 import 'select_location_screen.dart';
+import 'product_details_screen.dart';
+import 'cart_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/location_service.dart';
+import '../../../services/store_service.dart';
 import '../../../services/favorites_service.dart';
-import '../../../models/restaurant_model.dart';
+import '../../../models/product_model.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/cart_actions.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/safe_image.dart';
+import '../../../core/utils/format.dart';
+import '../../../core/network/api_client.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
@@ -26,15 +31,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _currentAddress = 'Akbarpur, Rohtas, Bihar';
-  String _currentLocationTitle = 'Home';
-  double _userLat = LocationService.defaultLat;
-  double _userLng = LocationService.defaultLng;
+  String _currentAddress = 'Tap to set your delivery location';
+  String _currentLocationTitle = 'Select location';
   final Color jdkartOrange = const Color(0xFFF97316);
 
-  List<RestaurantModel> _backendRestaurants = [];
+  List<FoodItemModel> _homeFoods = [];
+  List<FoodItemModel> _homeProducts = [];
   bool _isLoadingBackend = true;
   String? _backendError;
+
+  final ScrollController _scrollController = ScrollController();
+  int _gridItemCount = 10;
+  bool _isLoadingMore = false;
+  static const int _gridPageSize = 10;
 
   static const Duration _chromeSwap = Duration(milliseconds: 500);
   static const int _bannerLoopFactor = 200;
@@ -52,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     FavoritesService.instance.load();
     FavoritesService.instance.addListener(_onFavoritesChanged);
+    _scrollController.addListener(_onGridScroll);
 
     _shortcuts = [
       _HomeShortcut(label: 'Food', icon: Icons.restaurant_rounded, bannerIndex: 0, destination: () => const FoodItemsScreen()),
@@ -122,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _bannerTimer?.cancel();
     _bannerController.dispose();
+    _scrollController.dispose();
     FavoritesService.instance.removeListener(_onFavoritesChanged);
     super.dispose();
   }
@@ -190,18 +201,38 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       await LocationService.instance.init();
-      await LocationService.instance.ensureAutoLocation();
-      _currentLocationTitle = LocationService.instance.selectedTitle;
-      _currentAddress = LocationService.instance.selectedAddress;
-      _userLat = LocationService.instance.selectedLat;
-      _userLng = LocationService.instance.selectedLng;
+      if (LocationService.instance.isLocationSet) {
+        _currentLocationTitle = LocationService.instance.selectedTitle;
+        _currentAddress = LocationService.instance.selectedAddress;
+      } else {
+        _currentLocationTitle = 'Select location';
+        _currentAddress = 'Showing all stores & restaurants';
+      }
 
-      final restaurants = await RestaurantService.instance
-          .getRestaurants(lat: _userLat, lng: _userLng);
+      // Items and products are the main attraction on the home screen.
+      final lat = LocationService.instance.activeLat;
+      final lng = LocationService.instance.activeLng;
+      Object? foodsError;
+      Object? productsError;
+      final foodsFuture = RestaurantService.instance
+          .getFoods(lat: lat, lng: lng)
+          .catchError((Object e) {
+        foodsError = e;
+        return <FoodItemModel>[];
+      });
+      final productsFuture = _loadNearbyProducts(lat, lng).catchError((Object e) {
+        productsError = e;
+        return <FoodItemModel>[];
+      });
+      final foods = await foodsFuture;
+      final products = await productsFuture;
+      if (foodsError != null && productsError != null) throw foodsError!;
+
       if (mounted) {
         setState(() {
-          _backendRestaurants = restaurants;
-          _sortAndFilterNearMe();
+          _homeFoods = foods;
+          _homeProducts = products;
+          _gridItemCount = _gridPageSize;
           _isLoadingBackend = false;
         });
       }
@@ -210,24 +241,20 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _backendError = e is ApiException
               ? e.message
-              : 'Could not load restaurants. Please try again.';
+              : 'Could not load items. Please try again.';
           _isLoadingBackend = false;
         });
       }
     }
   }
 
-  void _sortAndFilterNearMe() {
-    _backendRestaurants.sort((a, b) {
-      final aLat = a.lat ?? LocationService.defaultLat;
-      final aLng = a.lng ?? LocationService.defaultLng;
-      final bLat = b.lat ?? LocationService.defaultLat;
-      final bLng = b.lng ?? LocationService.defaultLng;
-
-      final distA = LocationService.instance.calculateDistanceKm(_userLat, _userLng, aLat, aLng);
-      final distB = LocationService.instance.calculateDistanceKm(_userLat, _userLng, bLat, bLng);
-      return distA.compareTo(distB);
-    });
+  Future<List<FoodItemModel>> _loadNearbyProducts(double? lat, double? lng) async {
+    final productsFuture = StoreService.instance.getProducts();
+    if (lat == null || lng == null) return productsFuture;
+    final (products, stores) =
+        await (productsFuture, StoreService.instance.getStores(lat: lat, lng: lng)).wait;
+    final nearbyStoreIds = stores.map((s) => s.id).toSet();
+    return products.where((p) => nearbyStoreIds.contains(p.restaurantId)).toList();
   }
 
   // ── STICKY HEADER (top bar + category pills wrapper) ─────────────────────
@@ -268,29 +295,60 @@ class _HomeScreenState extends State<HomeScreen> {
     return false;
   }
 
+  // ── INFINITE SCROLL (reveals more grid items near the bottom) ─────────────
+  void _onGridScroll() {
+    if (_isLoadingMore || !_scrollController.hasClients) return;
+    final total = _homeFoods.length + _homeProducts.length;
+    if (_gridItemCount >= total || total == 0) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 400) {
+      setState(() => _isLoadingMore = true);
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (!mounted) return;
+        setState(() {
+          final next = _gridItemCount + _gridPageSize;
+          _gridItemCount = next < total ? next : total;
+          _isLoadingMore = false;
+        });
+      });
+    }
+  }
+
   Future<void> _openSelectLocationScreen() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SelectLocationScreen()),
     );
+    if (!mounted) return;
     if (result != null && result is Map<String, dynamic>) {
+      if (result['cleared'] == true) {
+        setState(() {
+          _currentLocationTitle = 'Select location';
+          _currentAddress = 'Tap to set your delivery location';
+        });
+        await _loadBackendData();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location removed — showing all items'),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
       final title = result['title'] ?? 'Selected Location';
       final address = result['address'] ?? '';
-      final double lat = (result['lat'] is num)
-          ? (result['lat'] as num).toDouble()
-          : LocationService.defaultLat;
-      final double lng = (result['lng'] is num)
-          ? (result['lng'] as num).toDouble()
-          : LocationService.defaultLng;
 
       setState(() {
         _currentLocationTitle = title;
         _currentAddress = address;
-        _userLat = lat;
-        _userLng = lng;
       });
 
-      // Refetch nearby restaurants for the newly selected location.
+      // Refetch items for the newly selected location.
       await _loadBackendData();
       if (!mounted) return;
 
@@ -308,6 +366,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final allItems = <FoodItemModel>[..._homeFoods, ..._homeProducts];
+    final visibleItems = allItems.take(_gridItemCount).toList();
+    final hasMore = _gridItemCount < allItems.length;
+
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.white,
@@ -316,11 +378,12 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildStickyHeader(),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: _loadBackendData,
+              onRefresh: () { ApiClient.instance.clearCache(); return _loadBackendData(); },
               color: jdkartOrange,
               child: NotificationListener<ScrollNotification>(
                 onNotification: _handleHomeScroll,
                 child: CustomScrollView(
+                  controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                   slivers: [
                     const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -330,45 +393,68 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // 4. Nearby Restaurants Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Nearby Restaurants',
-                      style: TextStyle(
-                        color: Color(0xFF1E293B),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const RestaurantsScreen()),
-                        );
-                      },
-                      child: Text(
-                        'See all →',
-                        style: TextStyle(
-                          color: jdkartOrange,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
+            // 4. Popular Food Items (featured highlight)
+            if (_homeFoods.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  title: 'Popular Items',
+                  onSeeAll: () => _openScreen(() => const FoodItemsScreen()),
                 ),
               ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _buildHomeItemCarousel(_homeFoods)),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
 
-            // 5. Restaurants List
+            // 5. All Items & Products — 2-column grid with infinite scroll
+            if (allItems.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  title: 'All Items',
+                  onSeeAll: () => _openScreen(() => const FoodItemsScreen()),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.62,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildGridItemCard(visibleItems[index]),
+                    childCount: visibleItems.length,
+                  ),
+                ),
+              ),
+              if (hasMore)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: _isLoadingMore
+                          ? SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: jdkartOrange,
+                              ),
+                            )
+                          : Text(
+                              'Scroll for more',
+                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                            ),
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            ],
+
+            // 6. Loading / error / empty states for items
             if (_isLoadingBackend)
               SliverToBoxAdapter(
                 child: Padding(
@@ -378,32 +464,54 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         CircularProgressIndicator(color: jdkartOrange),
                         const SizedBox(height: 12),
-                        const Text('Loading fresh restaurants...', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        const Text('Loading fresh items...', style: TextStyle(color: Colors.grey, fontSize: 13)),
                       ],
                     ),
                   ),
                 ),
               )
-            else if (_backendError != null && _backendRestaurants.isEmpty)
+            else if (_backendError != null && _homeFoods.isEmpty && _homeProducts.isEmpty)
               SliverToBoxAdapter(
                 child: AppErrorState(
                   message: _backendError!,
-                  onRetry: _loadBackendData,
+                  onRetry: () { ApiClient.instance.clearCache(); _loadBackendData(); },
                 ),
               )
-            else if (_backendRestaurants.isEmpty)
+            else if (_homeFoods.isEmpty && _homeProducts.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(40.0),
                   child: Center(
                     child: Column(
                       children: [
-                        Icon(Icons.storefront_outlined, size: 54, color: Colors.grey[400]),
+                        Icon(Icons.local_mall_outlined, size: 54, color: Colors.grey[400]),
                         const SizedBox(height: 12),
-                        const Text('No restaurants available right now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(
+                          LocationService.instance.isLocationSet
+                              ? 'Nothing delivers to this location yet'
+                              : 'No items available right now',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        if (LocationService.instance.isLocationSet) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Try another delivery location to see nearby restaurants and stores.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: _openSelectLocationScreen,
+                            icon: const Icon(Icons.location_on_outlined, color: Colors.white, size: 18),
+                            label: const Text('Change location',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(backgroundColor: jdkartOrange),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         TextButton.icon(
-                          onPressed: _loadBackendData,
+                          onPressed: () { ApiClient.instance.clearCache(); _loadBackendData(); },
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
                         ),
@@ -411,11 +519,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                sliver: _buildAllRestaurantsSliverList(),
               ),
 
                     // Bottom Spacing to clear floating navbar
@@ -754,314 +857,416 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  // ── REAL RESTAURANTS SLIVER LIST ──────────────────────────────────────────
-  Widget _buildAllRestaurantsSliverList() {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final res = _backendRestaurants[index];
-          final bool isFavorite = FavoritesService.instance.isFavorite(res.id);
-          final String cuisines = res.cuisine.join(' • ');
-          final restLat = res.lat ?? LocationService.defaultLat;
-          final restLng = res.lng ?? LocationService.defaultLng;
-          final distKm = LocationService.instance.calculateDistanceKm(_userLat, _userLng, restLat, restLng);
-          final distanceStr = LocationService.instance.formatDistance(distKm);
-
-          return GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => RestaurantDetailsScreen(
-                  restaurantId: res.id,
-                  restaurantName: res.name,
-                  restaurantImage: res.image,
-                  restaurantCuisine: cuisines,
-                  restaurantRating: res.rating.toStringAsFixed(1),
-                  restaurantDeliveryTime: res.deliveryTime,
-                  restaurantDeliveryFee: '₹${res.deliveryFee}',
-                ),
+  // ── HOME ITEM SECTIONS ────────────────────────────────────────────────────
+  Widget _buildSectionHeader({required String title, required VoidCallback onSeeAll}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF1E293B),
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+              letterSpacing: -0.2,
+            ),
+          ),
+          GestureDetector(
+            onTap: onSeeAll,
+            child: Text(
+              'See all →',
+              style: TextStyle(
+                color: jdkartOrange,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
               ),
             ),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 22.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.grey[200]!),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Restaurant Image Container
-                  Stack(
-                    children: [
-                      SafeImage(
-                        image: res.image,
-                        height: 180,
-                        width: double.infinity,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                        fit: BoxFit.cover,
-                        placeholderIcon: Icons.restaurant_rounded,
-                      ),
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.black.withValues(alpha: 0.35), Colors.transparent, Colors.black.withValues(alpha: 0.7)],
-                              stops: const [0.0, 0.4, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Top-right: Bookmark Heart Button
-                      Positioned(
-                        top: 10,
-                        right: 12,
-                        child: GestureDetector(
-                          onTap: () => FavoritesService.instance.toggle(res.id),
-                          child: Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: isFavorite ? Colors.red : Colors.black87,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Bottom-left: Offer Ribbon (only when free delivery)
-                      if (res.deliveryFee <= 0)
-                        Positioned(
-                          bottom: 10,
-                          left: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E3A8A),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.percent, color: Colors.white, size: 12),
-                                SizedBox(width: 4),
-                                Text(
-                                  'FREE DELIVERY',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      // Bottom-right: Delivery Time & Distance
-                      Positioned(
-                        bottom: 10,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.access_time_filled, size: 12, color: Colors.black87),
-                              const SizedBox(width: 4),
-                              Text(
-                                res.deliveryTime,
-                                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 11),
-                              ),
-                              const Text(' • ', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold, fontSize: 11)),
-                              Text(
-                                distanceStr,
-                                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Info Section
-                  Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                res.name,
-                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.black87),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF267E3E),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    res.rating.toStringAsFixed(1),
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  const Icon(Icons.star, color: Colors.white, size: 12),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                res.address.isNotEmpty ? res.address : cuisines,
-                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text(
-                              'Min ₹${res.minOrder}',
-                              style: TextStyle(color: Colors.grey[700], fontSize: 13, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10.0),
-                          child: Divider(height: 1, color: Colors.grey[200]),
-                        ),
-                        Row(
-                          children: [
-                            Icon(Icons.verified_rounded, size: 14, color: jdkartOrange),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Verified Kitchen • Live on JDKart',
-                                style: TextStyle(color: Colors.grey[700], fontSize: 12, fontWeight: FontWeight.w500),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: 36,
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => RestaurantDetailsScreen(
-                                          restaurantId: res.id,
-                                          restaurantName: res.name,
-                                          restaurantImage: res.image,
-                                          restaurantCuisine: cuisines,
-                                          restaurantRating: res.rating.toStringAsFixed(1),
-                                          restaurantDeliveryTime: res.deliveryTime,
-                                          restaurantDeliveryFee: '₹${res.deliveryFee}',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: jdkartOrange, width: 1.2),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  child: Text(
-                                    'View Menu',
-                                    style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: SizedBox(
-                                height: 36,
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => RestaurantDetailsScreen(
-                                          restaurantId: res.id,
-                                          restaurantName: res.name,
-                                          restaurantImage: res.image,
-                                          restaurantCuisine: cuisines,
-                                          restaurantRating: res.rating.toStringAsFixed(1),
-                                          restaurantDeliveryTime: res.deliveryTime,
-                                          restaurantDeliveryFee: '₹${res.deliveryFee}',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: jdkartOrange,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.bolt, size: 16),
-                                      SizedBox(width: 2),
-                                      Text(
-                                        'Order Now',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-        childCount: _backendRestaurants.length,
+          ),
+        ],
       ),
     );
   }
+
+  Widget _buildHomeItemCarousel(List<FoodItemModel> items) {
+    return SizedBox(
+      height: 212,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: items.length > 12 ? 12 : items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) => _buildHomeItemCard(items[index]),
+      ),
+    );
+  }
+
+  Widget _buildHomeItemCard(FoodItemModel item) {
+    final price = item.discountedPrice ?? item.price;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: item)),
+        );
+      },
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                SafeImage(
+                  image: item.image,
+                  height: 88,
+                  width: double.infinity,
+                  borderRadius: BorderRadius.circular(10),
+                  fit: BoxFit.cover,
+                ),
+                Positioned(
+                  top: 5,
+                  left: 5,
+                  child: Container(
+                    width: 13,
+                    height: 13,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: item.isVeg ? Colors.green : Colors.red,
+                        width: 1.4,
+                      ),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: item.isVeg ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (item.hasDiscount)
+                  Positioned(
+                    bottom: 5,
+                    left: 5,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${item.discountPercent}% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            Text(
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              item.restaurantName.isNotEmpty ? item.restaurantName : item.category,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+            ),
+            const Spacer(),
+            Text(
+              formatPrice(price),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                color: Color(0xFFC2410C),
+              ),
+            ),
+            const SizedBox(height: 6),
+            _buildCardActionButtons(item),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridItemCard(FoodItemModel item) {
+    final price = item.discountedPrice ?? item.price;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: item)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: SafeImage(
+                      image: item.image,
+                      borderRadius: BorderRadius.circular(10),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 5,
+                    left: 5,
+                    child: Container(
+                      width: 13,
+                      height: 13,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(
+                          color: item.isVeg ? Colors.green : Colors.red,
+                          width: 1.4,
+                        ),
+                      ),
+                      child: Center(
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: item.isVeg ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (item.hasDiscount)
+                    Positioned(
+                      bottom: 5,
+                      left: 5,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16A34A),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${item.discountPercent}% OFF',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              item.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Color(0xFF1E293B),
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              item.restaurantName.isNotEmpty ? item.restaurantName : item.category,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              formatPrice(price),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                color: Color(0xFFC2410C),
+              ),
+            ),
+            const SizedBox(height: 6),
+            _buildCardActionButtons(item),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── CARD ACTIONS (matches website: light ADD + solid Order/Buy) ───────────
+  Widget _buildCardActionButtons(FoodItemModel item) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildActionButton(
+            label: 'ADD',
+            onTap: () => _addHomeToCart(item),
+            filled: false,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildActionButton(
+            label: item.isProduct ? 'Buy' : 'Order',
+            onTap: () => _buyNow(item),
+            filled: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label,
+    required VoidCallback onTap,
+    required bool filled,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: filled ? jdkartOrange : const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(8),
+          border: filled ? null : Border.all(color: jdkartOrange.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: filled ? Colors.white : jdkartOrange,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _buyNow(FoodItemModel item) async {
+    final vendorId = item.restaurantId;
+    if (vendorId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This item is unavailable right now.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final vendorName = item.restaurantName.isNotEmpty
+        ? item.restaurantName
+        : (item.isProduct ? 'JDKart Store' : 'JDKart Restaurant');
+    final added = await addToCart(
+      context,
+      item,
+      vendorId: vendorId,
+      vendorName: vendorName,
+      type: item.isProduct ? 'product' : 'food',
+    );
+    if (!added || !mounted) return;
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+  }
+
+  Future<void> _addHomeToCart(FoodItemModel item) async {
+    final vendorId = item.restaurantId;
+    if (vendorId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This item is unavailable right now.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final vendorName = item.restaurantName.isNotEmpty
+        ? item.restaurantName
+        : (item.isProduct ? 'JDKart Store' : 'JDKart Restaurant');
+    final added = await addToCart(
+      context,
+      item,
+      vendorId: vendorId,
+      vendorName: vendorName,
+      type: item.isProduct ? 'product' : 'food',
+    );
+    if (!added || !mounted) return;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added "${item.name}" to cart!'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        backgroundColor: jdkartOrange,
+        action: SnackBarAction(
+          label: 'VIEW CART',
+          textColor: Colors.white,
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+          },
+        ),
+      ),
+    );
+  }
+
 }
 
 // ── HOME BANNER + PILL MODELS ───────────────────────────────────────────────

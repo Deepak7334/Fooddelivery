@@ -8,6 +8,8 @@ import '../../../models/restaurant_model.dart';
 import '../../../services/booking_service.dart';
 import '../../../services/restaurant_service.dart';
 import 'restaurant_details_screen.dart';
+import 'table_booking_screen.dart';
+import '../../../core/utils/format.dart';
 
 class TableBookingDetailsScreen extends StatefulWidget {
   final RestaurantModel restaurant;
@@ -107,7 +109,7 @@ class _TableBookingDetailsScreenState extends State<TableBookingDetailsScreen> {
           restaurantCuisine: _restaurant.cuisine.join(' • '),
           restaurantRating: _restaurant.rating.toStringAsFixed(1),
           restaurantDeliveryTime: _restaurant.deliveryTime,
-          restaurantDeliveryFee: '₹${_restaurant.deliveryFee}',
+          restaurantDeliveryFee: formatPrice(_restaurant.deliveryFee),
         ),
       ),
     );
@@ -120,6 +122,19 @@ class _TableBookingDetailsScreenState extends State<TableBookingDetailsScreen> {
       await launchUrl(Uri(scheme: 'tel', path: phone),
           mode: LaunchMode.externalApplication);
     } catch (_) {}
+  }
+
+  void _reserve() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TableBookingScreen(
+          restaurantId: _restaurant.id,
+          restaurantName: _restaurant.name,
+          restaurantAddress: _restaurant.address,
+        ),
+      ),
+    );
   }
 
   List<String> get _galleryImages {
@@ -297,6 +312,34 @@ class _TableBookingDetailsScreenState extends State<TableBookingDetailsScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            onPressed: _reserve,
+            icon: const Icon(Icons.event_seat_rounded, color: Colors.white),
+            label: const Text(
+              'Reserve a Table',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: jdkartOrange,
+              minimumSize: const Size.fromHeight(50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -417,7 +460,7 @@ class _TableBookingDetailsScreenState extends State<TableBookingDetailsScreen> {
                   size: 16, color: Color(0xFF64748B)),
               const SizedBox(width: 6),
               Text(
-                'Minimum order ₹${_restaurant.minOrder}',
+                'Minimum order ${formatPrice(_restaurant.minOrder)}',
                 style:
                     const TextStyle(color: Color(0xFF475569), fontSize: 12.5),
               ),
@@ -661,7 +704,7 @@ class _TableBookingDetailsScreenState extends State<TableBookingDetailsScreen> {
         ),
         const SizedBox(width: 8),
         Text(
-          '₹$price',
+          formatPrice(price),
           style: const TextStyle(
               fontWeight: FontWeight.w800, fontSize: 12.5),
         ),

@@ -15,13 +15,20 @@ class LocationService {
   static const String _prefSelectedLng = 'jdkart_selected_loc_lng';
   static const String _prefRecentSearches = 'jdkart_recent_searches';
   static const String _prefLocationSet = 'jdkart_location_set';
+  static const String _prefLocationVersion = 'jdkart_location_version';
 
-  // Default initial coordinates for Rohtas, Bihar
+  // Bump this to force a one-time wipe of cached location data on devices
+  // that ran an older build (which stored a Rohtas/Akbarpur placeholder as a
+  // real selection).
+  static const int _currentLocationVersion = 2;
+
+  // Last-resort coordinates for internal calculations only (map centering,
+  // distance fallback). Never shown as the customer's chosen location.
   static const double defaultLat = 24.7570;
   static const double defaultLng = 83.9458;
 
-  String selectedTitle = 'Home';
-  String selectedAddress = 'Akbarpur, Rohtas, Bihar';
+  String selectedTitle = '';
+  String selectedAddress = '';
   double selectedLat = defaultLat;
   double selectedLng = defaultLng;
 
@@ -31,28 +38,45 @@ class LocationService {
   /// True once the user (or GPS) has explicitly chosen a location.
   bool get isLocationSet => _locationSet;
 
+  /// Coordinates for nearby filtering. Null until the customer explicitly
+  /// picks a location, so a fresh install browses the full catalog instead of
+  /// a 5 km slice around the placeholder address.
+  double? get activeLat => _locationSet ? selectedLat : null;
+  double? get activeLng => _locationSet ? selectedLng : null;
+
   /// Load cached location on startup
   Future<void> init() async {
     if (_isInitialized) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      selectedTitle = prefs.getString(_prefSelectedTitle) ?? 'Home';
-      selectedAddress = prefs.getString(_prefSelectedAddress) ?? 'Akbarpur, Rohtas, Bihar';
+
+      // One-time cleanup for installs created before location was opt-in.
+      // Older builds saved the Rohtas/Akbarpur placeholder (and a fake
+      // "Current Location") as if the customer had chosen it, so existing
+      // users kept seeing Akbarpur as their default. Wipe it once and start
+      // neutral: no location until the customer picks one.
+      final version = prefs.getInt(_prefLocationVersion) ?? 0;
+      if (version < _currentLocationVersion) {
+        await prefs.remove(_prefSelectedTitle);
+        await prefs.remove(_prefSelectedAddress);
+        await prefs.remove(_prefSelectedLat);
+        await prefs.remove(_prefSelectedLng);
+        await prefs.remove(_prefRecentSearches);
+        await prefs.setBool(_prefLocationSet, false);
+        await prefs.setInt(_prefLocationVersion, _currentLocationVersion);
+      }
+
+      final savedTitle = prefs.getString(_prefSelectedTitle) ?? '';
+      final savedAddress = prefs.getString(_prefSelectedAddress) ?? '';
+      _locationSet = prefs.getBool(_prefLocationSet) ?? false;
+      selectedTitle = _locationSet ? savedTitle : '';
+      selectedAddress = _locationSet ? savedAddress : '';
       selectedLat = prefs.getDouble(_prefSelectedLat) ?? defaultLat;
       selectedLng = prefs.getDouble(_prefSelectedLng) ?? defaultLng;
-      _locationSet = prefs.getBool(_prefLocationSet) ?? false;
       _isInitialized = true;
     } catch (_) {
       _isInitialized = true;
     }
-  }
-
-  /// Detect the real GPS location once if the user has never set one.
-  /// Returns the detected location, or null when a location is already set
-  /// or detection is not possible (no permission/service).
-  Future<Map<String, dynamic>?> ensureAutoLocation() async {
-    if (_locationSet) return null;
-    return getCurrentLocation();
   }
 
   /// Update active location and save
@@ -118,6 +142,34 @@ class LocationService {
     } catch (_) {}
   }
 
+  /// Remove a single entry from the recently searched list by address/title.
+  Future<void> removeRecentlySearched(Map<String, dynamic> item) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = await getRecentlySearched();
+      list.removeWhere((e) =>
+          (e['address'] == item['address'] && item['address'] != null) ||
+          (e['title'] == item['title'] && item['title'] != null));
+      await prefs.setString(_prefRecentSearches, jsonEncode(list));
+    } catch (_) {}
+  }
+
+  /// Clear the customer's chosen location so the app returns to showing the
+  /// full catalog until they pick a location again.
+  Future<void> clearLocation() async {
+    selectedTitle = '';
+    selectedAddress = '';
+    _locationSet = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefSelectedTitle);
+      await prefs.remove(_prefSelectedAddress);
+      await prefs.remove(_prefSelectedLat);
+      await prefs.remove(_prefSelectedLng);
+      await prefs.setBool(_prefLocationSet, false);
+    } catch (_) {}
+  }
+
   /// Calculate distance in kilometers between two GPS points
   double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
     final meters = Geolocator.distanceBetween(lat1, lon1, lat2, lon2);
@@ -160,7 +212,15 @@ class LocationService {
         '${ApiConstants.placeReverse}?lat=$lat&lon=$lng&limit=1&lang=en',
       );
       if (data is Map) {
-        return _featureAddress(data);
+        // Photon returns a FeatureCollection, not a bare Feature.
+        final features = data['features'];
+        final list = features is List
+            ? features
+            : (data['type'] == 'Feature' ? [data] : const []);
+        if (list.isNotEmpty && list.first is Map) {
+          final address = _featureAddress(list.first as Map);
+          if (address.isNotEmpty) return address;
+        }
       }
     } catch (_) {}
     return null;

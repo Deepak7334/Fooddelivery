@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { auth } from '../../firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import './CustomerBrowse.css';
 
 export default function AuthPage() {
   const [view, setView] = useState('customer'); // 'customer' or 'partner'
@@ -139,9 +140,9 @@ export default function AuthPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)', padding: 24, position: 'relative' }}>
+    <div className={view === 'customer' ? 'customer-surface customer-auth' : undefined} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)', padding: 24, position: 'relative' }}>
       
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      <div className="customer-auth-backdrop" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', top: '10%', left: '10%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(255,87,34,0.12) 0%, transparent 70%)', borderRadius: '50%' }} />
         <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: 300, height: 300, background: 'radial-gradient(circle, rgba(255,193,7,0.08) 0%, transparent 70%)', borderRadius: '50%' }} />
       </div>
@@ -149,8 +150,7 @@ export default function AuthPage() {
       <div style={{ width: '100%', maxWidth: 440, position: 'relative' }}>
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
           <Link to="/" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none' }}>
-            {/* Swiggy-like modern floating brand badge */}
-            <div style={{
+            <div className="customer-auth-logo" style={{
               width: 82,
               height: 82,
               borderRadius: 24,
@@ -185,8 +185,7 @@ export default function AuthPage() {
               />
             </div>
 
-            {/* Premium Brand Typography */}
-            <div style={{
+            <div className="customer-auth-brand" style={{
               display: 'flex',
               alignItems: 'center',
               gap: 2,
@@ -205,7 +204,7 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <div className="card" style={{
+        <div className="card customer-auth-card" style={{
           padding: 'clamp(28px, 5vw, 36px)',
           borderRadius: 24,
           boxShadow: '0 20px 48px rgba(0, 0, 0, 0.25)',
@@ -218,13 +217,13 @@ export default function AuthPage() {
               {step === 1 ? (
                 <form onSubmit={handleSendOtp}>
                   <div className="form-group">
-                    <label className="form-label">Full Name</label>
-                    <input className="form-input" type="text" placeholder="e.g. John Doe" value={name} onChange={e => setName(e.target.value)} />
+                    <label className="form-label" htmlFor="customer-name">Full Name</label>
+                    <input id="customer-name" className="form-input" type="text" autoComplete="name" placeholder="e.g. John Doe" value={name} onChange={e => setName(e.target.value)} />
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Required only for new accounts.</div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Email Address</label>
-                    <input className="form-input" type="email" placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                    <label className="form-label" htmlFor="customer-email">Email Address</label>
+                    <input id="customer-email" className="form-input" type="email" autoComplete="email" placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                   </div>
                   <button type="submit" disabled={loading} className="btn btn-primary btn-full btn-lg" style={{ marginTop: 12, height: 48, borderRadius: 12, fontWeight: 700, fontSize: 15, boxShadow: '0 6px 20px rgba(255, 87, 34, 0.35)' }}>
                     {loading ? 'Sending OTP...' : 'Continue'}
@@ -236,8 +235,8 @@ export default function AuthPage() {
                     OTP sent to {email}. <button type="button" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>Edit</button> | <button type="button" onClick={handleSendOtp} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', marginLeft: 6 }}>Resend OTP</button>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Enter 6-digit OTP</label>
-                    <input className="form-input" type="text" maxLength="6" placeholder="• • • • • •" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} autoComplete="one-time-code" inputMode="numeric" required style={{ letterSpacing: 8, fontSize: 18, textAlign: 'center' }} />
+                    <label className="form-label" htmlFor="customer-otp">Enter 6-digit OTP</label>
+                    <input id="customer-otp" className="form-input" type="text" maxLength="6" placeholder="• • • • • •" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} autoComplete="one-time-code" inputMode="numeric" required style={{ letterSpacing: 8, fontSize: 18, textAlign: 'center' }} />
                   </div>
                   <button type="submit" disabled={loading} className="btn btn-primary btn-full btn-lg" style={{ marginTop: 8 }}>
                     {loading ? 'Verifying...' : 'Verify & Login'}

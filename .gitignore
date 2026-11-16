@@ -12,6 +12,7 @@ frontend/build/
 # OS files
 .DS_Store
 Thumbs.db
+.rollback-backup/
 
 # IDE
 .vscode/

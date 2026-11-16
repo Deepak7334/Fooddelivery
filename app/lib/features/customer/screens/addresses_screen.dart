@@ -61,21 +61,22 @@ class _AddressesScreenState extends State<AddressesScreen> {
     if (loggedIn == true && mounted) _loadAddresses();
   }
 
-  void _showAddAddressDialog() {
+  void _showAddressForm({AddressModel? existing}) {
     if (!AuthService.instance.isAuthenticated) {
       _promptLogin();
       return;
     }
 
+    final isEdit = existing != null;
     final formKey = GlobalKey<FormState>();
-    String label = 'HOME';
-    final line1Controller = TextEditingController();
-    final landmarkController = TextEditingController();
-    final areaController = TextEditingController();
-    final cityController = TextEditingController(text: 'Rohtas');
-    final stateController = TextEditingController(text: 'Bihar');
-    final pincodeController = TextEditingController(text: '821311');
-    bool isDefault = false;
+    String label = existing?.label ?? 'HOME';
+    final line1Controller = TextEditingController(text: existing?.addressLine1);
+    final landmarkController = TextEditingController(text: existing?.landmark);
+    final areaController = TextEditingController(text: existing?.area);
+    final cityController = TextEditingController(text: existing?.city);
+    final stateController = TextEditingController(text: existing?.state);
+    final pincodeController = TextEditingController(text: existing?.pincode);
+    bool isDefault = existing?.isDefault ?? false;
 
     showModalBottomSheet(
       context: context,
@@ -103,9 +104,9 @@ class _AddressesScreenState extends State<AddressesScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Add Delivery Address',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          Text(
+                            isEdit ? 'Edit Delivery Address' : 'Add Delivery Address',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close),
@@ -194,11 +195,20 @@ class _AddressesScreenState extends State<AddressesScreen> {
                             child: TextFormField(
                               controller: pincodeController,
                               keyboardType: TextInputType.number,
+                              maxLength: 6,
                               decoration: InputDecoration(
                                 labelText: 'Pincode *',
+                                counterText: '',
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               ),
-                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                              validator: (v) {
+                                final value = v?.trim() ?? '';
+                                if (value.isEmpty) return 'Required';
+                                if (!RegExp(r'^[1-9][0-9]{5}$').hasMatch(value)) {
+                                  return 'Enter a valid 6-digit pincode';
+                                }
+                                return null;
+                              },
                             ),
                           ),
                         ],
@@ -217,30 +227,41 @@ class _AddressesScreenState extends State<AddressesScreen> {
                         child: ElevatedButton(
                           onPressed: () async {
                             if (!formKey.currentState!.validate()) return;
-                            final newAddress = AddressModel(
-                              id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+                            final address = AddressModel(
+                              id: existing?.id ?? 'local_${DateTime.now().millisecondsSinceEpoch}',
                               label: label,
                               addressLine1: line1Controller.text.trim(),
+                              addressLine2: existing?.addressLine2 ?? '',
                               landmark: landmarkController.text.trim(),
                               area: areaController.text.trim(),
                               city: cityController.text.trim(),
                               state: stateController.text.trim(),
                               pincode: pincodeController.text.trim(),
-                              latitude: LocationService.instance.selectedLat,
-                              longitude: LocationService.instance.selectedLng,
+                              latitude: existing != null
+                                  ? existing.latitude
+                                  : LocationService.instance.selectedLat,
+                              longitude: existing != null
+                                  ? existing.longitude
+                                  : LocationService.instance.selectedLng,
                               isDefault: isDefault,
                             );
 
                             Navigator.pop(ctx);
                             setState(() => _isLoading = true);
                             try {
-                              await AddressService.instance.addAddress(newAddress);
+                              if (isEdit) {
+                                await AddressService.instance.updateAddress(address);
+                              } else {
+                                await AddressService.instance.addAddress(address);
+                              }
                               _loadAddresses();
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Address added successfully!'),
-                                    backgroundColor: Color(0xFF16A34A),
+                                  SnackBar(
+                                    content: Text(isEdit
+                                        ? 'Address updated successfully!'
+                                        : 'Address added successfully!'),
+                                    backgroundColor: const Color(0xFF16A34A),
                                   ),
                                 );
                               }
@@ -321,7 +342,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: ElevatedButton.icon(
-            onPressed: _showAddAddressDialog,
+            onPressed: () => _showAddressForm(),
             icon: const Icon(Icons.add, color: Colors.white),
             label: const Text('Add New Address', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             style: ElevatedButton.styleFrom(
@@ -391,6 +412,12 @@ class _AddressesScreenState extends State<AddressesScreen> {
               ],
             ),
           ),
+          if (!address.id.startsWith('default_'))
+            IconButton(
+              tooltip: 'Edit address',
+              icon: Icon(Icons.edit_outlined, color: jdkartOrange, size: 20),
+              onPressed: () => _showAddressForm(existing: address),
+            ),
           if (!address.id.startsWith('default_'))
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),

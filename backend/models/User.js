@@ -23,9 +23,13 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
+    trim: true,
     unique: true,
     sparse: true,
     default: undefined, // Mongoose sparse indexes need undefined/null to not collide
+    // Blank strings still occupy the sparse index, so two empty phones would
+    // collide. Treat blank as "not set".
+    set: (value) => (value === '' || value === null ? undefined : value),
   },
   firebaseUid: {
     type: String,

@@ -11,7 +11,7 @@ class StoreService {
   /// Fetch store categories / types from /api/store/types.
   /// Throws [ApiException] on failure so the UI can show a retry state.
   Future<List<CategoryModel>> getStoreTypes() async {
-    final data = await ApiClient.instance.get(ApiConstants.storeTypes);
+    final data = await ApiClient.instance.get(ApiConstants.storeTypes, cache: true);
     if (data is Map && data['types'] is List) {
       return (data['types'] as List).map((t) {
         final map = Map<String, dynamic>.from(t as Map);
@@ -32,7 +32,7 @@ class StoreService {
     if (lat != null && lng != null) {
       url += '?lat=$lat&lng=$lng';
     }
-    final data = await ApiClient.instance.get(url);
+    final data = await ApiClient.instance.get(url, cache: true);
     if (data is Map && data['stores'] is List) {
       return (data['stores'] as List).map((s) {
         final map = Map<String, dynamic>.from(s as Map);
@@ -65,7 +65,7 @@ class StoreService {
     if (category != null && category.isNotEmpty) params.add('category=$category');
     if (params.isNotEmpty) url += '?${params.join('&')}';
 
-    final data = await ApiClient.instance.get(url);
+    final data = await ApiClient.instance.get(url, cache: true);
     if (data is Map && data['products'] is List) {
       return (data['products'] as List).map((p) {
         final map = Map<String, dynamic>.from(p as Map);

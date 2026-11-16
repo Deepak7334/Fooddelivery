@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../customer/screens/main_layout.dart';
+import '../../../services/location_service.dart';
+import '../../../services/restaurant_service.dart';
+import '../../../services/store_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  COLOUR PALETTE
@@ -142,6 +145,21 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _playAnimationSequence();
+    _prefetchCatalog();
+  }
+
+  // Warm the shared API cache while the splash plays so home opens with data.
+  void _prefetchCatalog() {
+    LocationService.instance.init().then((_) {
+      final lat = LocationService.instance.activeLat;
+      final lng = LocationService.instance.activeLng;
+      RestaurantService.instance.getFoods(lat: lat, lng: lng).ignore();
+      RestaurantService.instance.getCategories().ignore();
+      StoreService.instance.getProducts().ignore();
+      if (lat != null && lng != null) {
+        StoreService.instance.getStores(lat: lat, lng: lng).ignore();
+      }
+    });
   }
 
   Future<void> _playAnimationSequence() async {

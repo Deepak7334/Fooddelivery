@@ -8,6 +8,8 @@ import 'offers_screen.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../../models/user_model.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/cart_service.dart';
+import '../../../services/favorites_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -19,6 +21,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final Color jdkartOrange = const Color(0xFFF97316);
   bool _saving = false;
+  String? _profileError;
 
   @override
   void initState() {
@@ -229,7 +232,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context: context,
                     applicationName: 'JDKart',
                     applicationVersion: 'v1.0.0 (Fast Delivery)',
-                    applicationIcon: Image.asset('assets/logo.png', width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.delivery_dining, size: 48, color: Color(0xFFF97316))),
+                    applicationIcon: Image.asset('assets/images/logo.png', width: 48, height: 48, errorBuilder: (_, __, ___) => const Icon(Icons.delivery_dining, size: 48, color: Color(0xFFF97316))),
                     children: const [
                       SizedBox(height: 10),
                       Text('JDKart is your premier food and essentials delivery partner in Rohtas, Bihar. Fresh meals from top local restaurants delivered straight to your door.'),
@@ -244,6 +247,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextButton.icon(
                 onPressed: () async {
                   await AuthService.instance.logout();
+                  CartService.instance.clearCart();
+                  await FavoritesService.instance.clear();
                   if (context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
@@ -292,6 +297,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final nameController = TextEditingController(text: user.name);
     final phoneController = TextEditingController(text: user.phone);
+    _profileError = null;
+    _saving = false;
 
     showModalBottomSheet(
       context: context,
@@ -322,12 +329,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: nameController,
+                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Full Name',
                   border: OutlineInputBorder(),
                   contentPadding:
                       EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
+                onChanged: (_) {
+                  if (_profileError != null) {
+                    setSheetState(() => _profileError = null);
+                  }
+                },
               ),
               const SizedBox(height: 12),
               TextField(
@@ -335,16 +348,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
                   labelText: 'Mobile Number',
+                  counterText: '',
                   border: OutlineInputBorder(),
                   contentPadding:
                       EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
+                onChanged: (_) {
+                  if (_profileError != null) {
+                    setSheetState(() => _profileError = null);
+                  }
+                },
               ),
               const SizedBox(height: 12),
-              Text(
-                'Email ${user.email} is managed by your login and cannot be changed here.',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12.5),
-              ),
+              if (user.email.isNotEmpty)
+                Text(
+                  'Email ${user.email} is managed by your login and cannot be changed here.',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12.5),
+                ),
+              if (_profileError != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        color: Colors.redAccent, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _profileError!,
+                        style: const TextStyle(
+                            color: Colors.redAccent, fontSize: 13, height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -379,6 +417,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  /// Matches the backend's phone normalisation: strips +91 / leading 0 and
+  /// all non-digits so "98765 43210" and "+91 9876543210" behave the same.
+  String _normalizePhone(String raw) {
+    var digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 12 && digits.startsWith('91')) {
+      digits = digits.substring(2);
+    }
+    if (digits.length == 11 && digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    return digits;
+  }
+
   Future<void> _saveProfile(
     BuildContext sheetContext,
     TextEditingController nameController,
@@ -386,25 +437,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     StateSetter setSheetState,
   ) async {
     final name = nameController.text.trim();
-    final phone = phoneController.text.trim();
+    final phone = _normalizePhone(phoneController.text);
 
+    String? error;
     if (name.isEmpty) {
-      ScaffoldMessenger.of(sheetContext).showSnackBar(
-        const SnackBar(
-            content: Text('Please enter your name.'),
-            backgroundColor: Colors.redAccent),
-      );
+      error = 'Please enter your name.';
+    } else if (phone.isNotEmpty && phone.length != 10) {
+      error = 'Enter a valid 10-digit mobile number, or leave it blank.';
+    }
+    if (error != null) {
+      setSheetState(() => _profileError = error);
+      return;
+    }
+
+    final current = AuthService.instance.currentUser;
+    final nameChanged = current == null || name != current.name;
+    final phoneChanged = current == null || phone != current.phone;
+    if (!nameChanged && !phoneChanged) {
+      Navigator.pop(sheetContext);
       return;
     }
 
     setSheetState(() => _saving = true);
-    final result =
-        await AuthService.instance.updateProfile(name: name, phone: phone);
+    Map<String, dynamic> result;
+    try {
+      result = await AuthService.instance.updateProfile(
+        name: nameChanged ? name : null,
+        phone: phoneChanged ? phone : null,
+      );
+    } catch (_) {
+      result = {
+        'success': false,
+        'message': 'Could not update your profile. Please try again.',
+      };
+    }
+
     if (!mounted) return;
-    setSheetState(() => _saving = false);
+    if (sheetContext.mounted) {
+      setSheetState(() => _saving = false);
+    }
 
     if (result['success'] == true) {
-      Navigator.pop(sheetContext);
+      if (sheetContext.mounted) Navigator.pop(sheetContext);
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -412,13 +486,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             backgroundColor: Color(0xFF16A34A)),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ??
-              'Could not update your profile. Please try again.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      final message = result['message'] ??
+          'Could not update your profile. Please try again.';
+      if (sheetContext.mounted) {
+        setSheetState(() => _profileError = message);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 

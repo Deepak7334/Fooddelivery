@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { FiCheckCircle, FiXCircle, FiLock } from 'react-icons/fi';
+import './CustomerTransactions.css';
 
 const UPI_APPS = [
   {
@@ -83,11 +85,11 @@ function QRDisplay({ value }) {
       const key = `${r},${c}`;
       let fill = '#fff';
       if (corners.has(key) && !cornerRim.has(key)) {
-        fill = cornerInner.has(key) ? '#fff' : 'var(--bg-card)';
+        fill = cornerInner.has(key) ? '#fff' : '#0F172A';
       } else if (!cornerRim.has(key)) {
         // pseudorandom fill from hash
         const v = (hash * (r * size + c + 1)) % 17;
-        fill = v < 9 ? 'var(--bg-card)' : '#fff';
+        fill = v < 9 ? '#0F172A' : '#fff';
       }
       cells.push(
         <rect key={key} x={c * 5} y={r * 5} width="5" height="5" fill={fill} />
@@ -186,21 +188,14 @@ export default function UpiPaymentPage() {
   if (!orderId) return null;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg-dark)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
-    }}>
+    <div className="customer-surface customer-transactions tx-payment">
+      <header className="tx-page-header">
+        <div className="container tx-header-inner"><h1>UPI Payment</h1></div>
+      </header>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}></div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>
-          UPI <span style={{ color: 'var(--primary)' }}>Payment</span>
-        </h1>
+      <div className="tx-payment-intro">
+        <span className="tx-icon-tile"><FiLock size={24} /></span>
+        <h2>Complete your payment</h2>
         <p style={{ color: 'var(--text-secondary)', marginTop: 6, fontSize: 14 }}>
           Complete your payment securely via UPI
         </p>
@@ -216,20 +211,9 @@ export default function UpiPaymentPage() {
       </div>
 
       {/* Card */}
-      <div style={{
-        width: '100%', maxWidth: 440,
-        background: 'var(--bg-card)',
-        borderRadius: 20,
-        border: '1px solid var(--border)',
-        overflow: 'hidden',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-      }}>
+      <div className="card tx-payment-card">
         {/* Tabs */}
-        <div style={{
-          display: 'flex',
-          borderBottom: '1px solid var(--border)',
-          background: 'rgba(0,0,0,0.15)',
-        }}>
+        <div className="tx-payment-tabs">
           {[
             { id: 'qr', label: ' QR Code' },
             { id: 'upiid', label: ' UPI ID' },
@@ -258,7 +242,7 @@ export default function UpiPaymentPage() {
         </div>
 
         {/* Tab Content */}
-        <div style={{ padding: 28 }}>
+        <div className="tx-payment-content">
           {/* --- QR CODE TAB --- */}
           {tab === 'qr' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
@@ -334,7 +318,7 @@ export default function UpiPaymentPage() {
                       position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
                       fontSize: 16,
                     }}>
-                      {validateUpi(upiId) ? '✅' : '❌'}
+                      {validateUpi(upiId) ? <FiCheckCircle color="#15803D" /> : <FiXCircle color="#B91C1C" />}
                     </span>
                   )}
                 </div>
@@ -448,7 +432,7 @@ export default function UpiPaymentPage() {
                 display: 'flex', gap: 10, alignItems: 'center',
                 fontSize: 12, color: 'var(--text-secondary)',
               }}>
-                <span>🔒</span>
+                <FiLock size={16} />
                 Payments are 100% secure and encrypted via NPCI UPI rails.
               </div>
             </div>
@@ -473,8 +457,8 @@ export default function UpiPaymentPage() {
       {/* UPI logos footer */}
       <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
         <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Secured by</div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {['🇮🇳 NPCI UPI', '🔒 256-bit SSL', '✅ RBI Regulated'].map(label => (
+        <div className="tx-payment-footer">
+          {['NPCI UPI', '256-bit SSL', 'RBI Regulated'].map(label => (
             <span key={label} style={{
               fontSize: 10, color: 'var(--text-secondary)',
               padding: '3px 10px', borderRadius: 999,

@@ -6,6 +6,7 @@ import 'categories_screen.dart';
 import 'search_screen.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
+import '../../../core/network/api_client.dart';
 import '../../../services/push_service.dart';
 
 class MainLayout extends StatefulWidget {
@@ -18,6 +19,8 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
   final List<int> _tabTicks = [0, 0, 0, 0, 0];
+  // Tabs are built on first visit so startup only loads the home screen.
+  final Set<int> _visitedTabs = {0};
   final ValueNotifier<bool> _isNavbarVisible = ValueNotifier<bool>(true);
 
   @override
@@ -47,11 +50,23 @@ class _MainLayoutState extends State<MainLayout> {
 
   void _onTabTapped(int index) {
     if (_currentIndex != index) {
-      setState(() => _currentIndex = index);
+      setState(() {
+        _currentIndex = index;
+        _visitedTabs.add(index);
+      });
     } else {
       // Re-tapping the active tab refreshes that tab's data.
+      ApiClient.instance.clearCache();
       setState(() => _tabTicks[index]++);
     }
+  }
+
+  Widget _lazyTab(int index, String name, Widget Function() builder) {
+    if (!_visitedTabs.contains(index)) return const SizedBox.shrink();
+    return KeyedSubtree(
+      key: ValueKey('$name-${_tabTicks[index]}'),
+      child: builder(),
+    );
   }
 
   Widget _buildNavIcon(IconData icon, int index) {
@@ -158,32 +173,19 @@ class _MainLayoutState extends State<MainLayout> {
               IndexedStack(
                 index: _currentIndex,
                 children: [
-                  KeyedSubtree(
-                    key: ValueKey('home-${_tabTicks[0]}'),
-                    child: HomeScreen(onProfileTap: () => _onTabTapped(4)),
+                  _lazyTab(0, 'home', () => HomeScreen(onProfileTap: () => _onTabTapped(4))),
+                  _lazyTab(1, 'categories', () => const CategoriesScreen()),
+                  _lazyTab(
+                    2,
+                    'search',
+                    () => SearchScreen(onBack: () => _onTabTapped(0), autofocus: false),
                   ),
-                  KeyedSubtree(
-                    key: ValueKey('categories-${_tabTicks[1]}'),
-                    child: const CategoriesScreen(),
+                  _lazyTab(
+                    3,
+                    'cart',
+                    () => CartScreen(onBrowseTap: () => _onTabTapped(0), bottomNavInset: 84),
                   ),
-                  KeyedSubtree(
-                    key: ValueKey('search-${_tabTicks[2]}'),
-                    child: SearchScreen(
-                      onBack: () => _onTabTapped(0),
-                      autofocus: false,
-                    ),
-                  ),
-                  KeyedSubtree(
-                    key: ValueKey('cart-${_tabTicks[3]}'),
-                    child: CartScreen(
-                      onBrowseTap: () => _onTabTapped(0),
-                      bottomNavInset: 84,
-                    ),
-                  ),
-                  KeyedSubtree(
-                    key: ValueKey('profile-${_tabTicks[4]}'),
-                    child: const ProfileScreen(),
-                  ),
+                  _lazyTab(4, 'profile', () => const ProfileScreen()),
                 ],
               ),
               _buildBottomNavBar(),

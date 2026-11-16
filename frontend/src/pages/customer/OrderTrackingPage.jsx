@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { createSocket } from '../../lib/socket';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { formatAddress } from '../../utils/address';
+import { FiPackage, FiCheck, FiClock, FiTruck, FiCheckCircle } from 'react-icons/fi';
+import './CustomerTransactions.css';
 
 const MAIN_STEPS = ['pending', 'accepted', 'preparing', 'out_for_delivery', 'delivered'];
+const STEP_VISUALS = [FiPackage, FiCheck, FiClock, FiTruck, FiCheckCircle];
 const STEP_MAP = {
   pending: 0, accepted: 1, preparing: 2, out_for_delivery: 3,
   accepted_by_driver: 3, reached_restaurant: 3, picked_up: 3, on_the_way: 3, reached_customer: 3,
@@ -56,8 +59,22 @@ export default function OrderTrackingPage() {
   }, [id]);
 
 
-  if (loading) return <div style={{ padding: 120, textAlign: 'center' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
-  if (!order) return <div className="empty-state" style={{ paddingTop: 120 }}><div className="empty-state-icon"></div><h3>Order not found</h3></div>;
+  if (loading) return <div className="customer-transactions tx-loading"><div className="spinner" style={{ margin: '0 auto' }} /></div>;
+  if (!order) return (
+    <div className="page-wrapper customer-transactions tx-tracking">
+      <div className="empty-state">
+        <div className="empty-state-icon"><FiPackage size={52} /></div>
+        <h3>Order not found</h3>
+        <p style={{ color: '#64748B', fontSize: 14, margin: '8px 0 20px' }}>
+          This order may have expired, or you might need to sign in with your account to view it.
+        </p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link to="/orders" className="btn btn-primary" style={{ minWidth: 140 }}>My Orders</Link>
+          <Link to="/" className="btn btn-secondary" style={{ minWidth: 140 }}>Browse Food</Link>
+        </div>
+      </div>
+    </div>
+  );
 
     const handleCancelOrder = async () => {
     if (!window.confirm('Are you sure you want to cancel this order?')) return;
@@ -77,15 +94,13 @@ export default function OrderTrackingPage() {
   const isCancelled = order.status === 'cancelled';
 
   return (
-    <div className="page-wrapper">
-      <div className="container" style={{ maxWidth: 720 }}>
-                  <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
-                {order.status === 'delivered' ? ' Delivered!' : isCancelled ? ' Cancelled' : ' Live Tracking'}
-              </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Order #{order._id?.slice(-8).toUpperCase()}</p>
-            </div>
+    <div className="page-wrapper customer-transactions tx-tracking">
+      <header className="tx-page-header">
+        <div className="container tx-header-inner">
+          <div>
+            <h1>{order.status === 'delivered' ? 'Order Delivered' : isCancelled ? 'Order Cancelled' : 'Track Order'}</h1>
+            <p>Order #{order._id?.slice(-8).toUpperCase()}</p>
+          </div>
             {!isCancelled && ['pending', 'accepted'].includes(order.status) && (
               <button 
                 onClick={handleCancelOrder} 
@@ -96,24 +111,28 @@ export default function OrderTrackingPage() {
                 {cancelling ? 'Cancelling...' : 'Cancel Order'}
               </button>
             )}
-          </div>
-
+        </div>
+      </header>
+      <div className="container">
         {/* Status Tracker */}
         {!isCancelled && (
           <div className="card" style={{ padding: 28, marginBottom: 20 }}>
             <div className="step-tracker">
-              {MAIN_STEPS.map((stepId, i) => (
-                <div key={stepId} style={{ display: 'contents' }}>
-                  <div className={`step ${i <= currentIdx ? 'done' : ''} ${i === currentIdx ? 'active' : ''}`}>
-                    <div className="step-circle">{i <= currentIdx ? STATUS_ICONS[i === 3 && currentIdx === 3 ? order.status : stepId] : i + 1}</div>
-                    <div className="step-label">{i === 3 && currentIdx === 3 ? STATUS_LABELS[order.status] : STATUS_LABELS[stepId]}</div>
+              {MAIN_STEPS.map((stepId, i) => {
+                const Icon = STEP_VISUALS[i];
+                return (
+                  <div key={stepId} style={{ display: 'contents' }}>
+                    <div className={`step ${i <= currentIdx ? 'done' : ''} ${i === currentIdx ? 'active' : ''}`}>
+                      <div className="step-circle">{i <= currentIdx ? <Icon size={17} /> : i + 1}</div>
+                      <div className="step-label">{i === 3 && currentIdx === 3 ? STATUS_LABELS[order.status] : STATUS_LABELS[stepId]}</div>
+                    </div>
+                    {i < MAIN_STEPS.length - 1 && <div className={`step-line ${i < currentIdx ? 'done' : ''}`} />}
                   </div>
-                  {i < MAIN_STEPS.length - 1 && <div className={`step-line ${i < currentIdx ? 'done' : ''}`} />}
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <div style={{ textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--primary)', marginTop: 8 }}>
-              {STATUS_LABELS[order.status]} {STATUS_ICONS[order.status]}
+            <div className="tx-tracking-status">
+              {STATUS_LABELS[order.status]}
             </div>
             <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
               Estimated delivery: {order.estimatedDeliveryTime}
@@ -124,7 +143,7 @@ export default function OrderTrackingPage() {
         {/* Delivery Agent Info */}
         {order.deliveryAgentName && !isCancelled && order.status !== 'delivered' && (
           <div className="card" style={{ padding: 20, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, background: 'rgba(255,255,255,0.02)' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🚴</div>
+            <span className="tx-icon-tile"><FiTruck size={24} /></span>
             <div style={{ flex: 1 }}>
               <h3 style={{ fontWeight: 800, margin: 0, fontSize: 16 }}>{order.deliveryAgentName}</h3>
               <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: 13 }}>{order.deliveryAgentId?.vehicleNumber || 'Your Delivery Partner'}</p>
@@ -163,7 +182,7 @@ export default function OrderTrackingPage() {
         </div>
         {/* OTP Display (Zomato Style) */}
         {order.status === 'reached_customer' && !order.otpVerified && (
-          <div className="card" style={{ padding: 28, marginTop: 20, border: '1px solid rgba(255,87,34,0.3)', background: 'rgba(255,87,34,0.05)', textAlign: 'center', animation: 'glow 2s infinite' }}>
+          <div className="card" style={{ padding: 24, marginTop: 20, border: '1px solid #FED7AA', background: '#FFF7ED', textAlign: 'center' }}>
             <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: 'var(--primary)' }}>Delivery Agent has Arrived!</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
               Please share this Delivery PIN with your DeliveryBoy to receive your food and Grocery.

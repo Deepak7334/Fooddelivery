@@ -22,12 +22,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final Color jdkartOrange = const Color(0xFFF97316);
   Timer? _refreshTimer;
   StreamSubscription<RemoteMessage>? _pushSub;
-  bool _markedOnOpen = false;
+  final ScrollController _scrollController = ScrollController();
+  int _page = 1;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  static const int _pageSize = 20;
 
   @override
   void initState() {
     super.initState();
     _fetchNotifications();
+    _scrollController.addListener(_onScroll);
     // Live updates while the list is open: instant on FCM push, plus a
     // periodic refetch so it stays fresh even when push is unavailable.
     if (PushService.instance.isFirebaseReady) {
@@ -44,7 +49,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     _pushSub?.cancel();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isLoadingMore || !_hasMore || !_scrollController.hasClients) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
+      _loadMoreNotifications();
+    }
+  }
+
+  Future<void> _loadMoreNotifications() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final next = await NotificationService.instance
+          .getNotifications(page: _page + 1, limit: _pageSize);
+      if (!mounted) return;
+      setState(() {
+        _page += 1;
+        _hasMore = next.length >= _pageSize;
+        _notifications.addAll(next);
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+    }
   }
 
   Future<void> _fetchNotifications({bool silent = false}) async {
@@ -59,18 +92,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (mounted) {
         setState(() {
           _notifications = data;
+          _page = 1;
+          _hasMore = data.length >= _pageSize;
           _isLoading = false;
           _error = null;
         });
-      }
-      if (!silent && !_markedOnOpen && data.any((n) => !n.isRead)) {
-        _markedOnOpen = true;
-        try {
-          await NotificationService.instance.markAllAsRead();
-          if (mounted) await _fetchNotifications(silent: true);
-        } on ApiException {
-          // Keep the unread state if the server rejects the update.
-        }
       }
     } catch (e) {
       if (!mounted || silent) return;
@@ -79,6 +105,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             e is ApiException ? e.message : 'Could not load notifications. Please try again.';
         _isLoading = false;
       });
+    }
+  }
+
+  /// Marks a single notification read and updates local state.
+  Future<void> _markRead(NotificationModel notif) async {
+    if (notif.isRead) return;
+    setState(() => notif.isRead = true);
+    try {
+      await NotificationService.instance.markAsRead(notif.id);
+    } on ApiException {
+      if (!mounted) return;
+      setState(() => notif.isRead = false);
     }
   }
 
@@ -170,10 +208,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     )
                   : ListView.separated(
+                      controller: _scrollController,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      itemCount: _notifications.length,
+                      itemCount: _notifications.length + (_hasMore ? 1 : 0),
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
+                        if (index >= _notifications.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: _isLoadingMore
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Color(0xFFF97316),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Load more',
+                                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                                    ),
+                            ),
+                          );
+                        }
                         final notif = _notifications[index];
                         return Dismissible(
                           key: ValueKey(notif.id),
@@ -189,7 +248,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                           onDismissed: (_) => _deleteNotification(notif),
-                          child: _buildNotificationItem(notif),
+                          child: GestureDetector(
+                            onTap: () => _markRead(notif),
+                            child: _buildNotificationItem(notif),
+                          ),
                         );
                       },
                     ),
