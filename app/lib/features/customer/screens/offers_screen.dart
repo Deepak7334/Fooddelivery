@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'cart_screen.dart';
+import 'product_details_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/store_service.dart';
 import '../../../services/location_service.dart';
@@ -52,8 +53,7 @@ class _OffersScreenState extends State<OffersScreen> {
       final products = await productsFuture;
       final nearbyStoreIds = await nearbyFuture;
 
-      bool discounted(FoodItemModel f) =>
-          f.discountedPrice != null && f.discountedPrice! < f.price;
+      bool discounted(FoodItemModel f) => f.hasDiscount && !f.isOutOfStock;
 
       if (mounted) {
         setState(() {
@@ -148,12 +148,27 @@ class _OffersScreenState extends State<OffersScreen> {
   }
 
   Widget _buildOfferCard(FoodItemModel food) {
-    final price = food.discountedPrice ?? food.price;
-    final hasDiscount =
-        food.discountedPrice != null && food.discountedPrice! < food.price;
+    final price = food.displayPrice;
+    final originalPrice = food.displayOriginalPrice;
+    final hasDiscount = food.hasDiscount;
     final restId = food.restaurantId;
     final restName = food.restaurantName.isNotEmpty ? food.restaurantName : 'JDKart Partner';
     final vendorReady = restId.isNotEmpty;
+    final vendorOpen = food.isProduct
+        ? StoreService.instance.isStoreOpen(restId)
+        : RestaurantService.instance.isVendorOpen(restId);
+
+    void openDetails() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailsScreen(
+            foodItem: food,
+            vendorIsOpen: vendorOpen,
+          ),
+        ),
+      );
+    }
 
     Future<bool> add() async {
       if (!vendorReady) {
@@ -167,13 +182,23 @@ class _OffersScreenState extends State<OffersScreen> {
         );
         return false;
       }
-      return addToCart(context, food,
-          vendorId: restId,
-          vendorName: restName,
-          type: food.isProduct ? 'product' : 'food');
+      if (food.requiresConfiguration) {
+        openDetails();
+        return false;
+      }
+      return addToCart(
+        context,
+        food,
+        vendorId: restId,
+        vendorName: restName,
+        type: food.isProduct ? 'product' : 'food',
+        vendorIsOpen: vendorOpen,
+      );
     }
 
-    return Container(
+    return GestureDetector(
+      onTap: openDetails,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -232,7 +257,7 @@ class _OffersScreenState extends State<OffersScreen> {
                         Text(formatPrice(price), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: jdkartOrange)),
                         if (hasDiscount) ...[
                           const SizedBox(width: 6),
-                          Text(formatPrice(food.price), style: const TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.lineThrough)),
+                          Text(formatPrice(originalPrice), style: const TextStyle(color: Colors.grey, fontSize: 13, decoration: TextDecoration.lineThrough)),
                         ],
                       ],
                     ),
@@ -265,7 +290,10 @@ class _OffersScreenState extends State<OffersScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('+ Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(
+                          food.requiresConfiguration ? 'Select Options' : '+ Add to Cart',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -291,6 +319,7 @@ class _OffersScreenState extends State<OffersScreen> {
           )
         ],
       ),
+    ),
     );
   }
 }

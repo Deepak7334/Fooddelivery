@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../constants/api_constants.dart';
 
 class SafeImage extends StatelessWidget {
   final String? image;
@@ -71,8 +72,29 @@ class SafeImage extends StatelessWidget {
     return bytes;
   }
 
+  static String resolveUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('data:') ||
+        trimmed.startsWith('assets/')) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('//')) {
+      return 'https:$trimmed';
+    }
+    if (trimmed.startsWith('/')) {
+      return '${ApiConstants.serverOrigin}$trimmed';
+    }
+    if (trimmed.startsWith('uploads/')) {
+      return '${ApiConstants.serverOrigin}/$trimmed';
+    }
+    return trimmed;
+  }
+
   Widget _buildImage(BuildContext context, int? cacheWidth) {
-    final raw = (image ?? '').trim();
+    final raw = resolveUrl(image ?? '');
     if (raw.isEmpty) {
       return _buildPlaceholder();
     }

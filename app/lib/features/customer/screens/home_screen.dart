@@ -903,14 +903,27 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  bool _isItemVendorOpen(FoodItemModel item) {
+    if (item.restaurantId.isEmpty) return true;
+    return item.isProduct
+        ? StoreService.instance.isStoreOpen(item.restaurantId)
+        : RestaurantService.instance.isVendorOpen(item.restaurantId);
+  }
+
   Widget _buildHomeItemCard(FoodItemModel item) {
-    final price = item.discountedPrice ?? item.price;
+    final price = item.displayPrice;
+    final vendorOpen = _isItemVendorOpen(item);
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: item)),
+          MaterialPageRoute(
+            builder: (_) => ProductDetailsScreen(
+              foodItem: item,
+              vendorIsOpen: vendorOpen,
+            ),
+          ),
         );
       },
       child: Container(
@@ -1026,13 +1039,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildGridItemCard(FoodItemModel item) {
-    final price = item.discountedPrice ?? item.price;
+    final price = item.displayPrice;
+    final vendorOpen = _isItemVendorOpen(item);
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: item)),
+          MaterialPageRoute(
+            builder: (_) => ProductDetailsScreen(
+              foodItem: item,
+              vendorIsOpen: vendorOpen,
+            ),
+          ),
         );
       },
       child: Container(
@@ -1151,11 +1170,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── CARD ACTIONS (matches website: light ADD + solid Order/Buy) ───────────
   Widget _buildCardActionButtons(FoodItemModel item) {
+    final vendorOpen = _isItemVendorOpen(item);
+    final unavailable = !item.isAvailable || item.isOutOfStock || !vendorOpen;
+
+    if (unavailable) {
+      return Container(
+        height: 34,
+        width: double.infinity,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Text(
+          !vendorOpen ? 'Closed' : 'Unavailable',
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+      );
+    }
+
     return Row(
       children: [
         Expanded(
           child: _buildActionButton(
-            label: 'ADD',
+            label: item.requiresConfiguration ? 'Options' : 'ADD',
             onTap: () => _addHomeToCart(item),
             filled: false,
           ),
@@ -1201,11 +1244,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _buyNow(FoodItemModel item) async {
     final vendorId = item.restaurantId;
+    final vendorOpen = _isItemVendorOpen(item);
     if (vendorId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('This item is unavailable right now.'),
           backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    if (item.requiresConfiguration) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailsScreen(
+            foodItem: item,
+            vendorIsOpen: vendorOpen,
+          ),
         ),
       );
       return;
@@ -1220,6 +1276,7 @@ class _HomeScreenState extends State<HomeScreen> {
       vendorId: vendorId,
       vendorName: vendorName,
       type: item.isProduct ? 'product' : 'food',
+      vendorIsOpen: vendorOpen,
     );
     if (!added || !mounted) return;
     Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
@@ -1227,11 +1284,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _addHomeToCart(FoodItemModel item) async {
     final vendorId = item.restaurantId;
+    final vendorOpen = _isItemVendorOpen(item);
     if (vendorId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('This item is unavailable right now.'),
           backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    if (item.requiresConfiguration) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailsScreen(
+            foodItem: item,
+            vendorIsOpen: vendorOpen,
+          ),
         ),
       );
       return;
@@ -1246,6 +1316,7 @@ class _HomeScreenState extends State<HomeScreen> {
       vendorId: vendorId,
       vendorName: vendorName,
       type: item.isProduct ? 'product' : 'food',
+      vendorIsOpen: vendorOpen,
     );
     if (!added || !mounted) return;
 

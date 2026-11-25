@@ -14,6 +14,9 @@ class OrderModel {
   final String deliveryOTP;
   final String deliveryAgentName;
   final String deliveryAgentPhone;
+  final String deliveryAgentVehicleNumber;
+  final String estimatedDeliveryTime;
+  final String alternatePhone;
   final String vendorId;
   final bool isStoreOrder;
   final bool isReviewed;
@@ -37,6 +40,9 @@ class OrderModel {
     this.deliveryOTP = '',
     this.deliveryAgentName = '',
     this.deliveryAgentPhone = '',
+    this.deliveryAgentVehicleNumber = '',
+    this.estimatedDeliveryTime = '30-45 mins',
+    this.alternatePhone = '',
     this.vendorId = '',
     this.isStoreOrder = false,
     this.isReviewed = false,
@@ -45,7 +51,10 @@ class OrderModel {
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     List<OrderItemModel> itemsList = [];
     if (json['items'] is List) {
-      itemsList = (json['items'] as List).map((i) => OrderItemModel.fromJson(i)).toList();
+      itemsList = (json['items'] as List)
+          .whereType<Map>()
+          .map((i) => OrderItemModel.fromJson(Map<String, dynamic>.from(i)))
+          .toList();
     }
 
     String restName = '';
@@ -80,9 +89,11 @@ class OrderModel {
 
     String agentName = '';
     String agentPhone = '';
+    String agentVehicle = '';
     if (json['deliveryAgentId'] is Map) {
-      agentName = json['deliveryAgentId']['name'] ?? '';
-      agentPhone = json['deliveryAgentId']['phone'] ?? '';
+      agentName = (json['deliveryAgentId']['name'] ?? '').toString();
+      agentPhone = (json['deliveryAgentId']['phone'] ?? '').toString();
+      agentVehicle = (json['deliveryAgentId']['vehicleNumber'] ?? '').toString();
     } else if (json['deliveryAgentName'] is String) {
       agentName = json['deliveryAgentName'];
     }
@@ -115,11 +126,31 @@ class OrderModel {
       deliveryOTP: json['deliveryOTP']?.toString() ?? '',
       deliveryAgentName: agentName,
       deliveryAgentPhone: agentPhone,
+      deliveryAgentVehicleNumber: agentVehicle,
+      estimatedDeliveryTime:
+          (json['estimatedDeliveryTime']?.toString().isNotEmpty ?? false)
+              ? json['estimatedDeliveryTime'].toString()
+              : '30-45 mins',
+      alternatePhone: (json['alternatePhone'] ?? '').toString(),
       vendorId: storeRef.isNotEmpty ? storeRef : restRef,
-      isStoreOrder: storeRef.isNotEmpty,
+      isStoreOrder: storeRef.isNotEmpty || json['orderType'] == 'product',
       isReviewed: json['isReviewed'] == true,
     );
   }
+}
+
+class OrderAddOn {
+  final String name;
+  final num price;
+
+  const OrderAddOn({required this.name, this.price = 0});
+
+  factory OrderAddOn.fromJson(Map<String, dynamic> json) => OrderAddOn(
+        name: (json['name'] ?? '').toString(),
+        price: json['price'] is num ? json['price'] as num : 0,
+      );
+
+  Map<String, dynamic> toJson() => {'name': name, 'price': price};
 }
 
 class OrderItemModel {
@@ -129,6 +160,12 @@ class OrderItemModel {
   final int quantity;
   final num price;
   final String image;
+  final String unit;
+  final num? basePrice;
+  final String variantName;
+  final List<OrderAddOn> addOns;
+  final String spiceLevel;
+  final String specialInstructions;
 
   OrderItemModel({
     this.itemId = '',
@@ -137,9 +174,29 @@ class OrderItemModel {
     required this.quantity,
     required this.price,
     this.image = '',
+    this.unit = '',
+    this.basePrice,
+    this.variantName = '',
+    this.addOns = const [],
+    this.spiceLevel = '',
+    this.specialInstructions = '',
   });
 
   bool get isProduct => type == 'product';
+
+  String get customizationSummary {
+    final parts = <String>[];
+    if (variantName.isNotEmpty) {
+      parts.add(variantName);
+    } else if (unit.isNotEmpty) {
+      parts.add(unit);
+    }
+    if (spiceLevel.isNotEmpty) parts.add(spiceLevel);
+    if (addOns.isNotEmpty) {
+      parts.add('+ ${addOns.map((a) => a.name).join(', ')}');
+    }
+    return parts.join(' • ');
+  }
 
   static String _refId(dynamic v) {
     if (v == null) return '';
@@ -151,6 +208,13 @@ class OrderItemModel {
     final productId = _refId(json['productId']);
     final foodId = _refId(json['foodId'] ?? json['menuItemId']);
     final isProduct = productId.isNotEmpty || json['type'] == 'product';
+    final addOnsList = (json['addOns'] is List)
+        ? (json['addOns'] as List)
+            .whereType<Map>()
+            .map((a) => OrderAddOn.fromJson(Map<String, dynamic>.from(a)))
+            .where((a) => a.name.isNotEmpty)
+            .toList()
+        : const <OrderAddOn>[];
     return OrderItemModel(
       itemId: isProduct ? productId : foodId,
       type: isProduct ? 'product' : 'food',
@@ -158,6 +222,12 @@ class OrderItemModel {
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       price: json['price'] ?? 0,
       image: json['image']?.toString() ?? '',
+      unit: (json['unit'] ?? '').toString(),
+      basePrice: json['basePrice'] is num ? json['basePrice'] as num : null,
+      variantName: (json['variantName'] ?? '').toString(),
+      addOns: addOnsList,
+      spiceLevel: (json['spiceLevel'] ?? '').toString(),
+      specialInstructions: (json['specialInstructions'] ?? '').toString(),
     );
   }
 }
