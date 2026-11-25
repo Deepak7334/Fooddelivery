@@ -5,6 +5,7 @@ import 'cart_screen.dart';
 import 'product_details_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/cart_service.dart';
+import '../../../services/favorites_service.dart';
 import '../../../models/product_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/cart_actions.dart';
@@ -20,6 +21,7 @@ class RestaurantDetailsScreen extends StatefulWidget {
   final String? restaurantRating;
   final String? restaurantDeliveryTime;
   final String? restaurantDeliveryFee;
+  final bool? isOpen;
 
   const RestaurantDetailsScreen({
     Key? key,
@@ -30,6 +32,7 @@ class RestaurantDetailsScreen extends StatefulWidget {
     this.restaurantRating,
     this.restaurantDeliveryTime,
     this.restaurantDeliveryFee,
+    this.isOpen,
   }) : super(key: key);
 
   @override
@@ -49,6 +52,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   String _effectiveRestRating = '4.5';
   String _effectiveDeliveryTime = '20-30 min';
   String _effectiveDeliveryFee = '₹15';
+  bool _isVendorOpen = true;
   bool _cartBarDismissed = false;
 
   @override
@@ -61,6 +65,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     _effectiveRestRating = widget.restaurantRating ?? '4.5';
     _effectiveDeliveryTime = widget.restaurantDeliveryTime ?? '20-30 min';
     _effectiveDeliveryFee = widget.restaurantDeliveryFee ?? '₹15';
+    _isVendorOpen = widget.isOpen ??
+        (_effectiveRestId.isNotEmpty
+            ? RestaurantService.instance.isVendorOpen(_effectiveRestId)
+            : true);
+    FavoritesService.instance.load();
     _initMenu();
   }
 
@@ -97,6 +106,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           }
           _effectiveDeliveryFee = formatPrice(r.deliveryFee);
           _effectiveRestAddress = r.address;
+          _isVendorOpen = r.isOpen;
         }
         _isLoadingMenu = false;
       });
@@ -117,9 +127,28 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       _showUnavailable();
       return;
     }
+    if (dish.requiresConfiguration) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailsScreen(
+            foodItem: dish,
+            vendorIsOpen: _isVendorOpen,
+          ),
+        ),
+      );
+      return;
+    }
 
     _cartBarDismissed = false;
-    if (!await addToCart(context, dish, vendorId: vendorId, vendorName: vendorName)) return;
+    if (!await addToCart(
+      context,
+      dish,
+      vendorId: vendorId,
+      vendorName: vendorName,
+      vendorIsOpen: _isVendorOpen,
+    )) return;
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -142,7 +171,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   void _decrementItem(FoodItemModel dish) {
-    final currentQty = CartService.instance.items.firstWhere(
+    final currentQty = CartService.instance.items.lastWhere(
       (i) => i.id == dish.id,
       orElse: () => CartItem(id: '', name: '', price: 0, restaurantId: '', restaurantName: '', quantity: 0),
     ).quantity;
@@ -159,9 +188,28 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       _showUnavailable();
       return;
     }
+    if (dish.requiresConfiguration) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailsScreen(
+            foodItem: dish,
+            vendorIsOpen: _isVendorOpen,
+          ),
+        ),
+      );
+      return;
+    }
 
     _cartBarDismissed = false;
-    if (!await addToCart(context, dish, vendorId: vendorId, vendorName: vendorName)) return;
+    if (!await addToCart(
+      context,
+      dish,
+      vendorId: vendorId,
+      vendorName: vendorName,
+      vendorIsOpen: _isVendorOpen,
+    )) return;
     if (!mounted) return;
     Navigator.push(
       context,
@@ -186,6 +234,34 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 pinned: true,
                 iconTheme: const IconThemeData(color: Colors.white),
                 backgroundColor: jdkartOrange,
+                actions: [
+                  if (_effectiveRestId.isNotEmpty)
+                    AnimatedBuilder(
+                      animation: FavoritesService.instance,
+                      builder: (context, _) {
+                        final isFav = FavoritesService.instance.isFavorite(_effectiveRestId);
+                        return IconButton(
+                          tooltip: isFav ? 'Remove from favorites' : 'Save to favorites',
+                          onPressed: () {
+                            FavoritesService.instance.toggle(_effectiveRestId);
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isFav ? 'Removed from Favorites' : 'Saved to Favorites',
+                                ),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          icon: Icon(
+                            isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            color: isFav ? Colors.redAccent : Colors.white,
+                          ),
+                        );
+                      },
+                    ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
@@ -294,6 +370,31 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   ),
                 ),
               ),
+
+              if (!_isVendorOpen)
+                SliverToBoxAdapter(
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, color: Color(0xFFB91C1C), size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'This restaurant is currently closed and not accepting orders right now.',
+                            style: TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w700, fontSize: 12.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
               SliverToBoxAdapter(
                 child: Container(
@@ -423,18 +524,22 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Widget _buildMenuItem(FoodItemModel item) {
-    final cartItem = CartService.instance.items.firstWhere(
-      (i) => i.id == item.id,
-      orElse: () => CartItem(id: '', name: '', price: 0, restaurantId: '', restaurantName: '', quantity: 0),
-    );
-    final int qty = cartItem.quantity;
-    final price = item.discountedPrice ?? item.price;
+    final int qty = CartService.instance.quantityFor(item.id);
+    final price = item.displayPrice;
+    final originalPrice = item.displayOriginalPrice;
+    final unavailable = !item.isAvailable || item.isOutOfStock;
+    final canOrder = _isVendorOpen && !unavailable;
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: item)),
+          MaterialPageRoute(
+            builder: (_) => ProductDetailsScreen(
+              foodItem: item,
+              vendorIsOpen: _isVendorOpen,
+            ),
+          ),
         );
       },
       child: Container(
@@ -518,13 +623,20 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   Row(
                     children: [
                       Text(formatPrice(price), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                      if (item.discountedPrice != null && item.discountedPrice! < item.price) ...[
+                      if (item.hasDiscount) ...[
                         const SizedBox(width: 6),
                         Text(
-                          formatPrice(item.price),
+                          formatPrice(originalPrice),
                           style: const TextStyle(color: Colors.grey, fontSize: 12, decoration: TextDecoration.lineThrough),
                         ),
-                      ]
+                      ],
+                      if (item.requiresConfiguration) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          'Customizable',
+                          style: TextStyle(color: jdkartOrange, fontSize: 10.5, fontWeight: FontWeight.w700),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -580,16 +692,27 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                             BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 2)),
                           ],
                         ),
-                        child: qty == 0
+                        child: !canOrder
+                            ? Center(
+                                child: Text(
+                                  unavailable ? 'OUT' : 'CLOSED',
+                                  style: const TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              )
+                            : qty == 0
                             ? InkWell(
                                 onTap: () => _addItem(item),
                                 child: Center(
                                   child: Text(
-                                    'ADD +',
+                                    item.requiresConfiguration ? 'SELECT' : 'ADD +',
                                     style: TextStyle(
                                       color: jdkartOrange,
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 13,
+                                      fontSize: 12.5,
                                     ),
                                   ),
                                 ),
@@ -632,9 +755,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   width: 115,
                   height: 32,
                   child: ElevatedButton(
-                    onPressed: () => _orderItemDirectly(item),
+                    onPressed: canOrder ? () => _orderItemDirectly(item) : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: jdkartOrange,
+                      disabledBackgroundColor: const Color(0xFFE2E8F0),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: EdgeInsets.zero,
@@ -642,7 +766,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('Order Now', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      canOrder ? 'Order Now' : (unavailable ? 'Unavailable' : 'Closed'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: canOrder ? Colors.white : const Color(0xFF64748B),
+                      ),
+                    ),
                   ),
                 ),
               ],

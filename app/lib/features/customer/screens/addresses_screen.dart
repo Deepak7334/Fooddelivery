@@ -77,6 +77,14 @@ class _AddressesScreenState extends State<AddressesScreen> {
     final stateController = TextEditingController(text: existing?.state);
     final pincodeController = TextEditingController(text: existing?.pincode);
     bool isDefault = existing?.isDefault ?? false;
+    double? pinLat = existing != null
+        ? existing.latitude
+        : LocationService.instance.activeLat;
+    double? pinLng = existing != null
+        ? existing.longitude
+        : LocationService.instance.activeLng;
+    bool detectingGps = false;
+    String? gpsNotice;
 
     showModalBottomSheet(
       context: context,
@@ -87,6 +95,51 @@ class _AddressesScreenState extends State<AddressesScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            Future<void> detectGpsForForm() async {
+              setModalState(() {
+                detectingGps = true;
+                gpsNotice = null;
+              });
+              final fix = await LocationService.instance.detectCurrentCoordinates();
+              if (!ctx.mounted) return;
+              if (fix == null || fix.error.isNotEmpty) {
+                setModalState(() {
+                  detectingGps = false;
+                  gpsNotice = fix?.error.isNotEmpty == true
+                      ? fix!.error
+                      : 'Could not detect GPS location. Try near a window.';
+                });
+                return;
+              }
+              pinLat = fix.lat;
+              pinLng = fix.lng;
+              final details =
+                  await LocationService.instance.reverseGeocodeDetails(fix.lat, fix.lng);
+              if (!ctx.mounted) return;
+              if (details != null) {
+                if (areaController.text.trim().isEmpty &&
+                    (details['area'] ?? '').isNotEmpty) {
+                  areaController.text = details['area']!;
+                }
+                if (cityController.text.trim().isEmpty &&
+                    (details['city'] ?? '').isNotEmpty) {
+                  cityController.text = details['city']!;
+                }
+                if (stateController.text.trim().isEmpty &&
+                    (details['state'] ?? '').isNotEmpty) {
+                  stateController.text = details['state']!;
+                }
+                if (pincodeController.text.trim().isEmpty &&
+                    RegExp(r'^[1-9][0-9]{5}$').hasMatch(details['pincode'] ?? '')) {
+                  pincodeController.text = details['pincode']!;
+                }
+              }
+              setModalState(() {
+                detectingGps = false;
+                gpsNotice = 'GPS pin attached (${fix.lat.toStringAsFixed(4)}, ${fix.lng.toStringAsFixed(4)})';
+              });
+            }
+
             return Padding(
               padding: EdgeInsets.only(
                 left: 20,
@@ -113,6 +166,90 @@ class _AddressesScreenState extends State<AddressesScreen> {
                             onPressed: () => Navigator.pop(ctx),
                           )
                         ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: pinLat != null
+                              ? const Color(0xFFF0FDF4)
+                              : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: pinLat != null
+                                ? const Color(0xFF86EFAC)
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              pinLat != null
+                                  ? Icons.gps_fixed_rounded
+                                  : Icons.gps_not_fixed_rounded,
+                              size: 18,
+                              color: pinLat != null
+                                  ? const Color(0xFF15803D)
+                                  : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    pinLat != null
+                                        ? 'GPS pin attached for accurate delivery check'
+                                        : 'Optional: attach GPS pin for fast service check',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: pinLat != null
+                                          ? const Color(0xFF15803D)
+                                          : const Color(0xFF334155),
+                                    ),
+                                  ),
+                                  if (gpsNotice != null)
+                                    Text(
+                                      gpsNotice!,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF475569),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: detectingGps ? null : detectGpsForForm,
+                              child: detectingGps
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : Text(
+                                      pinLat != null ? 'Update GPS' : 'Use GPS',
+                                      style: TextStyle(
+                                        color: jdkartOrange,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                            ),
+                            if (pinLat != null)
+                              IconButton(
+                                tooltip: 'Remove GPS pin',
+                                visualDensity: VisualDensity.compact,
+                                icon: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
+                                onPressed: () => setModalState(() {
+                                  pinLat = null;
+                                  pinLng = null;
+                                  gpsNotice = 'Saved without GPS pin (pincode/city mode)';
+                                }),
+                              ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -237,12 +374,8 @@ class _AddressesScreenState extends State<AddressesScreen> {
                               city: cityController.text.trim(),
                               state: stateController.text.trim(),
                               pincode: pincodeController.text.trim(),
-                              latitude: existing != null
-                                  ? existing.latitude
-                                  : LocationService.instance.selectedLat,
-                              longitude: existing != null
-                                  ? existing.longitude
-                                  : LocationService.instance.selectedLng,
+                              latitude: pinLat,
+                              longitude: pinLng,
                               isDefault: isDefault,
                             );
 

@@ -6,6 +6,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../models/order_model.dart';
 import '../../../services/order_service.dart';
+import '../../../services/realtime_service.dart';
 
 class TrackingScreen extends StatefulWidget {
   final OrderModel? order;
@@ -24,6 +25,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   bool _isLoading = false;
   String? _error;
   Timer? _pollTimer;
+  StreamSubscription<Map<String, dynamic>>? _orderUpdateSub;
+  StreamSubscription<Map<String, dynamic>>? _orderOtpSub;
+  String? _joinedOrderId;
   final Color jdkartOrange = const Color(0xFFF97316);
 
   @override
@@ -32,6 +36,17 @@ class _TrackingScreenState extends State<TrackingScreen> {
     _order = widget.order;
     final id = widget.order?.id ?? widget.orderId;
     if (id != null && id.isNotEmpty) {
+      _joinedOrderId = id;
+      RealtimeService.instance.joinOrderRoom(id);
+      _orderUpdateSub = RealtimeService.instance.orderUpdates.listen((data) {
+        final targetId = (data['orderId'] ?? '').toString();
+        if (targetId.isEmpty || targetId == id) {
+          _fetchOrderDetails(id, silent: true);
+        }
+      });
+      _orderOtpSub = RealtimeService.instance.orderOtpEvents.listen((_) {
+        _fetchOrderDetails(id, silent: true);
+      });
       _fetchOrderDetails(id);
     }
     _pollTimer = Timer.periodic(_pollInterval, (_) => _pollIfActive());
@@ -40,6 +55,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _orderUpdateSub?.cancel();
+    _orderOtpSub?.cancel();
+    if (_joinedOrderId != null) {
+      RealtimeService.instance.leaveOrderRoom(_joinedOrderId!);
+    }
     super.dispose();
   }
 
@@ -110,12 +130,79 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   int _getStepIndex(String status) {
-    final s = status.toLowerCase();
-    if (s == 'delivered') return 4;
-    if (s.contains('out') || s.contains('way') || s.contains('driver') || s.contains('pickup') || s.contains('customer')) return 3;
-    if (s.contains('prepar') || s == 'accepted') return 2;
-    if (s == 'cancelled' || s == 'rejected') return -1;
-    return 1; // pending / placed
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return 4;
+      case 'out_for_delivery':
+      case 'accepted_by_driver':
+      case 'reached_restaurant':
+      case 'picked_up':
+      case 'on_the_way':
+      case 'reached_customer':
+        return 3;
+      case 'preparing':
+      case 'assignment_pending':
+        return 2;
+      case 'accepted':
+      case 'confirmed':
+        return 1;
+      case 'cancelled':
+      case 'rejected':
+        return -1;
+      default: // 'pending'
+        return 0;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Order Placed';
+      case 'accepted':
+      case 'confirmed':
+        return 'Order Confirmed';
+      case 'preparing':
+        return 'Preparing';
+      case 'assignment_pending':
+        return 'Assigning Rider';
+      case 'out_for_delivery':
+        return 'Out for Delivery';
+      case 'accepted_by_driver':
+        return 'Driver Assigned';
+      case 'reached_restaurant':
+        return 'Rider at Vendor';
+      case 'picked_up':
+        return 'Order Picked Up';
+      case 'on_the_way':
+        return 'On the Way';
+      case 'reached_customer':
+        return 'Arrived at Door';
+      case 'delivered':
+        return 'Order Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return status.replaceAll('_', ' ');
+    }
+  }
+
+  String _deliverySubtitle(String status, String deliveryAddress) {
+    switch (status.toLowerCase()) {
+      case 'accepted_by_driver':
+        return 'Delivery partner accepted and is heading to pickup';
+      case 'reached_restaurant':
+        return 'Delivery partner is waiting at pickup';
+      case 'picked_up':
+      case 'on_the_way':
+      case 'out_for_delivery':
+        return 'Delivery partner is on the way to $deliveryAddress';
+      case 'reached_customer':
+        return 'Delivery partner has arrived at $deliveryAddress';
+      default:
+        return 'Delivery partner is on the way to $deliveryAddress';
+    }
   }
 
   @override
@@ -222,8 +309,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                stepIndex == 4 ? 'Order Delivered' : 'Status: ${status.replaceAll('_', ' ').toUpperCase()}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                stepIndex == 4
+                                    ? 'Order Delivered'
+                                    : '${_statusLabel(status)} • ETA ${order?.estimatedDeliveryTime ?? '30-45 mins'}',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                               ),
                             ],
                           ),
@@ -340,7 +429,12 @@ class _TrackingScreenState extends State<TrackingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(order.deliveryAgentName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              const Text('Your Delivery Partner', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text(
+                                order.deliveryAgentVehicleNumber.isNotEmpty
+                                    ? order.deliveryAgentVehicleNumber
+                                    : 'Your Delivery Partner',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
                             ],
                           ),
                         ),
@@ -372,29 +466,48 @@ class _TrackingScreenState extends State<TrackingScreen> {
                       else ...[
                         _buildStatusStep(
                           Icons.receipt_long_rounded,
-                          'Order Placed & Confirmed',
-                          'Restaurant has received your order',
+                          'Order Placed',
+                          'We have received your order',
+                          stepIndex >= 0,
+                          isCurrent: stepIndex == 0,
+                        ),
+                        _buildStatusStep(
+                          Icons.check_circle_outline_rounded,
+                          'Order Confirmed',
+                          '$restaurantName confirmed your order',
                           stepIndex >= 1,
                           isCurrent: stepIndex == 1,
                         ),
                         _buildStatusStep(
                           Icons.soup_kitchen_rounded,
-                          'Food is Being Prepared',
-                          'Freshly cooking at $restaurantName',
+                          order?.isStoreOrder == true
+                              ? (status.toLowerCase() == 'assignment_pending'
+                                  ? 'Assigning Delivery Rider'
+                                  : 'Packing Your Order')
+                              : (status.toLowerCase() == 'assignment_pending'
+                                  ? 'Assigning Delivery Rider'
+                                  : 'Food is Being Prepared'),
+                          order?.isStoreOrder == true
+                              ? 'Packing your items at $restaurantName'
+                              : 'Freshly cooking at $restaurantName',
                           stepIndex >= 2,
                           isCurrent: stepIndex == 2,
                         ),
                         _buildStatusStep(
                           Icons.delivery_dining_rounded,
-                          'Out for Delivery',
-                          'Delivery partner is on the way to $deliveryAddress',
+                          status.toLowerCase() == 'reached_customer'
+                              ? 'Arrived at Your Door'
+                              : 'Out for Delivery',
+                          _deliverySubtitle(status, deliveryAddress),
                           stepIndex >= 3,
                           isCurrent: stepIndex == 3,
                         ),
                         _buildStatusStep(
                           Icons.home_rounded,
                           'Delivered',
-                          'Enjoy your hot meal!',
+                          order?.isStoreOrder == true
+                              ? 'Order delivered. Enjoy!'
+                              : 'Enjoy your meal!',
                           stepIndex >= 4,
                           isCurrent: stepIndex == 4,
                           isLast: true,

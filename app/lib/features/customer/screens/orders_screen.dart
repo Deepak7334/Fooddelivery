@@ -59,6 +59,36 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  String _formatStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'rejected':
+        return 'Rejected';
+      case 'reached_customer':
+        return 'Arrived at Door';
+      case 'out_for_delivery':
+      case 'on_the_way':
+      case 'picked_up':
+        return 'Out for delivery';
+      case 'accepted_by_driver':
+        return 'Driver assigned';
+      case 'reached_restaurant':
+        return 'Rider at store';
+      case 'assignment_pending':
+        return 'Assigning rider';
+      case 'preparing':
+        return 'Preparing';
+      case 'accepted':
+      case 'confirmed':
+        return 'Accepted';
+      default:
+        return 'Pending';
+    }
+  }
+
   Widget _notLoggedIn() {
     return Center(
       child: Padding(
@@ -243,7 +273,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
-                                        order.status.replaceAll('_', ' '),
+                                        _formatStatus(order.status),
                                         style: TextStyle(
                                           color: isDelivered
                                               ? const Color(0xFF15803D)

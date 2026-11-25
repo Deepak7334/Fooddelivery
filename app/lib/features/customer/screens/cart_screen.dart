@@ -183,6 +183,26 @@ class _CartScreenState extends State<CartScreen> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
+                                      if (item.customizationSummary.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.customizationSummary,
+                                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                      if (item.freeDelivery) ...[
+                                        const SizedBox(height: 2),
+                                        const Text(
+                                          'Free delivery item',
+                                          style: TextStyle(
+                                            color: Color(0xFF15803D),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
                                       const SizedBox(height: 4),
                                       Text(
                                         formatPrice(item.price),
@@ -205,7 +225,7 @@ class _CartScreenState extends State<CartScreen> {
                                     children: [
                                       InkWell(
                                         onTap: () {
-                                          CartService.instance.updateQuantity(item.id, item.quantity - 1, type: item.type);
+                                          CartService.instance.updateQuantity(item.cartItemKey, item.quantity - 1, type: item.type);
                                         },
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -218,7 +238,7 @@ class _CartScreenState extends State<CartScreen> {
                                       ),
                                       InkWell(
                                         onTap: () {
-                                          CartService.instance.updateQuantity(item.id, item.quantity + 1, type: item.type);
+                                          CartService.instance.updateQuantity(item.cartItemKey, item.quantity + 1, type: item.type);
                                         },
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
