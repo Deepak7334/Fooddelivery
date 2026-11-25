@@ -10,7 +10,7 @@ import { calculateDistance } from '../../utils/distance';
 import { reverseGeocodeCoords } from '../../utils/geolocation';
 import { homeBanners } from '../../components/customerHomeDesign';
 
-const STORE_TYPES = [{ _id: 'grocery', name: 'Grocery', type: 'store' }, { _id: 'stationery', name: 'Stationery', type: 'store' }, { _id: 'bakery', name: 'Bakery', type: 'store' }];
+const STORE_TYPES = [{ _id: 'grocery', name: 'Grocery', type: 'store' }, { _id: 'bakery', name: 'Bakery', type: 'store' }];
 
 export default function HomePage() {
   const [categories, setCategories] = useState([]);

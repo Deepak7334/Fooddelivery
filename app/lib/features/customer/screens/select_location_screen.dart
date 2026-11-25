@@ -4,7 +4,6 @@ import 'package:geolocator/geolocator.dart';
 import '../../../models/address_model.dart';
 import '../../../services/address_service.dart';
 import '../../../services/location_service.dart';
-import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import 'addresses_screen.dart';
@@ -89,13 +88,13 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
     }
   }
 
-  /// Calculate distance from user's real active coordinates to target
+  /// Calculate distance from user's current coordinates to target
   String _getDistanceString(double? targetLat, double? targetLng) {
-    final currentLat = LocationService.instance.activeLat;
-    final currentLng = LocationService.instance.activeLng;
-    if (targetLat == null || targetLng == null || currentLat == null || currentLng == null) {
+    if (targetLat == null || targetLng == null) {
       return '—';
     }
+    final currentLat = LocationService.instance.selectedLat;
+    final currentLng = LocationService.instance.selectedLng;
     final km = LocationService.instance.calculateDistanceKm(currentLat, currentLng, targetLat, targetLng);
     return LocationService.instance.formatDistance(km);
   }
@@ -216,7 +215,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
 
   /// Handle "Request Address" via WhatsApp
   Future<void> _handleRequestAddress() async {
-    const phone = ApiConstants.supportWhatsAppPhone; // JDKart customer support
+    const phone = '917488090510'; // JDKart customer support
     const msg = 'Hi JDKart, I would like to request food delivery service at my address: ';
     final uri = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(msg)}');
 
@@ -225,11 +224,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Unable to open WhatsApp. Please contact support at ${ApiConstants.supportPhoneDisplay}.',
-            ),
-          ),
+          const SnackBar(content: Text('Unable to open WhatsApp. Please contact support at +91 7488090510.')),
         );
       }
     } catch (_) {
@@ -239,10 +234,10 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
     }
   }
 
-  /// Select a saved address without inventing fake placeholder coordinates.
+  /// Select a saved address
   void _selectSavedAddress(AddressModel addr) {
-    final lat = addr.latitude;
-    final lng = addr.longitude;
+    final lat = addr.latitude ?? LocationService.defaultLat;
+    final lng = addr.longitude ?? LocationService.defaultLng;
 
     LocationService.instance.setSelectedLocation(
       title: addr.label.isNotEmpty ? addr.label : 'Home',
@@ -254,15 +249,15 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
     Navigator.pop(context, {
       'title': addr.label,
       'address': addr.fullAddress,
-      if (lat != null) 'lat': lat,
-      if (lng != null) 'lng': lng,
+      'lat': lat,
+      'lng': lng,
     });
   }
 
   /// Select a recent search
   void _selectRecentSearch(Map<String, dynamic> item) {
-    final lat = (item['lat'] is num) ? (item['lat'] as num).toDouble() : null;
-    final lng = (item['lng'] is num) ? (item['lng'] as num).toDouble() : null;
+    final lat = (item['lat'] is num) ? (item['lat'] as num).toDouble() : LocationService.defaultLat;
+    final lng = (item['lng'] is num) ? (item['lng'] as num).toDouble() : LocationService.defaultLng;
     final title = item['title'] ?? 'Selected Location';
     final address = item['address'] ?? '';
 
@@ -276,8 +271,8 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> with Widget
     Navigator.pop(context, {
       'title': title,
       'address': address,
-      if (lat != null) 'lat': lat,
-      if (lng != null) 'lng': lng,
+      'lat': lat,
+      'lng': lng,
     });
   }
 

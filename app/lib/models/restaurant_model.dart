@@ -16,8 +16,6 @@ class RestaurantModel {
   final bool isActive;
   final bool bookingEnabled;
   final List<String> cuisine;
-  final List<String> offers;
-  final String storeType;
   final double? lat;
   final double? lng;
 
@@ -39,8 +37,6 @@ class RestaurantModel {
     this.isActive = true,
     this.bookingEnabled = true,
     this.cuisine = const [],
-    this.offers = const [],
-    this.storeType = '',
     this.lat,
     this.lng,
   });
@@ -48,38 +44,17 @@ class RestaurantModel {
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
     double? lat;
     double? lng;
-    final loc = json['location'];
-    if (loc is Map) {
-      if (loc['coordinates'] is List) {
-        final coords = loc['coordinates'] as List;
-        if (coords.length >= 2 && coords[0] is num && coords[1] is num) {
-          final rawLng = (coords[0] as num).toDouble();
-          final rawLat = (coords[1] as num).toDouble();
-          if (rawLng != 0 || rawLat != 0) {
-            lng = rawLng;
-            lat = rawLat;
-          }
-        }
-      } else if (loc['lat'] is num && loc['lng'] is num) {
-        lat = (loc['lat'] as num).toDouble();
-        lng = (loc['lng'] as num).toDouble();
+    if (json['location'] != null && json['location']['coordinates'] is List) {
+      final coords = json['location']['coordinates'] as List;
+      if (coords.length >= 2) {
+        lng = (coords[0] as num).toDouble();
+        lat = (coords[1] as num).toDouble();
       }
     }
 
-    final storeType = (json['storeType'] ?? '').toString();
     List<String> cuisineList = [];
     if (json['cuisine'] is List) {
       cuisineList = (json['cuisine'] as List).map((e) => e.toString()).toList();
-    } else if (storeType.isNotEmpty) {
-      cuisineList = [storeType.toUpperCase()];
-    }
-
-    List<String> offersList = [];
-    if (json['offers'] is List) {
-      offersList = (json['offers'] as List)
-          .map((e) => e.toString().trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
     }
 
     return RestaurantModel(
@@ -100,8 +75,6 @@ class RestaurantModel {
       isActive: json['isActive'] ?? true,
       bookingEnabled: json['bookingEnabled'] ?? true,
       cuisine: cuisineList,
-      offers: offersList,
-      storeType: storeType,
       lat: lat,
       lng: lng,
     );

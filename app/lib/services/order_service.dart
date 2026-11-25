@@ -43,12 +43,10 @@ class OrderService {
     required num totalAmount,
     required dynamic deliveryAddress,
     Map<String, dynamic>? deliveryCoords,
-    String? alternatePhone,
     String? specialInstructions,
     String? serviceAreaId,
     String paymentMethod = 'cod',
   }) async {
-    final cleanPhone = alternatePhone?.trim() ?? '';
     final payload = {
       if (restaurantId != null && restaurantId.isNotEmpty)
         'restaurantId': restaurantId,
@@ -56,7 +54,6 @@ class OrderService {
       'totalAmount': totalAmount,
       'deliveryAddress': deliveryAddress,
       if (deliveryCoords != null) 'deliveryCoords': deliveryCoords,
-      if (cleanPhone.isNotEmpty) 'alternatePhone': cleanPhone,
       if (specialInstructions != null && specialInstructions.isNotEmpty)
         'specialInstructions': specialInstructions,
       if (serviceAreaId != null && serviceAreaId.isNotEmpty)

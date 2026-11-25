@@ -8,7 +8,6 @@ import 'cart_screen.dart';
 import 'profile_screen.dart';
 import '../../../core/network/api_client.dart';
 import '../../../services/push_service.dart';
-import '../../../services/realtime_service.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({Key? key}) : super(key: key);
@@ -29,7 +28,6 @@ class _MainLayoutState extends State<MainLayout> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PushService.instance.registerForPush();
-      RealtimeService.instance.connectIfAuthenticated();
     });
   }
 
