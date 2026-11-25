@@ -4,26 +4,8 @@ import { createSocket } from '../../lib/socket';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { formatAddress } from '../../utils/address';
-import { FiPackage, FiCheck, FiClock, FiTruck, FiCheckCircle, FiX } from 'react-icons/fi';
-import { FaWhatsapp } from 'react-icons/fa';
+import { FiPackage, FiCheck, FiClock, FiTruck, FiCheckCircle } from 'react-icons/fi';
 import './CustomerTransactions.css';
-
-const CANCELLATION_WINDOW_SECONDS = 150; // 2 minutes 30 seconds
-const WHATSAPP_SUPPORT_NUMBER = '917762971182';
-
-const getRemainingSeconds = (createdAt) => {
-  if (!createdAt) return 0;
-  const createdTime = new Date(createdAt).getTime();
-  const now = Date.now();
-  const elapsed = Math.floor((now - createdTime) / 1000);
-  return Math.max(0, CANCELLATION_WINDOW_SECONDS - elapsed);
-};
-
-const formatCountdown = (totalSeconds) => {
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = totalSeconds % 60;
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-};
 
 const MAIN_STEPS = ['pending', 'accepted', 'preparing', 'out_for_delivery', 'delivered'];
 const STEP_VISUALS = [FiPackage, FiCheck, FiClock, FiTruck, FiCheckCircle];
@@ -50,16 +32,7 @@ export default function OrderTrackingPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
-  const [, setTick] = useState(0);
   const socketRef = useRef(null);
-
-  // Live 1-second ticker for the 2:30 min cancellation countdown
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTick(t => t + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     api.get(`/customer/orders/${id}`).then(res => {
@@ -85,6 +58,7 @@ export default function OrderTrackingPage() {
     return () => clearInterval(interval);
   }, [id]);
 
+
   if (loading) return <div className="customer-transactions tx-loading"><div className="spinner" style={{ margin: '0 auto' }} /></div>;
   if (!order) return (
     <div className="page-wrapper customer-transactions tx-tracking">
@@ -102,17 +76,12 @@ export default function OrderTrackingPage() {
     </div>
   );
 
-  const handleCancelOrder = async () => {
-    const remaining = getRemainingSeconds(order.createdAt);
-    if (remaining <= 0) {
-      toast.error('After 2.30 minutes Apka order cancel nhi ho sakta..');
-      return;
-    }
-    if (!window.confirm('Cancel this order? Free cancellation is only available within 2:30 minutes.')) return;
+    const handleCancelOrder = async () => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
     setCancelling(true);
     try {
       await api.patch(`/customer/orders/${order._id}/cancel`);
-      setOrder(prev => ({ ...prev, status: 'cancelled' }));
+      setOrder({ ...order, status: 'cancelled' });
       toast.success('Order cancelled successfully');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to cancel order');
@@ -123,12 +92,6 @@ export default function OrderTrackingPage() {
 
   const currentIdx = STEP_MAP[order.status] ?? 0;
   const isCancelled = order.status === 'cancelled';
-  const remainingSeconds = getRemainingSeconds(order.createdAt);
-  const canCancel = !isCancelled && ['pending', 'accepted'].includes(order.status) && remainingSeconds > 0;
-  const cancellationExpired = !isCancelled && ['pending', 'accepted'].includes(order.status) && remainingSeconds === 0;
-
-  const whatsappMessage = encodeURIComponent(`Hi JDkart Support, I need help with my Order #${order._id?.slice(-8).toUpperCase()}`);
-  const whatsappUrl = `https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${whatsappMessage}`;
 
   return (
     <div className="page-wrapper customer-transactions tx-tracking">
@@ -138,121 +101,19 @@ export default function OrderTrackingPage() {
             <h1>{order.status === 'delivered' ? 'Order Delivered' : isCancelled ? 'Order Cancelled' : 'Track Order'}</h1>
             <p>Order #{order._id?.slice(-8).toUpperCase()}</p>
           </div>
-
-          {!isCancelled && order.status !== 'delivered' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {canCancel ? (
-                <button 
-                  onClick={handleCancelOrder} 
-                  disabled={cancelling}
-                  className="btn btn-sm btn-cancel-countdown"
-                  style={{
-                    background: 'rgba(239,68,68,0.1)',
-                    color: '#DC2626',
-                    border: '1.5px solid rgba(239,68,68,0.3)',
-                    padding: '8px 16px',
-                    fontWeight: 800,
-                    borderRadius: 10,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
-                  title="Cancel order within 2:30 minutes"
-                >
-                  <FiX size={15} />
-                  {cancelling ? 'Cancelling...' : `Cancel (${formatCountdown(remainingSeconds)})`}
-                </button>
-              ) : (
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-sm btn-whatsapp-support"
-                  style={{
-                    background: '#25D366',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    padding: '8px 16px',
-                    fontWeight: 800,
-                    borderRadius: 10,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    textDecoration: 'none',
-                    boxShadow: '0 2px 8px rgba(37, 211, 102, 0.35)'
-                  }}
-                  title="Need help with this order? Chat on WhatsApp"
-                >
-                  <FaWhatsapp size={16} />  WhatsApp
-                </a>
-              )}
-            </div>
-          )}
+            {!isCancelled && ['pending', 'accepted'].includes(order.status) && (
+              <button 
+                onClick={handleCancelOrder} 
+                disabled={cancelling}
+                className="btn btn-sm"
+                style={{ background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', border: '1px solid rgba(244,67,54,0.3)', padding: '8px 16px', fontWeight: 700 }}
+              >
+                {cancelling ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            )}
         </div>
       </header>
       <div className="container">
-        {/* 2:30 min Cancellation Window Banner */}
-        {canCancel && (
-          <div className="cancellation-window-banner" style={{
-            background: '#FFF7ED',
-            border: '1px solid #FED7AA',
-            borderRadius: 12,
-            padding: '12px 16px',
-            marginBottom: 20,
-            fontSize: 13,
-            color: '#9A3412',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            lineHeight: 1.4
-          }}>
-            <span style={{ fontSize: 18 }}>⏱️</span>
-            <div>
-              <strong>Cancellation window: {formatCountdown(remainingSeconds)} left.</strong> After 2.30 minutes Apka order cancel nhi ho sakta..
-            </div>
-          </div>
-        )}
-
-        {cancellationExpired && (
-          <div className="cancellation-window-banner" style={{
-            background: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            borderRadius: 12,
-            padding: '12px 16px',
-            marginBottom: 20,
-            fontSize: 13,
-            color: '#475569',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 10,
-            lineHeight: 1.4
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 16 }}>🔒</span>
-              <div>
-                <strong>Order Confirmed:</strong> After 2.30 minutes Apka order cancel nhi ho sakta..
-              </div>
-            </div>
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                color: '#15803D',
-                fontWeight: 800,
-                textDecoration: 'none',
-                fontSize: 12.5
-              }}
-            >
-              <FaWhatsapp size={15} /> Chat on WhatsApp
-            </a>
-          </div>
-        )}
         {/* Status Tracker */}
         {!isCancelled && (
           <div className="card" style={{ padding: 28, marginBottom: 20 }}>

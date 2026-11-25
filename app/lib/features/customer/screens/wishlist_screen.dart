@@ -118,29 +118,20 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   itemBuilder: (context, index) {
                     final rest = _restaurants[index];
                     return GestureDetector(
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RestaurantDetailsScreen(
-                              restaurantId: rest.id,
-                              restaurantName: rest.name,
-                              restaurantImage: rest.image,
-                              restaurantCuisine: rest.cuisine.isNotEmpty ? rest.cuisine.join(', ') : 'North Indian',
-                              restaurantRating: rest.rating.toString(),
-                              restaurantDeliveryTime: rest.deliveryTime,
-                              restaurantDeliveryFee: formatPrice(rest.deliveryFee),
-                              isOpen: rest.isOpen,
-                            ),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RestaurantDetailsScreen(
+                            restaurantId: rest.id,
+                            restaurantName: rest.name,
+                            restaurantImage: rest.image,
+                            restaurantCuisine: rest.cuisine.isNotEmpty ? rest.cuisine.join(', ') : 'North Indian',
+                            restaurantRating: rest.rating.toString(),
+                            restaurantDeliveryTime: rest.deliveryTime,
+                            restaurantDeliveryFee: formatPrice(rest.deliveryFee),
                           ),
-                        );
-                        if (mounted) {
-                          setState(() {
-                            final favoriteIds = FavoritesService.instance.ids;
-                            _restaurants = _restaurants.where((r) => favoriteIds.contains(r.id)).toList();
-                          });
-                        }
-                      },
+                        ),
+                      ),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(

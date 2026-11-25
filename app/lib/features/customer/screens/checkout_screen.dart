@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'orders_screen.dart';
 import 'addresses_screen.dart';
@@ -30,32 +29,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String? _error;
   List<AddressModel> _savedAddresses = [];
   final TextEditingController _instructionsController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
   final Color jdkartOrange = const Color(0xFFF97316);
 
   @override
   void initState() {
     super.initState();
-    _prefillPhone();
     _loadAddresses();
     CartService.instance.refreshCharges();
-  }
-
-  void _prefillPhone() {
-    if (_phoneController.text.trim().isNotEmpty) return;
-    final phone = AuthService.instance.currentUser?.phone ?? '';
-    if (phone.isNotEmpty) _phoneController.text = phone;
-  }
-
-  String _normalizePhone(String raw) {
-    var digits = raw.replaceAll(RegExp(r'\D'), '');
-    if (digits.length == 12 && digits.startsWith('91')) {
-      digits = digits.substring(2);
-    }
-    if (digits.length == 11 && digits.startsWith('0')) {
-      digits = digits.substring(1);
-    }
-    return digits;
   }
 
   Future<void> _loadAddresses() async {
@@ -93,7 +73,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void dispose() {
     _instructionsController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -146,28 +125,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${i.quantity}x ${i.name}',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (i.customizationSummary.isNotEmpty)
-                                        Text(
-                                          i.customizationSummary,
-                                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      if (i.freeDelivery)
-                                        const Text(
-                                          'Free delivery item',
-                                          style: TextStyle(color: Color(0xFF15803D), fontSize: 11, fontWeight: FontWeight.w700),
-                                        ),
-                                    ],
+                                  child: Text(
+                                    '${i.quantity}x ${i.name}',
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 Text(
@@ -352,29 +314,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   }),
                 const SizedBox(height: 16),
 
-                // Delivery Mobile Number (required so rider & vendor can contact customer)
-                _buildSectionTitle('Delivery Contact Number *'),
-                const SizedBox(height: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.phone_outlined, color: jdkartOrange, size: 20),
-                      hintText: '10-digit mobile number for delivery updates',
-                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
                 // Delivery Instructions
                 _buildSectionTitle('Cooking & Delivery Notes'),
                 const SizedBox(height: 12),
@@ -444,21 +383,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           );
                           if (loggedIn == true) {
-                            _prefillPhone();
                             await _loadAddresses();
                             await CartService.instance.refreshCharges();
                           }
-                          return;
-                        }
-
-                        final cleanPhone = _normalizePhone(_phoneController.text);
-                        if (cleanPhone.length != 10) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please enter a valid 10-digit delivery mobile number.'),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
                           return;
                         }
 
@@ -572,7 +499,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             return;
                           }
 
-                          final payloadItems = items.map((i) => i.toBackendPayload()).toList();
+                          final payloadItems = items.map((i) {
+                            return <String, dynamic>{
+                              if (i.isProduct) 'productId': i.id else 'foodId': i.id,
+                              'type': i.type,
+                              if (i.isProduct)
+                                'storeId': i.restaurantId
+                              else
+                                'restaurantId': i.restaurantId,
+                              'name': i.name,
+                              'price': i.price,
+                              'quantity': i.quantity,
+                              'image': i.image,
+                            };
+                          }).toList();
 
                           final result = await OrderService.instance.placeOrder(
                             restaurantId: CartService.instance.restaurantId,
@@ -582,7 +522,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             deliveryCoords: hasCoords
                                 ? {'lat': addr.latitude, 'lng': addr.longitude}
                                 : null,
-                            alternatePhone: cleanPhone,
                             specialInstructions: _instructionsController.text.trim(),
                             serviceAreaId: resolvedServiceAreaId,
                             paymentMethod: _paymentMethod,
@@ -591,9 +530,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           if (!mounted) return;
 
                           if (result['success'] == true) {
-                            if ((AuthService.instance.currentUser?.phone ?? '').isEmpty) {
-                              AuthService.instance.updateProfile(phone: cleanPhone).ignore();
-                            }
                             CartService.instance.clearCart();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

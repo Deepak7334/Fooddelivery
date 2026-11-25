@@ -6,7 +6,6 @@ import '../core/network/api_client.dart';
 import '../core/network/api_exception.dart';
 import '../models/user_model.dart';
 import 'push_service.dart';
-import 'realtime_service.dart';
 
 class AuthService {
   AuthService._();
@@ -86,7 +85,6 @@ class AuthService {
         // MainLayout.registerForPush only runs once at app start, so sessions
         // that begin on an already-built screen would never register.
         PushService.instance.registerForPush();
-        RealtimeService.instance.connectIfAuthenticated();
         return {
           'success': true,
           'message': data['message'] ?? 'Login successful',
@@ -127,7 +125,6 @@ class AuthService {
         final user = UserModel.fromJson(Map<String, dynamic>.from(data['user'] ?? {}));
         await _saveSession(token, user);
         PushService.instance.registerForPush();
-        RealtimeService.instance.connectIfAuthenticated();
         return {
           'success': true,
           'user': user,
@@ -232,7 +229,6 @@ class AuthService {
   /// Drop the local session without calling the backend. Used when the server
   /// has already rejected the token (401), so the token is no longer valid.
   Future<void> clearSession() async {
-    RealtimeService.instance.disconnect();
     _token = null;
     _currentUser = null;
     try {

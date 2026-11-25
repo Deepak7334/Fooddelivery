@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'restaurant_details_screen.dart';
 import 'product_details_screen.dart';
-import 'grocery_items_screen.dart';
 import 'main_layout.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/store_service.dart';
 import '../../../services/location_service.dart';
-import '../../../services/favorites_service.dart';
 import '../../../models/product_model.dart';
 import '../../../models/restaurant_model.dart';
 import '../../../models/category_model.dart';
@@ -31,7 +29,6 @@ class _SearchScreenState extends State<SearchScreen> {
 
   List<FoodItemModel> _allFoods = [];
   List<RestaurantModel> _allRestaurants = [];
-  List<RestaurantModel> _allStores = [];
   List<CategoryModel> _categories = [];
   bool _isLoading = true;
   String? _error;
@@ -39,7 +36,6 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    FavoritesService.instance.load();
     _loadSearchData();
   }
 
@@ -55,27 +51,27 @@ class _SearchScreenState extends State<SearchScreen> {
       final productsFuture = StoreService.instance
           .getProducts()
           .catchError((_) => <FoodItemModel>[]);
-      final storesFuture = StoreService.instance
-          .getStores(lat: lat, lng: lng)
-          .catchError((_) => <RestaurantModel>[]);
+      final nearbyFuture = lat != null && lng != null
+          ? StoreService.instance
+              .getStores(lat: lat, lng: lng)
+              .then<Set<String>?>((s) => s.map((e) => e.id).toSet())
+              .catchError((_) => <String>{})
+          : Future<Set<String>?>.value(null);
       final results = await Future.wait([
         RestaurantService.instance.getFoods(lat: lat, lng: lng),
         RestaurantService.instance.getRestaurants(lat: lat, lng: lng),
         RestaurantService.instance.getCategories(),
       ]);
       final products = await productsFuture;
-      final stores = await storesFuture;
-      final filterByNearby = lat != null && lng != null;
-      final nearbyStoreIds = stores.map((e) => e.id).toSet();
+      final nearbyStoreIds = await nearbyFuture;
       if (mounted) {
         setState(() {
           _allFoods = [
             ...results[0] as List<FoodItemModel>,
             ...products.where((p) =>
-                !filterByNearby || nearbyStoreIds.contains(p.restaurantId)),
+                nearbyStoreIds == null || nearbyStoreIds.contains(p.restaurantId)),
           ];
           _allRestaurants = results[1] as List<RestaurantModel>;
-          _allStores = stores;
           _categories = results[2] as List<CategoryModel>;
           _isLoading = false;
         });
@@ -114,17 +110,6 @@ class _SearchScreenState extends State<SearchScreen> {
       r.name.toLowerCase().contains(query) ||
       r.address.toLowerCase().contains(query) ||
       r.cuisine.any((c) => c.toLowerCase().contains(query))
-    ).toList();
-  }
-
-  List<RestaurantModel> get _matchingStores {
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) return [];
-    return _allStores.where((s) =>
-      s.name.toLowerCase().contains(query) ||
-      s.address.toLowerCase().contains(query) ||
-      s.storeType.toLowerCase().contains(query) ||
-      s.cuisine.any((c) => c.toLowerCase().contains(query))
     ).toList();
   }
 
@@ -196,7 +181,6 @@ class _SearchScreenState extends State<SearchScreen> {
           : _error != null &&
                   _allFoods.isEmpty &&
                   _allRestaurants.isEmpty &&
-                  _allStores.isEmpty &&
                   _categories.isEmpty
               ? AppErrorState(message: _error!, onRetry: () { ApiClient.instance.clearCache(); _loadSearchData(); })
               : hasQuery
@@ -208,9 +192,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSearchResults() {
     final foods = _matchingFoods;
     final rests = _matchingRestaurants;
-    final stores = _matchingStores;
 
-    if (foods.isEmpty && rests.isEmpty && stores.isEmpty) {
+    if (foods.isEmpty && rests.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -234,125 +217,46 @@ class _SearchScreenState extends State<SearchScreen> {
         if (rests.isNotEmpty) ...[
           const Text('Restaurants', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 10),
-          ...rests.map((r) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  tileColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  contentPadding: const EdgeInsets.all(10),
-                  leading: SafeImage(
-                    image: r.image,
-                    width: 50,
-                    height: 50,
-                    borderRadius: BorderRadius.circular(8),
-                    fit: BoxFit.cover,
-                    placeholderIcon: Icons.restaurant_rounded,
-                  ),
-                  title: Text(r.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    r.isOpen
-                        ? (r.address.isNotEmpty ? r.address : r.deliveryTime)
-                        : 'Currently closed',
-                    maxLines: 1,
-                    style: TextStyle(color: r.isOpen ? null : const Color(0xFFB91C1C)),
-                  ),
-                  trailing: AnimatedBuilder(
-                    animation: FavoritesService.instance,
-                    builder: (context, _) {
-                      final isFav = FavoritesService.instance.isFavorite(r.id);
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: isFav ? 'Remove favorite' : 'Add favorite',
-                            onPressed: () => FavoritesService.instance.toggle(r.id),
-                            icon: Icon(
-                              isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                              color: isFav ? Colors.redAccent : Colors.grey,
-                              size: 20,
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                        ],
-                      );
-                    },
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RestaurantDetailsScreen(
-                          restaurantId: r.id,
-                          restaurantName: r.name,
-                          restaurantImage: r.image,
-                          restaurantDeliveryTime: r.deliveryTime,
-                          isOpen: r.isOpen,
-                        ),
-                      ),
-                    );
-                  },
+          ...rests.map((r) => ListTile(
+                tileColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
-              )),
-          const SizedBox(height: 12),
-        ],
-
-        if (stores.isNotEmpty) ...[
-          const Text('Stores & Supermarkets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 10),
-          ...stores.map((s) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  tileColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  contentPadding: const EdgeInsets.all(10),
-                  leading: SafeImage(
-                    image: s.image,
-                    width: 50,
-                    height: 50,
-                    borderRadius: BorderRadius.circular(8),
-                    fit: BoxFit.cover,
-                    placeholderIcon: Icons.storefront_rounded,
-                  ),
-                  title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    s.isOpen
-                        ? (s.address.isNotEmpty ? s.address : s.deliveryTime)
-                        : 'Currently closed',
-                    maxLines: 1,
-                    style: TextStyle(color: s.isOpen ? null : const Color(0xFFB91C1C)),
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => GroceryItemsScreen(
-                          initialStoreId: s.id,
-                          initialStoreName: s.name,
-                        ),
-                      ),
-                    );
-                  },
+                contentPadding: const EdgeInsets.all(10),
+                leading: SafeImage(
+                  image: r.image,
+                  width: 50,
+                  height: 50,
+                  borderRadius: BorderRadius.circular(8),
+                  fit: BoxFit.cover,
+                  placeholderIcon: Icons.restaurant_rounded,
                 ),
+                title: Text(r.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(r.address.isNotEmpty ? r.address : r.deliveryTime, maxLines: 1),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RestaurantDetailsScreen(
+                        restaurantId: r.id,
+                        restaurantName: r.name,
+                        restaurantImage: r.image,
+                        restaurantDeliveryTime: r.deliveryTime,
+                      ),
+                    ),
+                  );
+                },
               )),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
         ],
 
         if (foods.isNotEmpty) ...[
           Text('Items (${foods.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 10),
           ...foods.map((dish) {
-            final price = dish.displayPrice;
-            final vendorOpen = dish.restaurantId.isEmpty ||
-                (dish.isProduct
-                    ? StoreService.instance.isStoreOpen(dish.restaurantId)
-                    : RestaurantService.instance.isVendorOpen(dish.restaurantId));
+            final price = dish.discountedPrice ?? dish.price;
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
@@ -381,12 +285,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => ProductDetailsScreen(
-                        foodItem: dish,
-                        vendorIsOpen: vendorOpen,
-                      ),
-                    ),
+                    MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: dish)),
                   );
                 },
               ),
@@ -449,23 +348,14 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 title: Text(dish.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 subtitle: Text(
-                  formatPrice(dish.displayPrice),
+                  formatPrice(dish.discountedPrice ?? dish.price),
                   style: TextStyle(color: jdkartOrange, fontWeight: FontWeight.w900),
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
                 onTap: () {
-                  final vendorOpen = dish.restaurantId.isEmpty ||
-                      (dish.isProduct
-                          ? StoreService.instance.isStoreOpen(dish.restaurantId)
-                          : RestaurantService.instance.isVendorOpen(dish.restaurantId));
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => ProductDetailsScreen(
-                        foodItem: dish,
-                        vendorIsOpen: vendorOpen,
-                      ),
-                    ),
+                    MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: dish)),
                   );
                 },
               ),

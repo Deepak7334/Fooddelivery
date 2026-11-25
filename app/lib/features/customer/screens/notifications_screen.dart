@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../../models/notification_model.dart';
 import '../../../services/notification_service.dart';
 import '../../../services/push_service.dart';
-import '../../../services/realtime_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 
@@ -23,7 +22,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final Color jdkartOrange = const Color(0xFFF97316);
   Timer? _refreshTimer;
   StreamSubscription<RemoteMessage>? _pushSub;
-  StreamSubscription<Map<String, dynamic>>? _socketSub;
   final ScrollController _scrollController = ScrollController();
   int _page = 1;
   bool _hasMore = true;
@@ -35,15 +33,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     _fetchNotifications();
     _scrollController.addListener(_onScroll);
-    // Live updates while the list is open: instant on FCM push or Socket.IO,
-    // plus a periodic refetch so it stays fresh even when push is unavailable.
+    // Live updates while the list is open: instant on FCM push, plus a
+    // periodic refetch so it stays fresh even when push is unavailable.
     if (PushService.instance.isFirebaseReady) {
       _pushSub =
           FirebaseMessaging.onMessage.listen((_) => _fetchNotifications(silent: true));
     }
-    RealtimeService.instance.connectIfAuthenticated();
-    _socketSub = RealtimeService.instance.notifications
-        .listen((_) => _fetchNotifications(silent: true));
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 20),
       (_) => _fetchNotifications(silent: true),
@@ -54,7 +49,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     _pushSub?.cancel();
-    _socketSub?.cancel();
     _scrollController.dispose();
     super.dispose();
   }

@@ -156,21 +156,6 @@
   height: 100%;
 }
 
-.customer-header-search-input::-webkit-search-decoration,
-.customer-header-search-input::-webkit-search-cancel-button,
-.customer-header-search-input::-webkit-search-results-button,
-.customer-header-search-input::-webkit-search-results-decoration {
-  display: none !important;
-  -webkit-appearance: none !important;
-}
-
-.customer-header-search-input::-ms-clear,
-.customer-header-search-input::-ms-reveal {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
 .customer-header-search-input::placeholder {
   color: #94a3b8;
 }

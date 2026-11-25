@@ -3,27 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
-import { FiPackage, FiCalendar, FiXCircle, FiClock, FiUsers, FiGrid, FiStar, FiCheckCircle, FiLock, FiX } from 'react-icons/fi';
-import { FaWhatsapp } from 'react-icons/fa';
+import { FiPackage, FiCalendar, FiXCircle, FiClock, FiUsers, FiGrid, FiStar, FiCheckCircle, FiLock } from 'react-icons/fi';
 import './CustomerTransactions.css';
 import ReviewOrderModal from './ReviewOrderModal';
-
-const CANCELLATION_WINDOW_SECONDS = 150; // 2 minutes 30 seconds
-const WHATSAPP_SUPPORT_NUMBER = '917762971182';
-
-const getRemainingSeconds = (createdAt) => {
-  if (!createdAt) return 0;
-  const createdTime = new Date(createdAt).getTime();
-  const now = Date.now();
-  const elapsed = Math.floor((now - createdTime) / 1000);
-  return Math.max(0, CANCELLATION_WINDOW_SECONDS - elapsed);
-};
-
-const formatCountdown = (totalSeconds) => {
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = totalSeconds % 60;
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-};
 
 const STATUS_STYLES = {
   pending:   { bg: '#FEF3C7', color: '#B45309', label: 'Pending' },
@@ -95,21 +77,8 @@ export default function OrderHistoryPage() {
     setTab(t);
   };
 
-  // Live 1-second ticker for 2:30 min cancellation countdown
-  const [, setTimerTick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setTimerTick(t => t + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleCancelOrder = async (orderItem) => {
-    const id = typeof orderItem === 'string' ? orderItem : orderItem._id;
-    const createdAt = typeof orderItem === 'object' ? orderItem.createdAt : null;
-    if (createdAt && getRemainingSeconds(createdAt) <= 0) {
-      toast.error('After 2.30 minutes Apka order cancel nhi ho sakta..');
-      return;
-    }
-    if (!confirm('Cancel this order? Free cancellation is only available within 2:30 minutes.')) return;
+    const handleCancelOrder = async (id) => {
+    if (!confirm('Cancel this order?')) return;
     setCancellingId(id);
     try {
       await api.patch(`/customer/orders/${id}/cancel`);
@@ -246,25 +215,6 @@ export default function OrderHistoryPage() {
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                           {new Date(order.createdAt).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
-                        {['pending', 'accepted'].includes(order.status) && (
-                          (() => {
-                            const remaining = getRemainingSeconds(order.createdAt);
-                            return (
-                              <div style={{
-                                fontSize: 11.5,
-                                fontWeight: 600,
-                                marginTop: 5,
-                                color: remaining > 0 ? '#C2410C' : '#64748B'
-                              }}>
-                                {remaining > 0 ? (
-                                  <>⏱️ Cancel window: <strong>{formatCountdown(remaining)}</strong> left (After 2.30 minutes Apka order cancel nhi ho sakta..)</>
-                                ) : (
-                                  <>🔒 Order Confirmed (After 2.30 minutes Apka order cancel nhi ho sakta..)</>
-                                )}
-                              </div>
-                            );
-                          })()
-                        )}
                       </div>
                       <div className="tx-order-price-actions">
                         <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--primary)', marginBottom: 10, textAlign: 'right' }}>₹{order.finalAmount}</div>
@@ -281,38 +231,15 @@ export default function OrderHistoryPage() {
                             </span>
                           ) : null}
 
-                          {['pending', 'accepted'].includes(order.status) && (
-                            (() => {
-                              const remaining = getRemainingSeconds(order.createdAt);
-                              const whatsappMsg = encodeURIComponent(`Hi JDkart Support, I need help with my Order #${order._id?.slice(-8).toUpperCase()}`);
-                              if (remaining > 0) {
-                                return (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleCancelOrder(order); }}
-                                    disabled={cancellingId === order._id}
-                                    className="btn btn-sm btn-cancel-countdown"
-                                    style={{ background: 'rgba(239,68,68,0.1)', color: '#DC2626', border: '1px solid rgba(239,68,68,0.3)', fontWeight: 800, borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                                    title="Cancel order within 2:30 minutes"
-                                  >
-                                    <FiX size={13} />
-                                    {cancellingId === order._id ? 'Cancelling...' : `Cancel (${formatCountdown(remaining)})`}
-                                  </button>
-                                );
-                              }
-                              return (
-                                <a
-                                  href={`https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${whatsappMsg}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="btn btn-sm btn-whatsapp-support"
-                                  style={{ background: '#25D366', color: '#fff', border: 'none', fontWeight: 800, borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 5, textDecoration: 'none' }}
-                                  title="Need help with this order? Chat on WhatsApp"
-                                >
-                                  <FaWhatsapp size={14} /> Help / WhatsApp
-                                </a>
-                              );
-                            })()
+                                                    {['pending', 'accepted'].includes(order.status) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCancelOrder(order._id); }}
+                              disabled={cancellingId === order._id}
+                              className="btn btn-sm"
+                              style={{ background: 'rgba(244,67,54,0.1)', color: 'var(--danger)', border: '1px solid rgba(244,67,54,0.3)', fontWeight: 700 }}
+                            >
+                              {cancellingId === order._id ? 'Cancelling...' : 'Cancel'}
+                            </button>
                           )}
                           {order.status === 'delivered' || order.status === 'cancelled' ? (
                             <Link to={`/orders/${order._id}/track`} className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Details</Link>

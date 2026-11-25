@@ -8,10 +8,6 @@ class RestaurantService {
   RestaurantService._();
   static final RestaurantService instance = RestaurantService._();
 
-  final Map<String, bool> _openById = {};
-
-  bool isVendorOpen(String restaurantId) => _openById[restaurantId] ?? true;
-
   /// Fetch all active categories from backend. Throws [ApiException] on failure.
   Future<List<CategoryModel>> getCategories() async {
     final data = await ApiClient.instance.get(ApiConstants.categories, cache: true);
@@ -32,13 +28,9 @@ class RestaurantService {
 
     final data = await ApiClient.instance.get(url, cache: true);
     if (data is Map && data['restaurants'] is List) {
-      final list = (data['restaurants'] as List)
+      return (data['restaurants'] as List)
           .map((r) => RestaurantModel.fromJson(Map<String, dynamic>.from(r)))
           .toList();
-      for (final r in list) {
-        if (r.id.isNotEmpty) _openById[r.id] = r.isOpen;
-      }
-      return list;
     }
     return [];
   }
@@ -76,9 +68,6 @@ class RestaurantService {
     if (data is Map) {
       if (data['restaurant'] != null) {
         restaurant = RestaurantModel.fromJson(Map<String, dynamic>.from(data['restaurant']));
-        if (restaurant.id.isNotEmpty) {
-          _openById[restaurant.id] = restaurant.isOpen;
-        }
       }
       if (data['menu'] is List) {
         menu = (data['menu'] as List)

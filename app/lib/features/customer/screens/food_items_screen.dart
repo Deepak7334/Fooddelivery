@@ -130,10 +130,18 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
         list.sort((a, b) => b.rating.compareTo(a.rating));
         break;
       case 'price_low':
-        list.sort((a, b) => a.displayPrice.compareTo(b.displayPrice));
+        list.sort((a, b) {
+          final pA = a.discountedPrice ?? a.price;
+          final pB = b.discountedPrice ?? b.price;
+          return pA.compareTo(pB);
+        });
         break;
       case 'price_high':
-        list.sort((a, b) => b.displayPrice.compareTo(a.displayPrice));
+        list.sort((a, b) {
+          final pA = a.discountedPrice ?? a.price;
+          final pB = b.discountedPrice ?? b.price;
+          return pB.compareTo(pA);
+        });
         break;
       default:
         // 'popular' - default order
@@ -146,32 +154,13 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
   Future<void> _addFoodToCart(FoodItemModel dish) async {
     final restId = dish.restaurantId;
     final restName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Restaurant';
-    final vendorOpen = restId.isEmpty ? true : RestaurantService.instance.isVendorOpen(restId);
     if (restId.isEmpty) {
       _showUnavailable();
       return;
     }
-    if (dish.requiresConfiguration) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProductDetailsScreen(
-            foodItem: dish,
-            vendorIsOpen: vendorOpen,
-          ),
-        ),
-      );
-      return;
-    }
 
     _cartBarDismissed = false;
-    if (!await addToCart(
-      context,
-      dish,
-      vendorId: restId,
-      vendorName: restName,
-      vendorIsOpen: vendorOpen,
-    )) return;
+    if (!await addToCart(context, dish, vendorId: restId, vendorName: restName)) return;
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -195,32 +184,13 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
   Future<void> _orderFoodNow(FoodItemModel dish) async {
     final restId = dish.restaurantId;
     final restName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Restaurant';
-    final vendorOpen = restId.isEmpty ? true : RestaurantService.instance.isVendorOpen(restId);
     if (restId.isEmpty) {
       _showUnavailable();
       return;
     }
-    if (dish.requiresConfiguration) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProductDetailsScreen(
-            foodItem: dish,
-            vendorIsOpen: vendorOpen,
-          ),
-        ),
-      );
-      return;
-    }
 
     _cartBarDismissed = false;
-    if (!await addToCart(
-      context,
-      dish,
-      vendorId: restId,
-      vendorName: restName,
-      vendorIsOpen: vendorOpen,
-    )) return;
+    if (!await addToCart(context, dish, vendorId: restId, vendorName: restName)) return;
     if (!mounted) return;
     Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen()));
   }
@@ -240,7 +210,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final int crossAxisCount = screenWidth >= 600 ? (screenWidth >= 900 ? 4 : 3) : 2;
     final double childAspectRatio = screenWidth < 360 ? 0.58 : (screenWidth >= 600 ? 0.68 : 0.62);
-    final dealsList = _allFoods.where((f) => (f.hasDiscount || f.isFeatured) && !f.isOutOfStock).take(8).toList();
+    final dealsList = _allFoods.where((f) => (f.discountedPrice != null && f.discountedPrice! < f.price) || f.isFeatured).take(8).toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -251,34 +221,14 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
+        title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Flexible(
-                  child: Text(
-                    'Food Items & Dishes',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 18),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'JDKart',
-                    style: TextStyle(color: Color(0xFF15803D), fontSize: 10, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
+            Text(
+              'Food Items & Dishes',
+              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 18),
             ),
-            const Text(
+            Text(
               'Order fresh dishes near you',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
@@ -859,22 +809,15 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
         itemCount: dealsList.length,
         itemBuilder: (context, index) {
           final dish = dealsList[index];
-          final vendorOpen = dish.restaurantId.isEmpty ||
-              RestaurantService.instance.isVendorOpen(dish.restaurantId);
-          final discountText = dish.hasDiscount
-              ? 'SAVE ${formatPrice(dish.displayOriginalPrice - dish.displayPrice)}'
+          final discountText = dish.discountedPrice != null
+              ? 'SAVE ${formatPrice(dish.price - dish.discountedPrice!)}'
               : 'SPECIAL';
 
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ProductDetailsScreen(
-                    foodItem: dish,
-                    vendorIsOpen: vendorOpen,
-                  ),
-                ),
+                MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: dish)),
               );
             },
             child: Container(
@@ -968,7 +911,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        formatPrice(dish.displayPrice),
+                        formatPrice(dish.discountedPrice ?? dish.price),
                         style: TextStyle(color: jdkartOrange, fontSize: 13, fontWeight: FontWeight.w900),
                       ),
                       GestureDetector(
@@ -981,7 +924,7 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                             border: Border.all(color: jdkartOrange, width: 1),
                           ),
                           child: Text(
-                            dish.requiresConfiguration ? 'Options' : '+ ADD',
+                            '+ ADD',
                             style: TextStyle(color: jdkartOrange, fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -998,21 +941,13 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
   }
 
   Widget _buildFoodCard(FoodItemModel dish) {
-    final price = dish.displayPrice;
-    final vendorOpen = dish.restaurantId.isEmpty ||
-        RestaurantService.instance.isVendorOpen(dish.restaurantId);
-    final unavailable = !dish.isAvailable || dish.isOutOfStock || !vendorOpen;
+    final price = dish.discountedPrice ?? dish.price;
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => ProductDetailsScreen(
-              foodItem: dish,
-              vendorIsOpen: vendorOpen,
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: dish)),
         );
       },
       child: Container(
@@ -1110,10 +1045,10 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
                   formatPrice(price),
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: jdkartOrangeDark),
                 ),
-                if (dish.hasDiscount) ...[
+                if (dish.discountedPrice != null) ...[
                   const SizedBox(width: 5),
                   Text(
-                    formatPrice(dish.displayOriginalPrice),
+                    formatPrice(dish.price),
                     style: TextStyle(
                       color: Colors.grey[500],
                       fontSize: 11.5,
@@ -1124,63 +1059,47 @@ class _FoodItemsScreenState extends State<FoodItemsScreen> {
               ],
             ),
             const Spacer(),
-            if (unavailable)
-              Container(
-                height: 30,
-                width: double.infinity,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Text(
-                  !vendorOpen ? 'Closed' : 'Unavailable',
-                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5, fontWeight: FontWeight.w700),
-                ),
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 30,
-                      child: OutlinedButton(
-                        onPressed: () => _addFoodToCart(dish),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: jdkartOrange, width: 1.2),
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                        child: Text(
-                          dish.requiresConfiguration ? 'Options' : '+ Add',
-                          style: TextStyle(color: jdkartOrange, fontSize: 11.5, fontWeight: FontWeight.bold),
-                        ),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 30,
+                    child: OutlinedButton(
+                      onPressed: () => _addFoodToCart(dish),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: jdkartOrange, width: 1.2),
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      child: Text(
+                        '+ Add',
+                        style: TextStyle(color: jdkartOrange, fontSize: 11.5, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: SizedBox(
-                      height: 30,
-                      child: ElevatedButton(
-                        onPressed: () => _orderFoodNow(dish),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: jdkartOrange,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.zero,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                        child: const Text(
-                          'Order',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-                        ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: SizedBox(
+                    height: 30,
+                    child: ElevatedButton(
+                      onPressed: () => _orderFoodNow(dish),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: jdkartOrange,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.zero,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      child: const Text(
+                        'Order',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
