@@ -18,14 +18,7 @@ import '../../../core/network/api_client.dart';
 
 class GroceryItemsScreen extends StatefulWidget {
   final String? initialCategory;
-  final String? initialStoreId;
-  final String? initialStoreName;
-  const GroceryItemsScreen({
-    Key? key,
-    this.initialCategory,
-    this.initialStoreId,
-    this.initialStoreName,
-  }) : super(key: key);
+  const GroceryItemsScreen({Key? key, this.initialCategory}) : super(key: key);
 
   @override
   State<GroceryItemsScreen> createState() => _GroceryItemsScreenState();
@@ -57,8 +50,6 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedStoreId = widget.initialStoreId;
-    _selectedStoreName = widget.initialStoreName;
     _fetchStoreData();
   }
 
@@ -239,22 +230,15 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
 
     // Filter by price or discount chips
     if (_filterType == 'under99') {
-      list = list.where((f) => f.displayPrice <= 99).toList();
+      list = list.where((f) => (f.discountedPrice ?? f.price) <= 99).toList();
     } else if (_filterType == 'discounted') {
-      list = list.where((f) => f.hasDiscount).toList();
+      list = list.where((f) => f.discountedPrice != null && f.discountedPrice! < f.price).toList();
     } else if (_filterType == 'price_high') {
-      list = [...list]..sort((a, b) => b.displayPrice.compareTo(a.displayPrice));
+      list = [...list]..sort((a, b) =>
+          (b.discountedPrice ?? b.price).compareTo(a.discountedPrice ?? a.price));
     }
 
     return list;
-  }
-
-  bool _isStoreOpen(String storeId) {
-    if (storeId.isEmpty) return true;
-    for (final s in _backendStores) {
-      if (s.id == storeId) return s.isOpen;
-    }
-    return StoreService.instance.isStoreOpen(storeId);
   }
 
   void _showUnavailable() {
@@ -272,19 +256,6 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       _showUnavailable();
       return;
     }
-    final storeOpen = _isStoreOpen(storeId);
-    if (dish.requiresConfiguration) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProductDetailsScreen(
-            foodItem: dish,
-            vendorIsOpen: storeOpen,
-          ),
-        ),
-      );
-      return;
-    }
     final storeName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Store';
 
     _cartBarDismissed = false;
@@ -294,7 +265,6 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       vendorId: storeId,
       vendorName: storeName,
       type: 'product',
-      vendorIsOpen: storeOpen,
     )) {
       return;
     }
@@ -324,19 +294,6 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       _showUnavailable();
       return;
     }
-    final storeOpen = _isStoreOpen(storeId);
-    if (dish.requiresConfiguration) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProductDetailsScreen(
-            foodItem: dish,
-            vendorIsOpen: storeOpen,
-          ),
-        ),
-      );
-      return;
-    }
     final storeName = dish.restaurantName.isNotEmpty ? dish.restaurantName : 'JDKart Store';
 
     _cartBarDismissed = false;
@@ -346,7 +303,6 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
       vendorId: storeId,
       vendorName: storeName,
       type: 'product',
-      vendorIsOpen: storeOpen,
     )) {
       return;
     }
@@ -362,7 +318,7 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
     final double childAspectRatio = screenWidth < 360 ? 0.58 : (screenWidth >= 600 ? 0.68 : 0.62);
 
     final items = _filteredProducts;
-    final dealsList = _backendProducts.where((p) => p.hasDiscount && !p.isOutOfStock).toList();
+    final dealsList = _backendProducts.where((p) => p.discountedPrice != null && p.discountedPrice! < p.price).toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1066,21 +1022,13 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
         itemCount: dealsList.length,
         itemBuilder: (context, index) {
           final item = dealsList[index];
-          final storeOpen = _isStoreOpen(item.restaurantId);
-          final discountText = item.hasDiscount
-              ? 'SAVE ${formatPrice(item.displayOriginalPrice - item.displayPrice)}'
-              : 'DEAL';
+          final discountText = 'SAVE ${formatPrice(item.price - item.discountedPrice!)}';
 
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ProductDetailsScreen(
-                    foodItem: item,
-                    vendorIsOpen: storeOpen,
-                  ),
-                ),
+                MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: item)),
               );
             },
             child: Container(
@@ -1177,13 +1125,13 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                       Row(
                         children: [
                           Text(
-                            formatPrice(item.displayPrice),
+                            formatPrice(item.discountedPrice ?? item.price),
                             style: TextStyle(color: jdkartOrange, fontSize: 13, fontWeight: FontWeight.w900),
                           ),
-                          if (item.hasDiscount) ...[
+                          if (item.discountedPrice != null) ...[
                             const SizedBox(width: 4),
                             Text(
-                              formatPrice(item.displayOriginalPrice),
+                              formatPrice(item.price),
                               style: TextStyle(
                                 color: Colors.grey[500],
                                 fontSize: 11,
@@ -1194,23 +1142,18 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                         ],
                       ),
                       GestureDetector(
-                        onTap: storeOpen ? () => _addGroceryToCart(item) : null,
+                        onTap: () => _addGroceryToCart(item),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: storeOpen ? jdkartPeach : const Color(0xFFF1F5F9),
+                            color: jdkartPeach,
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: storeOpen ? jdkartOrange : const Color(0xFFCBD5E1),
-                              width: 1,
-                            ),
+                            border: Border.all(color: jdkartOrange, width: 1),
                           ),
                           child: Text(
-                            !storeOpen
-                                ? 'CLOSED'
-                                : (item.requiresConfiguration ? 'Options' : '+ ADD'),
+                            '+ ADD',
                             style: TextStyle(
-                              color: storeOpen ? jdkartOrange : const Color(0xFF64748B),
+                              color: jdkartOrange,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -1229,20 +1172,13 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
   }
 
   Widget _buildGroceryCard(FoodItemModel item) {
-    final price = item.displayPrice;
-    final storeOpen = _isStoreOpen(item.restaurantId);
-    final unavailable = !item.isAvailable || item.isOutOfStock || !storeOpen;
+    final price = item.discountedPrice ?? item.price;
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => ProductDetailsScreen(
-              foodItem: item,
-              vendorIsOpen: storeOpen,
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => ProductDetailsScreen(foodItem: item)),
         );
       },
       child: Container(
@@ -1332,73 +1268,57 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                   formatPrice(price),
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: jdkartOrangeDark),
                 ),
-                if (item.hasDiscount) ...[
+                if (item.discountedPrice != null && item.discountedPrice! < item.price) ...[
                   const SizedBox(width: 5),
                   Text(
-                    formatPrice(item.displayOriginalPrice),
+                    formatPrice(item.price),
                     style: TextStyle(color: Colors.grey[500], fontSize: 11.5, decoration: TextDecoration.lineThrough),
                   ),
                 ],
               ],
             ),
             const Spacer(),
-            if (unavailable)
-              Container(
-                height: 30,
-                width: double.infinity,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Text(
-                  !storeOpen ? 'Store Closed' : 'Out of Stock',
-                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5, fontWeight: FontWeight.w700),
-                ),
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 30,
-                      child: OutlinedButton(
-                        onPressed: () => _addGroceryToCart(item),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: jdkartOrange, width: 1.2),
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                        child: Text(
-                          item.requiresConfiguration ? 'Options' : '+ Add',
-                          style: TextStyle(color: jdkartOrange, fontSize: 11.5, fontWeight: FontWeight.bold),
-                        ),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 30,
+                    child: OutlinedButton(
+                      onPressed: () => _addGroceryToCart(item),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: jdkartOrange, width: 1.2),
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      child: Text(
+                        '+ Add',
+                        style: TextStyle(color: jdkartOrange, fontSize: 11.5, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: SizedBox(
-                      height: 30,
-                      child: ElevatedButton(
-                        onPressed: () => _orderGroceryNow(item),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: jdkartOrange,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.zero,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                        child: const Text(
-                          'Order',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-                        ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: SizedBox(
+                    height: 30,
+                    child: ElevatedButton(
+                      onPressed: () => _orderGroceryNow(item),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: jdkartOrange,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.zero,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      child: const Text(
+                        'Order',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1491,12 +1411,8 @@ class _GroceryItemsScreenState extends State<GroceryItemsScreen> {
                               Icon(Icons.bolt, size: 14, color: jdkartOrange),
                               const SizedBox(width: 2),
                               Text(
-                                store.isOpen ? store.deliveryTime : 'Currently closed',
-                                style: TextStyle(
-                                  color: store.isOpen ? jdkartOrangeDark : const Color(0xFFB91C1C),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                ),
+                                store.deliveryTime,
+                                style: TextStyle(color: jdkartOrangeDark, fontWeight: FontWeight.bold, fontSize: 11),
                               ),
                               const Spacer(),
                               Text(

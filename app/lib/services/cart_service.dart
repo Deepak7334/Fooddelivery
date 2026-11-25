@@ -8,10 +8,8 @@ import 'auth_service.dart';
 
 class CartItem {
   final String id;
-  final String cartItemKey;
   final String name;
   final num price;
-  final num? basePrice;
   final String image;
   int quantity;
   final String restaurantId;
@@ -19,144 +17,41 @@ class CartItem {
 
   /// 'food' for restaurant dishes, 'product' for supermarket items.
   final String type;
-  final String unit;
-  final String variantName;
-  final List<Map<String, dynamic>> addOns;
-  final String spiceLevel;
-  final bool freeDelivery;
-  final String specialInstructions;
 
   CartItem({
     required this.id,
-    String? cartItemKey,
     required this.name,
     required this.price,
-    this.basePrice,
     this.image = '',
     this.quantity = 1,
     required this.restaurantId,
     required this.restaurantName,
     this.type = 'food',
-    this.unit = '',
-    this.variantName = '',
-    this.addOns = const [],
-    this.spiceLevel = '',
-    this.freeDelivery = false,
-    this.specialInstructions = '',
-  }) : cartItemKey = cartItemKey ??
-            buildCartItemKey(
-              id,
-              type: type,
-              variantName: variantName,
-              addOns: addOns,
-              spiceLevel: spiceLevel,
-            );
-
-  static String buildCartItemKey(
-    String id, {
-    String type = 'food',
-    String variantName = '',
-    List<Map<String, dynamic>> addOns = const [],
-    String spiceLevel = '',
-  }) {
-    final buf = StringBuffer('$type|$id');
-    if (variantName.isNotEmpty) buf.write('|v:$variantName');
-    if (addOns.isNotEmpty) {
-      final names = addOns
-          .map((a) => (a['name'] ?? '').toString())
-          .where((n) => n.isNotEmpty)
-          .toList()
-        ..sort();
-      if (names.isNotEmpty) buf.write('|a:${names.join(",")}');
-    }
-    if (spiceLevel.isNotEmpty) buf.write('|s:$spiceLevel');
-    return buf.toString();
-  }
+  });
 
   bool get isProduct => type == 'product';
 
-  String get customizationSummary {
-    final parts = <String>[];
-    if (variantName.isNotEmpty) {
-      parts.add(variantName);
-    } else if (unit.isNotEmpty) {
-      parts.add(unit);
-    }
-    if (spiceLevel.isNotEmpty) parts.add('Spice: $spiceLevel');
-    if (addOns.isNotEmpty) {
-      final names = addOns
-          .map((a) => (a['name'] ?? '').toString())
-          .where((n) => n.isNotEmpty)
-          .join(', ');
-      if (names.isNotEmpty) parts.add('+ $names');
-    }
-    return parts.join(' • ');
-  }
-
-  Map<String, dynamic> toBackendPayload() => {
-        if (isProduct) 'productId': id else 'foodId': id,
-        'type': type,
-        if (isProduct) 'storeId': restaurantId else 'restaurantId': restaurantId,
-        'name': name,
-        'price': price,
-        'basePrice': basePrice ?? price,
-        'quantity': quantity,
-        'image': image,
-        if (unit.isNotEmpty) 'unit': unit,
-        if (variantName.isNotEmpty) 'variantName': variantName,
-        if (addOns.isNotEmpty) 'addOns': addOns,
-        if (spiceLevel.isNotEmpty) 'spiceLevel': spiceLevel,
-        if (freeDelivery) 'freeDelivery': true,
-        if (specialInstructions.isNotEmpty)
-          'specialInstructions': specialInstructions,
-      };
-
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'cartItemKey': cartItemKey,
-        'name': name,
-        'price': price,
-        if (basePrice != null) 'basePrice': basePrice,
-        'image': image,
-        'quantity': quantity,
-        'restaurantId': restaurantId,
-        'restaurantName': restaurantName,
-        'type': type,
-        if (unit.isNotEmpty) 'unit': unit,
-        if (variantName.isNotEmpty) 'variantName': variantName,
-        if (addOns.isNotEmpty) 'addOns': addOns,
-        if (spiceLevel.isNotEmpty) 'spiceLevel': spiceLevel,
-        if (freeDelivery) 'freeDelivery': freeDelivery,
-        if (specialInstructions.isNotEmpty)
-          'specialInstructions': specialInstructions,
-      };
+    'id': id,
+    'name': name,
+    'price': price,
+    'image': image,
+    'quantity': quantity,
+    'restaurantId': restaurantId,
+    'restaurantName': restaurantName,
+    'type': type,
+  };
 
-  factory CartItem.fromJson(Map<String, dynamic> json) {
-    final parsedAddOns = (json['addOns'] is List)
-        ? (json['addOns'] as List)
-            .whereType<Map>()
-            .map((a) => Map<String, dynamic>.from(a))
-            .toList()
-        : const <Map<String, dynamic>>[];
-    return CartItem(
-      id: (json['id'] ?? '').toString(),
-      cartItemKey: json['cartItemKey']?.toString(),
-      name: (json['name'] ?? '').toString(),
-      price: json['price'] is num ? json['price'] as num : 0,
-      basePrice: json['basePrice'] is num ? json['basePrice'] as num : null,
-      image: (json['image'] ?? '').toString(),
-      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-      restaurantId: (json['restaurantId'] ?? '').toString(),
-      restaurantName: (json['restaurantName'] ?? '').toString(),
-      type: (json['type'] ?? 'food').toString(),
-      unit: (json['unit'] ?? '').toString(),
-      variantName: (json['variantName'] ?? '').toString(),
-      addOns: parsedAddOns,
-      spiceLevel: (json['spiceLevel'] ?? '').toString(),
-      freeDelivery: json['freeDelivery'] == true,
-      specialInstructions: (json['specialInstructions'] ?? '').toString(),
-    );
-  }
+  factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
+    id: json['id'] ?? '',
+    name: json['name'] ?? '',
+    price: json['price'] ?? 0,
+    image: json['image'] ?? '',
+    quantity: json['quantity'] ?? 1,
+    restaurantId: json['restaurantId'] ?? '',
+    restaurantName: json['restaurantName'] ?? '',
+    type: json['type'] ?? 'food',
+  );
 }
 
 class CartService extends ChangeNotifier {
@@ -224,7 +119,15 @@ class CartService extends ChangeNotifier {
       return;
     }
 
-    final payloadItems = _items.map((i) => i.toBackendPayload()).toList();
+    final payloadItems = _items.map((i) => {
+      if (i.isProduct) 'productId': i.id else 'foodId': i.id,
+      'type': i.type,
+      if (i.isProduct) 'storeId': i.restaurantId else 'restaurantId': i.restaurantId,
+      'name': i.name,
+      'price': i.price,
+      'quantity': i.quantity,
+      'image': i.image,
+    }).toList();
 
     final restaurantIds = _items
         .where((i) => !i.isProduct && i.restaurantId.isNotEmpty)
@@ -280,27 +183,12 @@ class CartService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  int quantityFor(String itemId, {String type = 'food'}) => _items
-      .where((i) => i.id == itemId && i.type == type)
-      .fold(0, (sum, i) => sum + i.quantity);
-
-  bool addItem(
+  void addItem(
     FoodItemModel food, {
     required String restaurantId,
     required String restaurantName,
     String type = 'food',
-    int quantity = 1,
-    String variantName = '',
-    List<ItemAddOn> addOns = const [],
-    String spiceLevel = '',
-    num? computedPrice,
-    num? basePrice,
-    String specialInstructions = '',
   }) {
-    if (!food.isAvailable || food.isOutOfStock || restaurantId.isEmpty) {
-      return false;
-    }
-
     if (_items.isNotEmpty && _currentRestaurantId != null && _currentRestaurantId != restaurantId) {
       _items.clear();
     }
@@ -308,52 +196,28 @@ class CartService extends ChangeNotifier {
     _currentRestaurantId = restaurantId;
     _currentRestaurantName = restaurantName;
 
-    final addOnMaps = addOns.map((a) => a.toJson()).toList();
-    final key = CartItem.buildCartItemKey(
-      food.id,
-      type: type,
-      variantName: variantName,
-      addOns: addOnMaps,
-      spiceLevel: spiceLevel,
-    );
-    final effectiveBase = basePrice ?? food.displayPrice;
-    final unitPrice = computedPrice ??
-        (effectiveBase + addOns.fold<num>(0, (sum, a) => sum + a.price));
-
-    final existingIndex = _items.indexWhere((i) => i.cartItemKey == key);
+    final existingIndex = _items.indexWhere((i) => i.id == food.id && i.type == type);
     if (existingIndex >= 0) {
-      _items[existingIndex].quantity += quantity;
+      _items[existingIndex].quantity++;
     } else {
       _items.add(CartItem(
         id: food.id,
-        cartItemKey: key,
         name: food.name,
-        price: unitPrice,
-        basePrice: effectiveBase,
+        price: food.discountedPrice ?? food.price,
         image: food.image,
-        quantity: quantity,
+        quantity: 1,
         restaurantId: restaurantId,
         restaurantName: restaurantName,
         type: type,
-        unit: food.unit,
-        variantName: variantName.isNotEmpty ? variantName : (food.isProduct ? food.unit : ''),
-        addOns: addOnMaps,
-        spiceLevel: spiceLevel,
-        freeDelivery: food.freeDelivery,
-        specialInstructions: specialInstructions,
       ));
     }
     _saveCart();
     notifyListeners();
     refreshCharges();
-    return true;
   }
 
-  void updateQuantity(String idOrKey, int quantity, {String type = 'food'}) {
-    var index = _items.indexWhere((i) => i.cartItemKey == idOrKey);
-    if (index < 0) {
-      index = _items.lastIndexWhere((i) => i.id == idOrKey && i.type == type);
-    }
+  void updateQuantity(String id, int quantity, {String type = 'food'}) {
+    final index = _items.indexWhere((i) => i.id == id && i.type == type);
     if (index >= 0) {
       if (quantity <= 0) {
         _items.removeAt(index);

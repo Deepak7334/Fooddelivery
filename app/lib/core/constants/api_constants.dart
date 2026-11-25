@@ -1,10 +1,5 @@
 class ApiConstants {
-  static const String serverOrigin = 'https://fooddelivery-ryjf.onrender.com';
-  static const String baseUrl = '$serverOrigin/api';
-
-  // Official JDkart support contact (aligned with production web)
-  static const String supportWhatsAppPhone = '917762971182';
-  static const String supportPhoneDisplay = '+91 77629 71182';
+  static const String baseUrl = 'https://fooddelivery-ryjf.onrender.com/api';
 
   // Auth endpoints
   static const String sendEmailOtp = '$baseUrl/auth/send-email-otp';
