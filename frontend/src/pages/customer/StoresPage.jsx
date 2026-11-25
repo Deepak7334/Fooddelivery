@@ -10,16 +10,10 @@ import { FiClock, FiMapPin, FiPackage, FiSearch, FiShoppingBag, FiStar, FiX } fr
 import './CustomerBrowse.css';
 
 const STORE_TYPES = [
-  { key: 'all', label: 'All Stores' },
+  { key: 'all', label: 'All Categories' },
   { key: 'grocery', label: 'Grocery' },
-  { key: 'pharmacy', label: 'Pharmacy' },
-  { key: 'electronics', label: 'Electronics' },
-  { key: 'beauty', label: 'Beauty' },
-  { key: 'pets', label: 'Pets' },
-  { key: 'bakery', label: 'Bakery' },
-  { key: 'supermarket', label: 'Supermarket' },
   { key: 'stationery', label: 'Stationery' },
-  { key: 'sports', label: 'Sports' },
+  { key: 'bakery', label: 'Bakery' },
 ];
 
 export default function StoresPage() {
@@ -66,7 +60,10 @@ export default function StoresPage() {
     const params = new URLSearchParams();
     if (debouncedSearch) params.set('search', debouncedSearch);
     if (sort) params.set('sort', sort);
-    if (type && type !== 'all') params.set('type', type);
+    if (type && type !== 'all') {
+      params.set('type', type);
+      params.set('category', type);
+    }
     const cityParam = searchParams.get('city');
     if (cityParam) params.set('city', cityParam);
     
@@ -115,6 +112,40 @@ export default function StoresPage() {
     return list;
   }, [stores, sort, userCoords]);
 
+  // Filter & sort products for Grocery & Stores page
+  const displayedProducts = useMemo(() => {
+    let list = [...products];
+    if (type && type !== 'all') {
+      const target = type.toLowerCase();
+      list = list.filter(p => {
+        const cat = (p.category || '').toLowerCase();
+        const storeType = (p.storeId?.storeType || '').toLowerCase();
+        return cat.includes(target) || storeType.includes(target);
+      });
+    }
+    if (sort === 'rating') {
+      list.sort((a, b) => (b.rating || b.storeId?.rating || 0) - (a.rating || a.storeId?.rating || 0));
+    } else if (sort === 'deliveryFee') {
+      list.sort((a, b) => (a.storeId?.deliveryFee || 0) - (b.storeId?.deliveryFee || 0));
+    } else if (sort === 'deliveryTime') {
+      list.sort((a, b) => {
+        const timeA = parseInt(a.storeId?.deliveryTime) || 30;
+        const timeB = parseInt(b.storeId?.deliveryTime) || 30;
+        return timeA - timeB;
+      });
+    } else if (sort === 'nearest' && userCoords) {
+      list.sort((a, b) => {
+        const distA = a.storeId ? getVendorDistance(a.storeId, userCoords) : null;
+        const distB = b.storeId ? getVendorDistance(b.storeId, userCoords) : null;
+        if (distA != null && distB != null) return distA - distB;
+        if (distA != null) return -1;
+        if (distB != null) return 1;
+        return 0;
+      });
+    }
+    return list;
+  }, [products, type, sort, userCoords]);
+
   const handleAddProduct = (product) => {
     addProductToCart(product, product.storeId?._id);
     toast.success('Added to cart');
@@ -141,8 +172,8 @@ export default function StoresPage() {
           )}
         </header>
 
-        <div className="browse-filters">
-          <select value={sort} onChange={e => setSort(e.target.value)} className={`browse-filter${sort ? ' is-active' : ''}`} aria-label="Sort stores">
+        <div className="browse-filters browse-filters-right">
+          <select value={sort} onChange={e => setSort(e.target.value)} className={`browse-filter${sort ? ' is-active' : ''}`} aria-label="Sort stores and products">
             <option value="">Sort by</option>
             <option value="nearest">Nearest</option>
             <option value="rating">Rating</option>
@@ -168,58 +199,38 @@ export default function StoresPage() {
         </div>
 
         <div className="browse-sections">
-          {(!searchParams.has('search') || stores.length > 0) && (
-            <section className="browse-section" style={{ order: searchParams.has('search') ? 2 : 1 }}>
-              <h2>{searchParams.has('search') ? 'Matching Stores' : searchParams.get('city') ? `Stores near ${searchParams.get('city')}` : searchParams.get('lat') ? 'Stores near you' : 'Top Stores'}</h2>
-              {loading ? (
-                <div className="browse-vendor-grid" aria-label="Loading stores" aria-busy="true">
-                  {Array(3).fill(0).map((_, i) => <div key={i} className="shimmer browse-skeleton" />)}
-                </div>
-              ) : stores.length === 0 ? (
-                searchParams.get('city') || searchParams.get('lat') ? (
-                  <div className="browse-empty">
-                    <FiMapPin size={40} aria-hidden="true" />
-                    <h2>No stores in your area yet</h2>
-                    <p>Our service is not available in your area yet. We hope to be there soon.</p>
-                    <button className="browse-primary" onClick={() => {
-                      if (searchParams.get('lat')) localStorage.removeItem('jdkart_coords');
-                      navigate('/stores');
-                    }}>Try Again</button>
-                  </div>
-                ) : (
-                  <div className="browse-empty"><p>No stores found</p></div>
-                )
-              ) : (
-                <div className="browse-vendor-grid">
-                  {displayedStores.map(s => <StoreCard key={s._id} store={s} userCoords={userCoords} />)}
-                </div>
-              )}
-            </section>
-          )}
+          {/* Popular / Matching Products */}
+          <section className="browse-section">
+            <h2>{searchParams.has('search') ? 'Matching Products' : 'Popular Products'}</h2>
+            {loading ? (
+              <div className="browse-product-grid" aria-label="Loading products" aria-busy="true">
+                {Array(6).fill(0).map((_, i) => <div key={i} className="shimmer browse-skeleton" />)}
+              </div>
+            ) : displayedProducts.length === 0 ? (
+              <div className="browse-empty"><p>No products found</p></div>
+            ) : (
+              <div className="browse-product-grid">
+                {displayedProducts.map(product => (
+                  <HomeProductCard
+                    key={product._id}
+                    product={product}
+                    qty={getProductQty(product._id, product.storeId?._id)}
+                    onAdd={() => handleAddProduct(product)}
+                    onUpdate={(qty) => updateQuantity(product._id, qty)}
+                    onBuy={() => { handleAddProduct(product); navigate('/cart'); }}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
-          {(products.length > 0 || !searchParams.has('search')) && (
-            <section className="browse-section" style={{ order: searchParams.has('search') ? 1 : 2 }}>
-              <h2>{searchParams.has('search') ? 'Matching Products' : 'Popular Products'}</h2>
-              {loading ? (
-                <div className="browse-product-grid" aria-label="Loading products" aria-busy="true">
-                  {Array(6).fill(0).map((_, i) => <div key={i} className="shimmer browse-skeleton" />)}
-                </div>
-              ) : products.length === 0 ? (
-                <div className="browse-empty"><p>No products found</p></div>
-              ) : (
-                <div className="browse-product-grid">
-                  {products.map(product => (
-                    <HomeProductCard
-                      key={product._id}
-                      product={product}
-                      qty={getProductQty(product._id, product.storeId?._id)}
-                      onAdd={() => handleAddProduct(product)}
-                      onUpdate={(qty) => updateQuantity(product._id, qty)}
-                      onBuy={() => { handleAddProduct(product); navigate('/cart'); }}
-                    />
-                  ))}
-                </div>
-              )}
+          {/* Matching Stores ONLY when actively searching and matching stores exist */}
+          {searchParams.has('search') && stores.length > 0 && (
+            <section className="browse-section">
+              <h2>Matching Stores</h2>
+              <div className="browse-vendor-grid">
+                {displayedStores.map(s => <StoreCard key={s._id} store={s} userCoords={userCoords} />)}
+              </div>
             </section>
           )}
         </div>

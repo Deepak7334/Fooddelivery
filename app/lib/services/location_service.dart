@@ -34,15 +34,15 @@ class LocationService {
 
   bool _isInitialized = false;
   bool _locationSet = false;
+  bool _hasGpsCoords = false;
 
-  /// True once the user (or GPS) has explicitly chosen a location.
+  /// True once the user has chosen a location (with or without GPS coords).
   bool get isLocationSet => _locationSet;
 
-  /// Coordinates for nearby filtering. Null until the customer explicitly
-  /// picks a location, so a fresh install browses the full catalog instead of
-  /// a 5 km slice around the placeholder address.
-  double? get activeLat => _locationSet ? selectedLat : null;
-  double? get activeLng => _locationSet ? selectedLng : null;
+  /// Coordinates for nearby filtering. Null until the customer picks a real
+  /// GPS/geocoded location, preventing fake Rohtas placeholder filtering.
+  double? get activeLat => (_locationSet && _hasGpsCoords) ? selectedLat : null;
+  double? get activeLng => (_locationSet && _hasGpsCoords) ? selectedLng : null;
 
   /// Load cached location on startup
   Future<void> init() async {
@@ -69,10 +69,13 @@ class LocationService {
       final savedTitle = prefs.getString(_prefSelectedTitle) ?? '';
       final savedAddress = prefs.getString(_prefSelectedAddress) ?? '';
       _locationSet = prefs.getBool(_prefLocationSet) ?? false;
+      final savedLat = prefs.getDouble(_prefSelectedLat);
+      final savedLng = prefs.getDouble(_prefSelectedLng);
+      _hasGpsCoords = _locationSet && savedLat != null && savedLng != null;
       selectedTitle = _locationSet ? savedTitle : '';
       selectedAddress = _locationSet ? savedAddress : '';
-      selectedLat = prefs.getDouble(_prefSelectedLat) ?? defaultLat;
-      selectedLng = prefs.getDouble(_prefSelectedLng) ?? defaultLng;
+      selectedLat = savedLat ?? defaultLat;
+      selectedLng = savedLng ?? defaultLng;
       _isInitialized = true;
     } catch (_) {
       _isInitialized = true;
@@ -83,29 +86,40 @@ class LocationService {
   Future<void> setSelectedLocation({
     required String title,
     required String address,
-    required double lat,
-    required double lng,
+    double? lat,
+    double? lng,
   }) async {
     selectedTitle = title;
     selectedAddress = address;
-    selectedLat = lat;
-    selectedLng = lng;
     _locationSet = true;
+    _hasGpsCoords = lat != null && lng != null;
+    if (_hasGpsCoords) {
+      selectedLat = lat!;
+      selectedLng = lng!;
+    } else {
+      selectedLat = defaultLat;
+      selectedLng = defaultLng;
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefSelectedTitle, title);
       await prefs.setString(_prefSelectedAddress, address);
-      await prefs.setDouble(_prefSelectedLat, lat);
-      await prefs.setDouble(_prefSelectedLng, lng);
+      if (_hasGpsCoords) {
+        await prefs.setDouble(_prefSelectedLat, lat!);
+        await prefs.setDouble(_prefSelectedLng, lng!);
+      } else {
+        await prefs.remove(_prefSelectedLat);
+        await prefs.remove(_prefSelectedLng);
+      }
       await prefs.setBool(_prefLocationSet, true);
     } catch (_) {}
 
     await addRecentlySearched({
       'title': title,
       'address': address,
-      'lat': lat,
-      'lng': lng,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
     });
   }
 
@@ -160,6 +174,7 @@ class LocationService {
     selectedTitle = '';
     selectedAddress = '';
     _locationSet = false;
+    _hasGpsCoords = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_prefSelectedTitle);
@@ -188,22 +203,31 @@ class LocationService {
     }
   }
 
-  /// Reverse geocode through our backend proxy (works on web), with a
-  /// CORS-friendly public fallback if the API is unreachable.
-  Future<String?> reverseGeocode(double lat, double lng) async {
+  /// Structured reverse geocode returning `area`, `city`, `state`, `pincode`,
+  /// and `formatted` address string.
+  Future<Map<String, String>?> reverseGeocodeDetails(double lat, double lng) async {
     try {
       final data = await ApiClient.instance.get(
         '${ApiConstants.reverseGeocode}?lat=$lat&lng=$lng',
       );
       if (data is Map && data['success'] == true) {
+        final area = (data['area'] ?? '').toString().trim();
+        final city = (data['district'] ?? '').toString().trim();
+        final state = (data['state'] ?? '').toString().trim();
+        final pincode = (data['pincode'] ?? '').toString().trim();
+        final display = (data['displayName'] ?? '').toString().trim();
         final parts = <String>[];
-        for (final key in ['area', 'district', 'state', 'pincode']) {
-          final value = data[key]?.toString().trim() ?? '';
+        for (final value in [area, city, state, pincode]) {
           if (value.isNotEmpty && !parts.contains(value)) parts.add(value);
         }
-        if (parts.isNotEmpty) return parts.join(', ');
-        final display = data['displayName']?.toString().trim() ?? '';
-        if (display.isNotEmpty) return display;
+        final formatted = parts.isNotEmpty ? parts.join(', ') : display;
+        return {
+          'area': area,
+          'city': city,
+          'state': state,
+          'pincode': pincode,
+          'formatted': formatted,
+        };
       }
     } catch (_) {}
 
@@ -212,18 +236,35 @@ class LocationService {
         '${ApiConstants.placeReverse}?lat=$lat&lon=$lng&limit=1&lang=en',
       );
       if (data is Map) {
-        // Photon returns a FeatureCollection, not a bare Feature.
         final features = data['features'];
         final list = features is List
             ? features
             : (data['type'] == 'Feature' ? [data] : const []);
         if (list.isNotEmpty && list.first is Map) {
-          final address = _featureAddress(list.first as Map);
-          if (address.isNotEmpty) return address;
+          final feature = list.first as Map;
+          final props = feature['properties'] is Map
+              ? feature['properties'] as Map
+              : const {};
+          final address = _featureAddress(feature);
+          return {
+            'area': (props['locality'] ?? props['street'] ?? props['name'] ?? '').toString().trim(),
+            'city': (props['district'] ?? props['city'] ?? props['county'] ?? '').toString().trim(),
+            'state': (props['state'] ?? '').toString().trim(),
+            'pincode': (props['postcode'] ?? '').toString().trim(),
+            'formatted': address,
+          };
         }
       }
     } catch (_) {}
     return null;
+  }
+
+  /// Reverse geocode through our backend proxy (works on web), with a
+  /// CORS-friendly public fallback if the API is unreachable.
+  Future<String?> reverseGeocode(double lat, double lng) async {
+    final details = await reverseGeocodeDetails(lat, lng);
+    final formatted = details?['formatted']?.trim() ?? '';
+    return formatted.isNotEmpty ? formatted : null;
   }
 
   /// Forward search for the "Search an area or address" box.
@@ -294,24 +335,24 @@ class LocationService {
     return parts.join(', ');
   }
 
-  /// Request GPS and reverse-geocode to readable address
-  Future<Map<String, dynamic>?> getCurrentLocation() async {
+  /// Request raw GPS coordinates without altering the active location banner.
+  Future<({double lat, double lng, String error})?> detectCurrentCoordinates() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        return null;
+        return (lat: 0.0, lng: 0.0, error: 'Turn on device location (GPS) to detect coordinates.');
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          return null;
+          return (lat: 0.0, lng: 0.0, error: 'Location permission was denied.');
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        return null;
+        return (lat: 0.0, lng: 0.0, error: 'Location permission is permanently denied. Enable it in app settings.');
       }
 
       final position = await Geolocator.getCurrentPosition(
@@ -320,21 +361,32 @@ class LocationService {
           timeLimit: Duration(seconds: 20),
         ),
       );
+      return (lat: position.latitude, lng: position.longitude, error: '');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Request GPS and reverse-geocode to readable address
+  Future<Map<String, dynamic>?> getCurrentLocation() async {
+    try {
+      final fix = await detectCurrentCoordinates();
+      if (fix == null || fix.error.isNotEmpty) return null;
 
       String readableAddress = 'Current GPS Location';
-      final geocoded = await reverseGeocode(position.latitude, position.longitude);
+      final geocoded = await reverseGeocode(fix.lat, fix.lng);
       if (geocoded != null && geocoded.isNotEmpty) {
         readableAddress = geocoded;
       } else {
         readableAddress =
-            'Location (${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)})';
+            'Location (${fix.lat.toStringAsFixed(3)}, ${fix.lng.toStringAsFixed(3)})';
       }
 
       final result = {
         'title': 'Current Location',
         'address': readableAddress,
-        'lat': position.latitude,
-        'lng': position.longitude,
+        'lat': fix.lat,
+        'lng': fix.lng,
       };
 
       await setSelectedLocation(

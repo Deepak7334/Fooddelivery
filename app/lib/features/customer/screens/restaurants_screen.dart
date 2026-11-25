@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'restaurant_details_screen.dart';
 import '../../../services/restaurant_service.dart';
 import '../../../services/location_service.dart';
+import '../../../services/favorites_service.dart';
 import '../../../models/restaurant_model.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
@@ -25,6 +26,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
   @override
   void initState() {
     super.initState();
+    FavoritesService.instance.load();
     _fetchRestaurants();
   }
 
@@ -119,6 +121,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                             restaurantRating: res.rating.toStringAsFixed(1),
                             restaurantDeliveryTime: res.deliveryTime,
                             restaurantDeliveryFee: formatPrice(res.deliveryFee),
+                            isOpen: res.isOpen,
                           ),
                         ),
                       ),
@@ -135,13 +138,64 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SafeImage(
-                              image: res.image,
-                              height: 165,
-                              width: double.infinity,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                              fit: BoxFit.cover,
-                              placeholderIcon: Icons.restaurant_rounded,
+                            Stack(
+                              children: [
+                                SafeImage(
+                                  image: res.image,
+                                  height: 165,
+                                  width: double.infinity,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                  fit: BoxFit.cover,
+                                  placeholderIcon: Icons.restaurant_rounded,
+                                ),
+                                if (!res.isOpen)
+                                  Positioned(
+                                    top: 10,
+                                    left: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFB91C1C),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Text(
+                                        'CLOSED',
+                                        style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+                                      ),
+                                    ),
+                                  ),
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: AnimatedBuilder(
+                                    animation: FavoritesService.instance,
+                                    builder: (context, _) {
+                                      final isFav = FavoritesService.instance.isFavorite(res.id);
+                                      return GestureDetector(
+                                        onTap: () => FavoritesService.instance.toggle(res.id),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(7),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.14),
+                                                blurRadius: 6,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Icon(
+                                            isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                            color: isFav ? Colors.redAccent : const Color(0xFF475569),
+                                            size: 19,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                             Padding(
                               padding: const EdgeInsets.all(14.0),
