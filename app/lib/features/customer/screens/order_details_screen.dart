@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'cart_screen.dart';
 import 'tracking_screen.dart';
 import '../../../models/order_model.dart';
 import '../../../models/product_model.dart';
 import '../../../services/cart_service.dart';
 import '../../../services/order_service.dart';
+import '../../../services/realtime_service.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/utils/format.dart';
@@ -23,9 +27,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   bool _isLoading = false;
   bool _isActing = false;
   String? _error;
+  StreamSubscription<Map<String, dynamic>>? _orderUpdateSub;
+  String? _joinedOrderId;
 
   Map<String, dynamic> _statusStyle(String status) {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'delivered':
         return {
           'label': 'Delivered',
@@ -35,16 +41,30 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       case 'cancelled':
       case 'rejected':
         return {
-          'label': status == 'rejected' ? 'Rejected' : 'Cancelled',
+          'label': status.toLowerCase() == 'rejected' ? 'Rejected' : 'Cancelled',
           'color': const Color(0xFFB91C1C),
           'bg': const Color(0xFFFEE2E2),
         };
+      case 'reached_customer':
+        return {
+          'label': 'Arrived at Door',
+          'color': const Color(0xFF15803D),
+          'bg': const Color(0xFFDCFCE7),
+        };
       case 'out_for_delivery':
       case 'on_the_way':
-      case 'accepted_by_driver':
       case 'picked_up':
         return {
           'label': 'Out for delivery',
+          'color': const Color(0xFF1D4ED8),
+          'bg': const Color(0xFFDBEAFE),
+        };
+      case 'accepted_by_driver':
+      case 'reached_restaurant':
+        return {
+          'label': status.toLowerCase() == 'reached_restaurant'
+              ? 'Rider at Store'
+              : 'Driver Assigned',
           'color': const Color(0xFF1D4ED8),
           'bg': const Color(0xFFDBEAFE),
         };
@@ -54,11 +74,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           'color': const Color(0xFF6D28D9),
           'bg': const Color(0xFFEDE9FE),
         };
+      case 'accepted':
       case 'confirmed':
         return {
-          'label': 'Confirmed',
-          'color': const Color(0xFFB45309),
-          'bg': const Color(0xFFFFFBEB),
+          'label': 'Accepted',
+          'color': const Color(0xFF0369A1),
+          'bg': const Color(0xFFE0F2FE),
         };
       case 'preparing':
         return {
@@ -72,6 +93,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           'color': const Color(0xFFB45309),
           'bg': const Color(0xFFFFFBEB),
         };
+    }
+  }
+
+  Future<void> _callAgent(String phone) async {
+    try {
+      final launched = await launchUrl(Uri(scheme: 'tel', path: phone));
+      if (!launched && mounted) {
+        _showSnack('Could not open dialer. Call $phone', error: true);
+      }
+    } catch (_) {
+      if (mounted) _showSnack('Could not open dialer. Call $phone', error: true);
     }
   }
 
@@ -107,9 +139,31 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   void initState() {
     super.initState();
     _currentOrder = widget.order;
+    _subscribeToOrder(_currentOrder);
     if (_currentOrder == null) {
       _fetchLatestOrder();
     }
+  }
+
+  void _subscribeToOrder(OrderModel? order) {
+    final id = order?.id;
+    if (id == null || id.isEmpty || _joinedOrderId != null) return;
+    if (!_isTrackable(order!.status)) return;
+    _joinedOrderId = id;
+    RealtimeService.instance.joinOrderRoom(id);
+    _orderUpdateSub = RealtimeService.instance.orderUpdates.listen((data) {
+      final targetId = (data['orderId'] ?? '').toString();
+      if (targetId.isEmpty || targetId == id) _refreshOrder();
+    });
+  }
+
+  @override
+  void dispose() {
+    _orderUpdateSub?.cancel();
+    if (_joinedOrderId != null) {
+      RealtimeService.instance.leaveOrderRoom(_joinedOrderId!);
+    }
+    super.dispose();
   }
 
   Future<void> _refreshOrder() async {
@@ -191,17 +245,24 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         FoodItemModel(
           id: item.itemId,
           name: item.name,
-          price: item.price,
+          price: item.basePrice ?? item.price,
           image: item.image,
+          unit: item.unit,
           isProduct: item.isProduct,
         ),
         restaurantId: order.vendorId,
         restaurantName: order.restaurantName,
         type: item.type,
+        quantity: item.quantity,
+        variantName: item.variantName,
+        addOns: item.addOns
+            .map((a) => ItemAddOn(name: a.name, price: a.price))
+            .toList(),
+        spiceLevel: item.spiceLevel,
+        computedPrice: item.price,
+        basePrice: item.basePrice ?? item.price,
+        specialInstructions: item.specialInstructions,
       );
-      if (item.quantity > 1) {
-        cart.updateQuantity(item.itemId, item.quantity, type: item.type);
-      }
     }
     Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
   }
@@ -299,6 +360,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           _currentOrder = orders.first;
           _isLoading = false;
         });
+        _subscribeToOrder(_currentOrder);
       } else if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -383,6 +445,18 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               'Placed on ${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
                               style: TextStyle(color: Colors.grey[600], fontSize: 13),
                             ),
+                            if (_isTrackable(order.status) &&
+                                order.estimatedDeliveryTime.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Estimated delivery: ${order.estimatedDeliveryTime}',
+                                style: const TextStyle(
+                                  color: Color(0xFF475569),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 14),
                             if (_isTrackable(order.status))
                               ElevatedButton.icon(
@@ -398,6 +472,79 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                           ],
                         ),
                       ),
+                      if (_isTrackable(order.status) && order.deliveryOTP.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.verified_user_rounded, color: Color(0xFF2563EB), size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Delivery Verification OTP',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF1E3A8A)),
+                                    ),
+                                    Text(
+                                      'Share with rider: ${order.deliveryOTP}',
+                                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, color: Color(0xFF1D4ED8)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (order.deliveryAgentName.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: jdkartOrange,
+                                child: const Icon(Icons.two_wheeler_rounded, color: Colors.white, size: 18),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(order.deliveryAgentName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                    Text(
+                                      order.deliveryAgentVehicleNumber.isNotEmpty
+                                          ? order.deliveryAgentVehicleNumber
+                                          : 'Your Delivery Partner',
+                                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (order.deliveryAgentPhone.isNotEmpty)
+                                IconButton(
+                                  tooltip: 'Call delivery partner',
+                                  onPressed: () => _callAgent(order.deliveryAgentPhone),
+                                  icon: const Icon(Icons.phone, color: Color(0xFF15803D)),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 20),
 
                       // Restaurant & Delivery Address Card
@@ -461,7 +608,20 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('${i.quantity}x ${i.name}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('${i.quantity}x ${i.name}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                            if (i.customizationSummary.isNotEmpty)
+                                              Text(
+                                                i.customizationSummary,
+                                                style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
                                       Text(formatPrice(i.price * i.quantity), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                     ],
                                   ),
